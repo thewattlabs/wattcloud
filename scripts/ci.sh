@@ -149,21 +149,21 @@ fi
 # 2. SDK: clippy, test, audit, WASM build
 # =========================================================================
 step "SDK — clippy"
-if cargo clippy --manifest-path "$APP_DIR/sdk/Cargo.toml" --workspace -- -D warnings 2>&1; then
+if cargo clippy --manifest-path "$APP_DIR/sdk/sdk-core/Cargo.toml" --workspace -- -D warnings 2>&1; then
     ok "SDK clippy clean."
 else
     record_fail "SDK clippy has warnings/errors."
 fi
 
 step "SDK — tests (default features)"
-if cargo test --manifest-path "$APP_DIR/sdk/Cargo.toml" --workspace 2>&1; then
+if cargo test --manifest-path "$APP_DIR/sdk/sdk-core/Cargo.toml" --workspace 2>&1; then
     ok "SDK tests passed."
 else
     record_fail "SDK tests failed."
 fi
 
 step "SDK — BYO provider tests (--features providers)"
-if cargo test --manifest-path "$APP_DIR/sdk/Cargo.toml" --workspace --features providers 2>&1; then
+if cargo test --manifest-path "$APP_DIR/sdk/sdk-core/Cargo.toml" --workspace --features providers 2>&1; then
     ok "SDK provider tests passed."
 else
     record_fail "SDK provider tests failed."
@@ -172,7 +172,7 @@ fi
 if [[ "$MODE" == "byo" ]]; then
     step "SDK — BYO-only build (no managed code)"
     # Verify sdk-core compiles without managed feature (hard BYO-only check)
-    if cargo test --manifest-path "$APP_DIR/sdk/Cargo.toml" -p sdk-core \
+    if cargo test --manifest-path "$APP_DIR/sdk/sdk-core/Cargo.toml" -p sdk-core \
         --no-default-features --features "crypto byo providers" 2>&1; then
         ok "sdk-core BYO-only tests passed."
     else

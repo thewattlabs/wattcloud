@@ -2,7 +2,7 @@
 
 BYO (Bring Your Own) storage mode lets users encrypt and store their files on a provider they own and control (Google Drive, Dropbox, Microsoft OneDrive, WebDAV, SFTP, Box, pCloud, or S3-compatible object storage). The Wattcloud server acts only as a stateless relay for enrollment; it never holds, processes, or has access to any key material or plaintext data.
 
-This document is the authoritative technical reference for the BYO implementation. For SDK security invariants see `sdk/SECURITY.md`.
+This document is the authoritative technical reference for the BYO implementation. For SDK security invariants see `SECURITY.md`.
 
 ---
 

@@ -19,7 +19,7 @@ pub const ENTRY_TYPE_INSERT: u8 = 0x01;
 pub const ENTRY_TYPE_UPDATE: u8 = 0x02;
 pub const ENTRY_TYPE_DELETE: u8 = 0x03;
 
-/// A4: journal replay only targets the vault schema tables listed in SPEC-BYO.md
+/// A4: journal replay only targets the vault schema tables listed in SPEC.md
 /// §Per-provider SQLite Schema. A forged (or corrupted-pre-HMAC) table name is
 /// rejected by the codec itself — callers no longer carry the burden of
 /// enforcing this at replay time.

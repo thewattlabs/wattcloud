@@ -1,9 +1,16 @@
 # SDK Security Architecture
 
-This document describes the security properties of the Rust SDK and how they are enforced. It is the authoritative reference for implementers.
+This document describes the security properties of the Rust SDK and how they
+are enforced. It is the authoritative reference for implementers.
 
-- For the managed-backend mode, decisions must conform to `SPEC-MANAGED.md`.
-- For the BYO storage mode, decisions must conform to `SPEC-BYO.md`.
+For the BYO protocol (vault format, enrollment, OAuth flow, provider APIs,
+relay server) see `SPEC.md`.
+
+Wattcloud is the BYO-only carveout of SecureCloud. Some sections below
+(especially the Key Hierarchy appendix) still describe hybrid managed + BYO
+material for historical reasons — those constants remain byte-for-byte
+compatible across both repos so V7 ciphertext interoperates. In this repo
+only the BYO code path is compiled; the managed modules were deleted.
 
 ---
 
@@ -27,21 +34,31 @@ This document describes the security properties of the Rust SDK and how they are
 │  │  CryptoBridge (typed postMessage wrapper)       │  │
 │  └─────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────┘
-                    ↕ HTTPS + CSRF token
+                    ↕ HTTPS
 ┌────────────────────────────────────────────────────────┐
-│  Backend (Trusted for Availability, NOT for Data)       │
-│  - Never sees plaintext files, passwords, or keys      │
-│  - Stores only encrypted key bundles + ciphertext      │
-│  - Holds server_shard (useless without client_kek_half)│
+│  Wattcloud relay (byo-server — stateless, no DB)        │
+│  - Forwards enrollment frames between two devices      │
+│  - Forwards SFTP / WebDAV relay traffic (ciphertext)   │
+│  - Serves share pointer + optional ciphertext blob     │
+│  - R5 zero-logging: no persisted request logs          │
+│  - Keeps only: nonce state, rate-limit counters        │
+└────────────────────────────────────────────────────────┘
+                    ↕ HTTPS + OAuth access token
+┌────────────────────────────────────────────────────────┐
+│  User's own storage provider (GDrive/Dropbox/…)         │
+│  - Stores opaque V7 ciphertext files                   │
+│  - Sees only encrypted bytes + opaque filenames        │
+│  - Owned by the user; relay never touches this         │
 └────────────────────────────────────────────────────────┘
 ```
 
-**What the backend never receives:**
+**What the relay never receives:**
 - Plaintext passwords
 - Master secrets / recovery keys
 - `client_kek_half` or full KEK
 - Decrypted file content or filenames
 - Plaintext private keys
+- OAuth tokens for the user's storage provider (those stay in the Worker)
 
 ---
 
@@ -511,7 +528,15 @@ No `unsafe` blocks allowed in `sdk-core` unless:
 
 ## 12. BYO Mode Security Architecture
 
-BYO (Bring Your Own storage) mode adds a second key hierarchy independent of the managed-backend flow. The trust boundary shifts: the Secure Cloud server is no longer trusted for availability — it is only a stateless relay.
+BYO (Bring Your Own storage) is the *only* mode in this repo — the managed
+flow was pruned in the Wattcloud carveout. The sentence below is kept because
+its statement about the trust boundary is still correct on its own merits:
+the Wattcloud relay is never trusted for availability or integrity; every
+byte that crosses it is end-to-end encrypted or HMAC-authenticated.
+
+BYO introduces a second key hierarchy distinct from the managed-mode one that
+existed upstream. The trust boundary: the Wattcloud server is never trusted
+for availability — it is only a stateless relay.
 
 ### Trust Boundary (BYO)
 
@@ -545,7 +570,7 @@ BYO (Bring Your Own storage) mode adds a second key hierarchy independent of the
 
 ### BYO Key Hierarchy
 
-See `SPEC-BYO.md § Cryptographic Key Hierarchy` for the complete derivation graph. Key differences from managed mode:
+See `SPEC.md § Cryptographic Key Hierarchy` for the complete derivation graph. Key differences from managed mode:
 
 | Property | BYO | Managed |
 |----------|-----|---------|
@@ -652,10 +677,9 @@ The manifest body is AES-GCM encrypted before upload to any provider; credential
 
 `sdk-core` now has two HTTP client traits:
 
-- **`HttpClient`** (`api/mod.rs`): relative-path, managed-backend only. Used for auth, file upload/download, key exchange with the Secure Cloud server.
-- **`ProviderHttpClient`** (`api/provider_http.rs`): absolute URL, arbitrary headers, arbitrary methods (including `PROPFIND`, `MKCOL`). Used by BYO provider Rust implementations in sdk-core (GDrive, Dropbox, OneDrive, WebDAV, Box, pCloud, S3). All HTTP provider logic lives in Rust (P8); the `WasmStorageProviderShim` TS class routes through the generic `byo_provider_call` WASM dispatcher. **Must never be used for managed-backend calls.**
+- **`ProviderHttpClient`** (`api/provider_http.rs`): absolute URL, arbitrary headers, arbitrary methods (including `PROPFIND`, `MKCOL`). Used by BYO provider Rust implementations in sdk-core (GDrive, Dropbox, OneDrive, WebDAV, Box, pCloud, S3). All HTTP provider logic lives in Rust (P8); the `WasmStorageProviderShim` TS class routes through the generic `byo_provider_call` WASM dispatcher.
 
-These traits are intentionally separate to prevent confusion between the two network planes. `ProviderHttpClient` is only compiled when the `providers` Cargo feature is enabled.
+`ProviderHttpClient` is only compiled when the `providers` Cargo feature is enabled. The historical `HttpClient` trait (managed-mode API plumbing) was removed with the managed carveout.
 
 ### Enrollment Protocol Security
 
