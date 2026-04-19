@@ -1,12 +1,15 @@
 /**
  * OAuth2 configuration for BYO storage providers.
  *
- * Client IDs are injected at build time via VITE_* environment variables.
- * No server-side secrets are needed — all flows use PKCE.
+ * Client IDs + base URL come from the runtime config (see runtimeConfig.ts),
+ * which is fetched from `/config.json` at SPA boot. No server-side secrets
+ * are needed — all flows use PKCE.
  *
  * The redirect URI points to a callback page in the BYO SPA that posts the
  * authorization code back to the opener via window.postMessage.
  */
+
+import { getRuntimeConfig } from '../runtimeConfig';
 
 export interface OAuthProviderConfig {
   clientId: string;
@@ -19,61 +22,79 @@ export interface OAuthProviderConfig {
   extraAuthParams?: Record<string, string>;
 }
 
-// Base URL for redirect URIs. Defaults to localhost in dev.
-const BASE_URL = import.meta.env.VITE_BYO_BASE_URL ||
-  (import.meta.env.DEV ? 'http://localhost:5173' : '');
+type ProviderKey = 'gdrive' | 'dropbox' | 'onedrive' | 'box' | 'pcloud';
 
 /**
- * OAuth2 configuration per provider.
- * Client IDs must be configured via environment variables at build time.
+ * OAuth2 configuration per provider. Client IDs + base URL are resolved from
+ * the runtime config each call so hot-reload scenarios (tests) see fresh values.
  */
-export const OAUTH_CONFIGS: Record<'gdrive' | 'dropbox' | 'onedrive' | 'box' | 'pcloud', OAuthProviderConfig> = {
-  gdrive: {
-    clientId: import.meta.env.VITE_BYO_GDRIVE_CLIENT_ID || '',
-    authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-    tokenUrl: 'https://oauth2.googleapis.com/token',
-    scope: 'https://www.googleapis.com/auth/drive.file',
-    redirectUri: `${BASE_URL}/oauth/callback`,
-    extraAuthParams: {
-      access_type: 'offline',    // Request refresh token
-      prompt: 'consent',          // Force consent to get new refresh token
+function buildConfigs(): Record<ProviderKey, OAuthProviderConfig> {
+  const { baseUrl, clientIds } = getRuntimeConfig();
+  const redirectUri = `${baseUrl}/oauth/callback`;
+  return {
+    gdrive: {
+      clientId: clientIds.gdrive,
+      authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+      tokenUrl: 'https://oauth2.googleapis.com/token',
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      redirectUri,
+      extraAuthParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
     },
-  },
-  dropbox: {
-    clientId: import.meta.env.VITE_BYO_DROPBOX_CLIENT_ID || '',
-    authUrl: 'https://www.dropbox.com/oauth2/authorize',
-    tokenUrl: 'https://api.dropboxapi.com/oauth2/token',
-    scope: 'files.content.write files.content.read',
-    redirectUri: `${BASE_URL}/oauth/callback`,
-    extraAuthParams: {
-      token_access_type: 'offline', // Required to receive a refresh token from Dropbox
+    dropbox: {
+      clientId: clientIds.dropbox,
+      authUrl: 'https://www.dropbox.com/oauth2/authorize',
+      tokenUrl: 'https://api.dropboxapi.com/oauth2/token',
+      scope: 'files.content.write files.content.read',
+      redirectUri,
+      extraAuthParams: {
+        token_access_type: 'offline',
+      },
     },
-  },
-  onedrive: {
-    clientId: import.meta.env.VITE_BYO_ONEDRIVE_CLIENT_ID || '',
-    authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-    scope: 'Files.ReadWrite offline_access',
-    redirectUri: `${BASE_URL}/oauth/callback`,
-  },
-  box: {
-    clientId: import.meta.env.VITE_BYO_BOX_CLIENT_ID || '',
-    authUrl: 'https://account.box.com/api/oauth2/authorize',
-    tokenUrl: 'https://api.box.com/oauth2/token',
-    scope: 'root_readwrite',
-    redirectUri: `${BASE_URL}/oauth/callback`,
-  },
-  pcloud: {
-    clientId: import.meta.env.VITE_BYO_PCLOUD_CLIENT_ID || '',
-    // pCloud has separate US and EU auth endpoints. Default to US.
-    // EU users must configure the region during setup; the EU endpoint is
-    // https://eapi.pcloud.com/oauth2/authorize with token at https://eapi.pcloud.com/oauth2_token
-    authUrl: 'https://my.pcloud.com/oauth2/authorize',
-    tokenUrl: 'https://api.pcloud.com/oauth2_token',
-    scope: '',  // pCloud uses no explicit scopes in PKCE flow
-    redirectUri: `${BASE_URL}/oauth/callback`,
-  },
-};
+    onedrive: {
+      clientId: clientIds.onedrive,
+      authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+      tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+      scope: 'Files.ReadWrite offline_access',
+      redirectUri,
+    },
+    box: {
+      clientId: clientIds.box,
+      authUrl: 'https://account.box.com/api/oauth2/authorize',
+      tokenUrl: 'https://api.box.com/oauth2/token',
+      scope: 'root_readwrite',
+      redirectUri,
+    },
+    pcloud: {
+      clientId: clientIds.pcloud,
+      // pCloud has separate US and EU auth endpoints. Default to US.
+      // EU users must configure the region during setup; the EU endpoint is
+      // https://eapi.pcloud.com/oauth2/authorize with token at https://eapi.pcloud.com/oauth2_token
+      authUrl: 'https://my.pcloud.com/oauth2/authorize',
+      tokenUrl: 'https://api.pcloud.com/oauth2_token',
+      scope: '',
+      redirectUri,
+    },
+  };
+}
+
+/**
+ * Proxy that reads from `buildConfigs()` on every property access. Existing
+ * callers (`OAUTH_CONFIGS[provider]`) continue to work, but the underlying
+ * client IDs now come from `/config.json` instead of build-time env vars.
+ */
+export const OAUTH_CONFIGS: Record<ProviderKey, OAuthProviderConfig> =
+  new Proxy({} as Record<ProviderKey, OAuthProviderConfig>, {
+    get(_target, prop: string) {
+      if (prop === 'gdrive' || prop === 'dropbox' || prop === 'onedrive' ||
+          prop === 'box' || prop === 'pcloud') {
+        return buildConfigs()[prop as ProviderKey];
+      }
+      return undefined;
+    },
+  });
 
 /**
  * Return the effective OAuth client ID for a provider.
@@ -101,8 +122,8 @@ export function validateOAuthConfig(
   if (!clientId) {
     throw new Error(
       `OAuth client ID not configured for ${provider}. ` +
-      `Set the VITE_BYO_${provider.toUpperCase()}_CLIENT_ID environment variable ` +
-      `or supply a clientId in the provider configuration.`,
+      `Set clientIds.${provider} in /config.json (deploy-vps.sh writes this ` +
+      `file from the operator's .env), or supply a clientId in the provider configuration.`,
     );
   }
 }

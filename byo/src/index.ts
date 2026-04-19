@@ -53,6 +53,14 @@ export { generatePKCE, base64URLEncode, type PKCEPair } from './oauth/PKCE';
 export { OAUTH_CONFIGS, validateOAuthConfig, type OAuthProviderConfig } from './oauth/OAuthConfig';
 export { initiateOAuthFlow, refreshAccessToken, type OAuthResult } from './oauth/OAuthFlow';
 
+// Runtime config (fetched from /config.json at SPA boot).
+export {
+  initRuntimeConfig,
+  getRuntimeConfig,
+  validateRuntimeConfig,
+  type WattcloudRuntimeConfig,
+} from './runtimeConfig';
+
 // Relay auth (PoW-gated cookie acquisition for WS connections)
 export {
   acquireRelayCookie,
