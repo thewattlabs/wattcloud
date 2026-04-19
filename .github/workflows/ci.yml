@@ -44,7 +44,7 @@ jobs:
         with:
           workspaces: |
             .
-            byo-server
+            byo-relay
 
       - name: cargo fmt --check (sdk)
         run: cargo fmt --all --manifest-path Cargo.toml --check
@@ -70,8 +70,8 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  byo-server:
-    name: byo-server (cargo test)
+  byo-relay:
+    name: byo-relay (cargo test)
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
@@ -81,16 +81,16 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84
         with:
-          workspaces: byo-server
+          workspaces: byo-relay
 
-      - name: cargo fmt --check (byo-server)
-        run: cargo fmt --manifest-path byo-server/Cargo.toml --check
+      - name: cargo fmt --check (byo-relay)
+        run: cargo fmt --manifest-path byo-relay/Cargo.toml --check
 
-      - name: clippy (byo-server)
-        run: cargo clippy --manifest-path byo-server/Cargo.toml --all-targets -- -D warnings
+      - name: clippy (byo-relay)
+        run: cargo clippy --manifest-path byo-relay/Cargo.toml --all-targets -- -D warnings
 
-      - name: cargo test (byo-server)
-        run: cargo test --manifest-path byo-server/Cargo.toml
+      - name: cargo test (byo-relay)
+        run: cargo test --manifest-path byo-relay/Cargo.toml
 
   byo-package:
     name: byo TS package (npm test)

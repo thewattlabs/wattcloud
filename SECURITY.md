@@ -36,7 +36,7 @@ undecryptable. Treat them as magic constants, not as product references.
 └────────────────────────────────────────────────────────┘
                     ↕ HTTPS
 ┌────────────────────────────────────────────────────────┐
-│  Wattcloud relay (byo-server — stateless, no DB)        │
+│  Wattcloud relay (byo-relay — stateless, no DB)        │
 │  - Forwards enrollment frames between two devices      │
 │  - Forwards SFTP / WebDAV relay traffic (ciphertext)   │
 │  - Serves share pointer + optional ciphertext blob     │

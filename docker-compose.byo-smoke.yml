@@ -4,7 +4,7 @@
 #   - container_name: !reset null lets Compose autonumber under COMPOSE_PROJECT_NAME,
 #     so multiple smoke runs (and coexistence with prod) don't collide.
 services:
-  byo-server:
+  byo-relay:
     container_name: !reset null
     env_file: !override
       - .env.smoke

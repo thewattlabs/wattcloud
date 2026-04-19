@@ -1,4 +1,4 @@
-# byo-server
+# byo-relay
 
 Stateless relay server for BYO (Bring Your Own storage) mode.
 
@@ -20,7 +20,7 @@ All config is via environment variables.
 | `TLS_KEY` | — | yes (path to PEM key) |
 | `JWT_SECRET` | — | yes (relay auth signing key) |
 | `STATS_HMAC_KEY` | — | **yes** (hex or base64, ≥ 32 B) |
-| `STATS_DB_PATH` | `/var/lib/byo-server/stats.sqlite3` | no |
+| `STATS_DB_PATH` | `/var/lib/byo-relay/stats.sqlite3` | no |
 | `STATS_INGEST_PER_MIN` | `10` | no |
 | `STATS_BATCH_MAX_EVENTS` | `200` | no |
 | `STATS_MAX_BODY_BYTES` | `65536` | no |
@@ -43,13 +43,13 @@ The `byo-admin` binary ships in the same container image:
 
 ```bash
 # View aggregated stats
-docker compose exec byo-server byo-admin log --granularity daily
-docker compose exec byo-server byo-admin log --granularity weekly
-docker compose exec byo-server byo-admin log --granularity monthly \
+docker compose exec byo-relay byo-admin log --granularity daily
+docker compose exec byo-relay byo-admin log --granularity weekly
+docker compose exec byo-relay byo-admin log --granularity monthly \
   --from 2026-01-01 --to 2026-04-01
 
 # Wipe all stats rows (leaves schema intact)
-docker compose exec -it byo-server byo-admin clear
+docker compose exec -it byo-relay byo-admin clear
 ```
 
 Or via the Makefile shortcuts:
@@ -75,7 +75,7 @@ make stats-clear
 cargo build --release
 
 # Docker (static musl binary)
-docker build -t byo-server .
+docker build -t byo-relay .
 ```
 
 ## Tests

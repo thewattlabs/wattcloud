@@ -2,9 +2,9 @@
 #
 # Services:
 #   traefik    — reverse proxy + Let's Encrypt
-#   byo-server — stateless BYO relay; serves the SPA bundle + /config.json
+#   byo-relay — stateless BYO relay; serves the SPA bundle + /config.json
 #
-# scripts/update.sh rewrites the byo-server image line to a digest-pinned
+# scripts/update.sh rewrites the byo-relay image line to a digest-pinned
 # reference (ghcr.io/wattzupbyte/wattcloud@sha256:…) before every roll.
 # scripts/byo-smoke.sh layers docker-compose.byo-smoke.yml on top.
 
@@ -32,20 +32,20 @@ services:
     networks:
       - wattcloud-network
 
-  byo-server:
+  byo-relay:
     # update.sh pins this to ghcr.io/wattzupbyte/wattcloud@sha256:…
     image: ${BYO_IMAGE:-ghcr.io/wattzupbyte/wattcloud:latest}
-    container_name: wattcloud-byo-server
+    container_name: wattcloud-byo-relay
     restart: unless-stopped
     env_file:
       - .env
     environment:
       - BIND_ADDR=0.0.0.0:8443
       - SPA_DIR=/app/dist
-      - STATS_DB_PATH=/var/lib/byo-server/stats.sqlite3
+      - STATS_DB_PATH=/var/lib/byo-relay/stats.sqlite3
       - RUST_LOG=warn
     volumes:
-      - byo-stats-data:/var/lib/byo-server
+      - byo-stats-data:/var/lib/byo-relay
       # deploy-vps.sh writes the SPA runtime config here; served same-origin.
       - /var/www/wattcloud/config.json:/app/dist/config.json:ro
     labels:

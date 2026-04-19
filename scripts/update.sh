@@ -77,13 +77,13 @@ if ! [[ -f docker-compose.yml ]]; then
   exit 2
 fi
 
-# Idempotent sed — only rewrites the byo-server image line (matches any
+# Idempotent sed — only rewrites the byo-relay image line (matches any
 # existing ghcr.io/wattzupbyte/wattcloud:TAG or @sha256:… reference, plus the
 # legacy ${BYO_IMAGE:-…} placeholder we ship in docker-compose.yml). Traefik's
 # image line does NOT match this pattern and is preserved.
 sed -i -E "s|^(\s*image:\s*).*(ghcr\.io/wattzupbyte/wattcloud|BYO_IMAGE:-).*$|\1${DIGEST}|" docker-compose.yml
 if ! grep -qF "$DIGEST" docker-compose.yml; then
-  echo "ERROR: failed to pin digest into docker-compose.yml (byo-server image line not found or regex mismatch)" >&2
+  echo "ERROR: failed to pin digest into docker-compose.yml (byo-relay image line not found or regex mismatch)" >&2
   exit 5
 fi
 echo "Pinned compose image to: $DIGEST"
@@ -93,8 +93,8 @@ docker compose -f docker-compose.yml up -d
 
 sleep 5
 if curl -fsS http://127.0.0.1:8443/health >/dev/null 2>&1; then
-  echo "OK: byo-server /health returned 200."
+  echo "OK: byo-relay /health returned 200."
 else
-  echo "WARN: /health probe failed — check 'docker compose logs byo-server'." >&2
+  echo "WARN: /health probe failed — check 'docker compose logs byo-relay'." >&2
   exit 1
 fi

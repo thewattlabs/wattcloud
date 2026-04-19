@@ -139,7 +139,7 @@ impl Config {
 
         let stats_hmac_key = parse_stats_hmac_key();
         let stats_db_path = std::env::var("STATS_DB_PATH")
-            .unwrap_or_else(|_| "/var/lib/byo-server/stats.sqlite3".to_string());
+            .unwrap_or_else(|_| "/var/lib/byo-relay/stats.sqlite3".to_string());
         let stats_ingest_per_min = std::env::var("STATS_INGEST_PER_MIN")
             .ok()
             .and_then(|v| v.parse().ok())

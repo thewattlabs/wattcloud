@@ -1,6 +1,6 @@
 name: Release
 
-# Fires on v*.*.* tag push only. Builds the byo-server image (with the SPA
+# Fires on v*.*.* tag push only. Builds the byo-relay image (with the SPA
 # bundle embedded in /dist), pushes it to ghcr.io/wattzupbyte/wattcloud,
 # KEYLESS-signs it with sigstore/cosign, and writes the resulting @sha256:...
 # digest + the signed-identity claim into the GitHub Release body so the VPS
@@ -69,9 +69,9 @@ jobs:
           fi
 
       # Build the WASM + SPA first so the resulting dist/ can be copied into
-      # byo-server's Docker context. The Dockerfile is byo-server-centric
-      # (context = byo-server/, expects dist/ next to Cargo.toml), so we
-      # stage the bundle under byo-server/dist/ before docker build.
+      # byo-relay's Docker context. The Dockerfile is byo-relay-centric
+      # (context = byo-relay/, expects dist/ next to Cargo.toml), so we
+      # stage the bundle under byo-relay/dist/ before docker build.
 
       # dtolnay/rust-toolchain@stable
       - uses: dtolnay/rust-toolchain@c5a29ddb4d9d194e7c84ec8c3fba61b1c31fee8a
@@ -93,14 +93,14 @@ jobs:
       - name: wasm-pack build (sdk-wasm)
         run: wasm-pack build sdk/sdk-wasm --release --target web --out-dir ../../frontend/src/pkg --out-name wattcloud_sdk_wasm
 
-      - name: Build byo package + frontend into byo-server/dist/
+      - name: Build byo package + frontend into byo-relay/dist/
         working-directory: byo
         run: npm ci
-      - name: Build frontend into byo-server/dist/
+      - name: Build frontend into byo-relay/dist/
         working-directory: frontend
         run: |
           npm ci
-          # package.json's build script already emits to ../byo-server/dist.
+          # package.json's build script already emits to ../byo-relay/dist.
           npm run build
 
       # docker/setup-buildx-action@v3.6.1
@@ -121,8 +121,8 @@ jobs:
         # docker/build-push-action@v6.7.0
         uses: docker/build-push-action@5cd11c3a4ced054e52742c5fd54dca954e0edd85
         with:
-          context: byo-server
-          file: byo-server/Dockerfile
+          context: byo-relay
+          file: byo-relay/Dockerfile
           push: true
           tags: |
             ${{ env.IMAGE_NAME }}:${{ env.REF_NAME }}

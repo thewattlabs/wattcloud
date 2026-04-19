@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --outDir ../byo-server/dist --emptyOutDir",
+    "build": "vite build --outDir ../byo-relay/dist --emptyOutDir",
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",

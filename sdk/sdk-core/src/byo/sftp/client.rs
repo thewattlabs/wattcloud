@@ -434,7 +434,7 @@ impl<T: RelayTransport> SftpRelayClient<T> {
     /// Rename (atomic move) a remote path.
     pub async fn rename(&self, old_path: &str, new_path: &str) -> Result<(), ProviderError> {
         // D3: SPEC-BYO §BYO Relay Server names the rename params `from`/`to`;
-        // the byo-server relay accepts both spellings for upgrade safety.
+        // the byo-relay relay accepts both spellings for upgrade safety.
         self.call("rename", serde_json::json!({ "from": old_path, "to": new_path })).await?;
         Ok(())
     }

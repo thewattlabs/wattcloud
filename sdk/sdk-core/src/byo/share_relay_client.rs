@@ -1,5 +1,5 @@
 // BYO share-relay client: typed wrappers for B1 (presigned-URL pointer) and
-// B2 (ciphertext blob) endpoints on `byo-server/src/share_relay.rs`.
+// B2 (ciphertext blob) endpoints on `byo-relay/src/share_relay.rs`.
 //
 // The relay stores only: share_id, opaque provider URL or V7 ciphertext,
 // expiry, and a revoked flag. Content keys are NEVER transmitted to the relay.

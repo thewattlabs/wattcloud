@@ -124,25 +124,25 @@ else
 fi
 
 # =========================================================================
-# 2. byo-server: clippy + test + audit
+# 2. byo-relay: clippy + test + audit
 # =========================================================================
-step "byo-server — clippy"
-if cargo clippy --manifest-path "$APP_DIR/byo-server/Cargo.toml" \
+step "byo-relay — clippy"
+if cargo clippy --manifest-path "$APP_DIR/byo-relay/Cargo.toml" \
    --all-targets -- -D warnings 2>&1; then
-    ok "byo-server clippy clean."
+    ok "byo-relay clippy clean."
 else
-    record_fail "byo-server clippy has warnings/errors."
+    record_fail "byo-relay clippy has warnings/errors."
 fi
 
-step "byo-server — tests"
-if cargo test --manifest-path "$APP_DIR/byo-server/Cargo.toml" 2>&1; then
-    ok "byo-server tests passed."
+step "byo-relay — tests"
+if cargo test --manifest-path "$APP_DIR/byo-relay/Cargo.toml" 2>&1; then
+    ok "byo-relay tests passed."
 else
-    record_fail "byo-server tests failed."
+    record_fail "byo-relay tests failed."
 fi
 
-step "byo-server — cargo audit"
-run_audit "byo-server" "$APP_DIR/byo-server/Cargo.lock"
+step "byo-relay — cargo audit"
+run_audit "byo-relay" "$APP_DIR/byo-relay/Cargo.lock"
 
 # =========================================================================
 # 3. byo package (@wattcloud/sdk): npm ci + vitest + typecheck
@@ -174,15 +174,15 @@ else
 fi
 
 # =========================================================================
-# 5. Docker: build byo-server image + optional smoke test
+# 5. Docker: build byo-relay image + optional smoke test
 # =========================================================================
 if [[ "${CI_SKIP_DOCKER:-0}" != "1" ]]; then
-    step "Docker — build byo-server image"
+    step "Docker — build byo-relay image"
     if command -v docker &>/dev/null && docker info &>/dev/null; then
-        if (cd "$APP_DIR" && docker build -t wattcloud:ci -f byo-server/Dockerfile byo-server) 2>&1; then
-            ok "byo-server image built (tag wattcloud:ci)."
+        if (cd "$APP_DIR" && docker build -t wattcloud:ci -f byo-relay/Dockerfile byo-relay) 2>&1; then
+            ok "byo-relay image built (tag wattcloud:ci)."
         else
-            record_fail "byo-server image build failed."
+            record_fail "byo-relay image build failed."
         fi
 
         step "Docker — smoke test"

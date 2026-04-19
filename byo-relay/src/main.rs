@@ -1,6 +1,6 @@
 use anyhow::Context;
 use axum::{extract::State, http::StatusCode, middleware, response::IntoResponse, routing::get, routing::post, Router};
-use byo_server::{
+use byo_relay::{
     channel::ChannelRegistry,
     config::Config,
     rate_limit::{AuthChallengeLimiter, ChannelJoinLimiter, SftpAuthFailureTracker, SftpConnectionTracker},
@@ -81,7 +81,7 @@ async fn main() -> anyhow::Result<()> {
         pow_difficulty,
         auth_challenge_per_min,
         sftp_allowlist_len = state.config.sftp_host_allowlist.len(),
-        "byo-server starting on {bind_addr}",
+        "byo-relay starting on {bind_addr}",
     );
 
     // Static SPA: serve dist/ with index.html fallback for client-side routing

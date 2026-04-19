@@ -54,7 +54,7 @@ for the threat model.
                 ▼                                ▼
    ┌──────────────────────┐      ┌─────────────────────────────┐
    │ Wattcloud relay      │      │ User's own storage provider │
-   │  (byo-server, Rust)  │      │  (GDrive, Dropbox, S3, …)   │
+   │  (byo-relay, Rust)  │      │  (GDrive, Dropbox, S3, …)   │
    │  - enrollment WS     │      │  - opaque V7 ciphertext     │
    │  - SFTP relay        │      │  - no plaintext ever        │
    │  - share pointers    │      └─────────────────────────────┘
@@ -66,7 +66,7 @@ for the threat model.
 |------|-------|---------|
 | `sdk/sdk-core` | Rust | Cryptographic core — no I/O, no panics. Feeds wasm & (future) FFI. |
 | `sdk/sdk-wasm` | Rust → wasm-bindgen | Browser crypto kernel loaded by the Web Worker. |
-| `byo-server` | Rust, Axum | Stateless relay (enrollment, SFTP, share pointers, stats). |
+| `byo-relay` | Rust, Axum | Stateless relay (enrollment, SFTP, share pointers, stats). |
 | `byo` | TypeScript | `@wattcloud/sdk` — storage-provider dispatcher, vault journal, Web Worker client. |
 | `frontend` | Svelte + Vite | Browser SPA. |
 | `scripts` | Bash | `deploy-vps.sh`, `release.sh`, `update.sh`, `ci.sh`. |
@@ -121,7 +121,7 @@ GitHub Actions is the canonical pipeline. Workflows live under
 `.github/workflows/`:
 
 - `ci.yml` — on every push and pull request: lint + test + build. Runs
-  `cargo test` for the sdk workspace and for byo-server, `npm test` for the
+  `cargo test` for the sdk workspace and for byo-relay, `npm test` for the
   byo TypeScript package and the frontend, and `wasm-pack build` for the
   browser kernel. Caches cargo + node for speed.
 - `release.yml` — on `v*.*.*` tag: builds the image, pushes to
@@ -204,12 +204,12 @@ one-line description.
 make dev               # Vite dev server on :5173
 make build-sdk-wasm    # wasm-pack → frontend/src/pkg/
 make build-byo         # @wattcloud/sdk TS package
-make build-frontend    # Vite build → byo-server/dist/
+make build-frontend    # Vite build → byo-relay/dist/
 make build             # all three, in order
 
 make test              # cargo + npm across the repo
 make test-sdk          # sdk-core only (crypto + byo + providers)
-make test-byo-server   # byo-server only
+make test-byo-relay   # byo-relay only
 make test-byo          # @wattcloud/sdk only
 make test-frontend     # SPA only
 
@@ -221,7 +221,7 @@ make ci                # full local CI (scripts/ci.sh — mirrors Actions)
 ### Prod
 
 ```bash
-make image             # docker build byo-server → wattcloud:ci
+make image             # docker build byo-relay → wattcloud:ci
 make smoke             # scripts/byo-smoke.sh against wattcloud:ci
 make release-help      # reminder on the tag-driven Actions release flow
 ```

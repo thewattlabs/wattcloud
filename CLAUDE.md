@@ -15,7 +15,7 @@ must not come back.
 |------|-------|---------|
 | `/sdk/sdk-core` | Rust | Pure crypto + business logic. No I/O, no `unwrap`, no panics. |
 | `/sdk/sdk-wasm` | Rust → wasm-bindgen | Browser crypto kernel. Compiled with wasm-pack. |
-| `/byo-server` | Rust, Axum | Stateless relay (enrollment, SFTP, share pointers, stats). |
+| `/byo-relay` | Rust, Axum | Stateless relay (enrollment, SFTP, share pointers, stats). |
 | `/byo` | TypeScript | `@wattcloud/sdk` — StorageProvider dispatcher, Web Worker client, vault journal. |
 | `/frontend` | Svelte + Vite | Browser SPA. Single entry point (`src/main.ts`, `index.html`). |
 | `/scripts` | Bash | `deploy-vps.sh`, `update.sh` (VPS-side); `ci.sh`, `release.sh`, `byo-smoke.sh` (local dev). |
@@ -112,7 +112,7 @@ cd frontend && npm run build
 
 Canonical pipeline is **GitHub Actions**. Two workflows under `.github/workflows/`:
 
-- `ci.yml` — on push/PR: lint + test + build (sdk cargo test, byo-server cargo
+- `ci.yml` — on push/PR: lint + test + build (sdk cargo test, byo-relay cargo
   test, byo npm test, frontend npm test, wasm-pack build).
 - `release.yml` — on `v*.*.*` tag: builds the image, pushes to
   `ghcr.io/wattzupbyte/wattcloud`, **sigstore/cosign keyless-signs** via

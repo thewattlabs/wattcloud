@@ -2,7 +2,7 @@
 //
 // These are pure functions (no I/O, no panics) used by:
 //   - sdk-wasm (WASM bindings called from the BYO Web Worker)
-//   - byo-server (server-side verification, vendored separately to avoid cross-crate dep)
+//   - byo-relay (server-side verification, vendored separately to avoid cross-crate dep)
 //
 // Protocol:
 //   purpose = derive_sftp_purpose(host, port)  →  "sftp:<32 lowercase hex chars>"

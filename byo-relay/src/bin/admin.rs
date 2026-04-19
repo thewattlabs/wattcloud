@@ -6,9 +6,9 @@
 //   byo-admin clear [--yes]
 //
 // Opens the stats.sqlite3 file directly (WAL, so concurrent reads do not
-// block a running byo-server).
+// block a running byo-relay).
 
-use byo_server::stats::StatsStore;
+use byo_relay::stats::StatsStore;
 use clap::{Parser, Subcommand};
 use std::io::{self, Write};
 
@@ -16,7 +16,7 @@ use std::io::{self, Write};
 #[command(name = "byo-admin", about = "BYO usage statistics admin CLI")]
 struct Cli {
     /// Path to the stats SQLite database.
-    #[arg(long, env = "STATS_DB_PATH", default_value = "/var/lib/byo-server/stats.sqlite3")]
+    #[arg(long, env = "STATS_DB_PATH", default_value = "/var/lib/byo-relay/stats.sqlite3")]
     db: String,
 
     #[command(subcommand)]
@@ -197,7 +197,7 @@ fn format_bytes(b: u64) -> String {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use byo_server::stats::{RawEvent, StatsStore};
+    use byo_relay::stats::{RawEvent, StatsStore};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn seed_store() -> StatsStore {

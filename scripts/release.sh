@@ -27,7 +27,7 @@ FULL_TAG="${IMAGE}:${TAG}"
 
 cd "$(dirname "$0")/.."
 
-# Frontend + WASM build. Writes into byo-server/dist/ so the Dockerfile's
+# Frontend + WASM build. Writes into byo-relay/dist/ so the Dockerfile's
 # `COPY dist/ /app/dist/` step has something to copy.
 command -v wasm-pack >/dev/null 2>&1 || { echo "wasm-pack not installed"; exit 2; }
 (cd sdk/sdk-wasm && wasm-pack build --release --target web \
@@ -35,9 +35,9 @@ command -v wasm-pack >/dev/null 2>&1 || { echo "wasm-pack not installed"; exit 2
 (cd byo && npm ci --silent)
 (cd frontend && npm ci --silent && npm run build)
 
-# Dockerfile is byo-server-centric (context = byo-server/). `dist/` lives at
-# byo-server/dist/ (emitted by the vite build above).
-docker build -t "$FULL_TAG" -f byo-server/Dockerfile byo-server
+# Dockerfile is byo-relay-centric (context = byo-relay/). `dist/` lives at
+# byo-relay/dist/ (emitted by the vite build above).
+docker build -t "$FULL_TAG" -f byo-relay/Dockerfile byo-relay
 docker push "$FULL_TAG"
 
 DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$FULL_TAG")

@@ -584,7 +584,7 @@ fi
 
 # =========================================================================
 # 17. Write /config.json for the SPA — regenerated every run from .env.
-#     TODO(operator): Traefik/byo-server must serve this at /config.json with
+#     TODO(operator): Traefik/byo-relay must serve this at /config.json with
 #     `Cache-Control: no-store`. The image owns the routing; the VPS only owns
 #     the file on disk.
 # =========================================================================
@@ -621,10 +621,10 @@ if [ -n "$INITIAL_DIGEST" ]; then
   fi
   info "Rolling initial image: $INITIAL_DIGEST"
   sudo -u appuser -H bash -c "cd '$APP_DIR' && '$UPDATE_SH' '$INITIAL_DIGEST'" \
-    || die "update.sh failed — check 'docker compose logs byo-server'."
+    || die "update.sh failed — check 'docker compose logs byo-relay'."
   ok "Initial image deployed."
 else
-  warn "INITIAL_DIGEST not supplied — byo-server is NOT running yet."
+  warn "INITIAL_DIGEST not supplied — byo-relay is NOT running yet."
 fi
 
 # =========================================================================

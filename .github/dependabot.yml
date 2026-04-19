@@ -27,9 +27,9 @@ updates:
       # requires a protocol version bump, not a dependency bump.
       - dependency-name: "kem"
 
-  # byo-server standalone workspace.
+  # byo-relay standalone workspace.
   - package-ecosystem: "cargo"
-    directory: "/byo-server"
+    directory: "/byo-relay"
     schedule:
       interval: "weekly"
     labels:

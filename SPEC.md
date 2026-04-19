@@ -1513,12 +1513,12 @@ Server-enforced limits: body ≤ 64 KiB, ≤ 200 events per batch, `ts` clamped 
 - `visibilitychange → hidden` triggers an immediate flush.
 - Early flush when queue depth ≥ 50 events.
 
-### Configuration (`byo-server`)
+### Configuration (`byo-relay`)
 
 | Env var | Default | Notes |
 |---------|---------|-------|
 | `STATS_HMAC_KEY` | — | **Required** (hex or base64, ≥ 32 B). Server fails to start without it. |
-| `STATS_DB_PATH` | `/var/lib/byo-server/stats.sqlite3` | SQLite WAL file path |
+| `STATS_DB_PATH` | `/var/lib/byo-relay/stats.sqlite3` | SQLite WAL file path |
 | `STATS_INGEST_PER_MIN` | `10` | Per-device rate limit (batches/min) |
 | `STATS_BATCH_MAX_EVENTS` | `200` | Max events per POST |
 | `STATS_MAX_BODY_BYTES` | `65536` | Max POST body size |
@@ -1535,11 +1535,11 @@ make stats-log GRAN=monthly FROM=2026-01-01 TO=2026-04-01
 make stats-clear
 ```
 
-Or directly: `docker compose exec byo-server byo-admin log --granularity daily`
+Or directly: `docker compose exec byo-relay byo-admin log --granularity daily`
 
 ### SQLite Schema
 
-Three tables in `/var/lib/byo-server/stats.sqlite3`:
+Three tables in `/var/lib/byo-relay/stats.sqlite3`:
 
 - **`counters`** — aggregate event counts + byte sums, keyed by `(bucket_date, event_kind, provider_type, error_class, share_variant)`.
 - **`device_day_provider`** — one row per `(day, device_hash, provider_type)` for provider-mix distinct-device counts.

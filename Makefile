@@ -18,11 +18,11 @@ help:
 	@echo "  dev               Start the Vite dev server (frontend on :5173)"
 	@echo "  build-sdk-wasm    wasm-pack build → frontend/src/pkg/"
 	@echo "  build-byo         Build the @wattcloud/sdk TS package"
-	@echo "  build-frontend    Vite build of the SPA → byo-server/dist/"
+	@echo "  build-frontend    Vite build of the SPA → byo-relay/dist/"
 	@echo "  build             build-sdk-wasm + build-byo + build-frontend"
 	@echo "  test              cargo + npm tests across the repo"
 	@echo "  test-sdk          cargo test sdk-core (crypto + byo + providers)"
-	@echo "  test-byo-server   cargo test byo-server"
+	@echo "  test-byo-relay   cargo test byo-relay"
 	@echo "  test-byo          npm test in byo/"
 	@echo "  test-frontend     npm test in frontend/"
 	@echo "  lint              cargo clippy + eslint on frontend/byo"
@@ -30,7 +30,7 @@ help:
 	@echo "  ci                Full local CI (scripts/ci.sh)"
 	@echo
 	@echo "$(YELLOW)prod$(RESET)"
-	@echo "  image             Build the byo-server Docker image as wattcloud:ci"
+	@echo "  image             Build the byo-relay Docker image as wattcloud:ci"
 	@echo "  smoke             Run scripts/byo-smoke.sh against the image"
 	@echo "  release-help      Reminder on how tagged releases flow through GH Actions"
 	@echo
@@ -60,8 +60,8 @@ test-sdk:
 	cargo test --manifest-path sdk/sdk-core/Cargo.toml \
 	  --no-default-features --features "crypto byo providers"
 
-test-byo-server:
-	cargo test --manifest-path byo-server/Cargo.toml
+test-byo-relay:
+	cargo test --manifest-path byo-relay/Cargo.toml
 
 test-byo:
 	cd byo && npm ci --silent && npm test
@@ -69,18 +69,18 @@ test-byo:
 test-frontend:
 	cd frontend && npm ci --silent && npm test
 
-test: test-sdk test-byo-server test-byo test-frontend
+test: test-sdk test-byo-relay test-byo test-frontend
 
 lint:
 	cargo clippy --manifest-path sdk/sdk-core/Cargo.toml \
 	  --no-default-features --features "crypto byo providers" \
 	  --all-targets -- -D warnings
-	cargo clippy --manifest-path byo-server/Cargo.toml --all-targets -- -D warnings
+	cargo clippy --manifest-path byo-relay/Cargo.toml --all-targets -- -D warnings
 	cd frontend && npm run lint
 
 fmt:
 	cargo fmt --manifest-path Cargo.toml
-	cargo fmt --manifest-path byo-server/Cargo.toml
+	cargo fmt --manifest-path byo-relay/Cargo.toml
 
 ci:
 	bash scripts/ci.sh
@@ -88,7 +88,7 @@ ci:
 # ---- prod ------------------------------------------------------------------
 
 image: build
-	docker build -t wattcloud:ci -f byo-server/Dockerfile byo-server
+	docker build -t wattcloud:ci -f byo-relay/Dockerfile byo-relay
 
 smoke:
 	bash scripts/byo-smoke.sh
@@ -109,10 +109,10 @@ release-help:
 clean:
 	@echo "Removing build artifacts..."
 	cargo clean --manifest-path Cargo.toml || true
-	cargo clean --manifest-path byo-server/Cargo.toml || true
-	rm -rf target byo-server/target sdk/*/target
+	cargo clean --manifest-path byo-relay/Cargo.toml || true
+	rm -rf target byo-relay/target sdk/*/target
 	rm -rf node_modules byo/node_modules frontend/node_modules
-	rm -rf byo/dist frontend/dist byo-server/dist
+	rm -rf byo/dist frontend/dist byo-relay/dist
 	rm -rf frontend/src/pkg sdk/sdk-wasm/pkg
 	@echo "Done."
 
@@ -126,6 +126,6 @@ clean-docker:
 clean-all: clean clean-docker
 
 .PHONY: help dev build-sdk-wasm build-byo build-frontend build \
-        test test-sdk test-byo-server test-byo test-frontend lint fmt ci \
+        test test-sdk test-byo-relay test-byo test-frontend lint fmt ci \
         image smoke release-help \
         clean clean-docker clean-all

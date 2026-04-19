@@ -2,8 +2,8 @@
 # =============================================================================
 # byo-smoke.sh — Spin up a BYO container and verify /health + byo-admin.
 # Prerequisite: the `wattcloud:ci` image must already exist locally (built
-# by scripts/ci.sh's Docker step, or via `docker build -f byo-server/Dockerfile
-# -t wattcloud:ci byo-server`). Exits 1 on any failure.
+# by scripts/ci.sh's Docker step, or via `docker build -f byo-relay/Dockerfile
+# -t wattcloud:ci byo-relay`). Exits 1 on any failure.
 # Cleans up on exit (healthy or not).
 # =============================================================================
 set -euo pipefail
@@ -69,17 +69,17 @@ EOF
 chmod 600 "$ENV_SMOKE"
 
 # ---------------------------------------------------------------------------
-# Bring up byo-server only (--no-deps skips Traefik and any other services
+# Bring up byo-relay only (--no-deps skips Traefik and any other services
 # that would otherwise bind to host ports 80/443)
 # ---------------------------------------------------------------------------
-echo "[SMOKE] Starting byo-server (project: $COMPOSE_PROJECT_NAME)..."
-compose up -d --no-deps byo-server
+echo "[SMOKE] Starting byo-relay (project: $COMPOSE_PROJECT_NAME)..."
+compose up -d --no-deps byo-relay
 
 # Resolve the actual container ID — never assume a naming pattern, since the
 # base compose pins `container_name` and the overlay resets it via `!reset null`.
-CONTAINER=$(compose ps -q byo-server)
+CONTAINER=$(compose ps -q byo-relay)
 if [ -z "$CONTAINER" ]; then
-    echo -e "${RED}[FAIL]${NC} could not resolve byo-server container id"
+    echo -e "${RED}[FAIL]${NC} could not resolve byo-relay container id"
     compose ps
     exit 1
 fi
@@ -87,7 +87,7 @@ fi
 # ---------------------------------------------------------------------------
 # Poll for healthy status
 # ---------------------------------------------------------------------------
-echo "[SMOKE] Waiting for byo-server to become healthy (max ${MAX_WAIT}s)..."
+echo "[SMOKE] Waiting for byo-relay to become healthy (max ${MAX_WAIT}s)..."
 ELAPSED=0
 HEALTH=""
 while [ "$ELAPSED" -lt "$MAX_WAIT" ]; do
@@ -100,11 +100,11 @@ while [ "$ELAPSED" -lt "$MAX_WAIT" ]; do
 done
 
 if [ "$HEALTH" != "healthy" ]; then
-    echo -e "${RED}[FAIL]${NC} byo-server did not become healthy within ${MAX_WAIT}s (status: $HEALTH)"
+    echo -e "${RED}[FAIL]${NC} byo-relay did not become healthy within ${MAX_WAIT}s (status: $HEALTH)"
     docker logs "$CONTAINER" 2>&1 | tail -20
     exit 1
 fi
-echo -e "${GREEN}[OK]${NC} byo-server healthy."
+echo -e "${GREEN}[OK]${NC} byo-relay healthy."
 
 # ---------------------------------------------------------------------------
 # /health endpoint
@@ -147,7 +147,7 @@ fi
 echo "[SMOKE] Checking for IP address leakage in logs..."
 LOG_LINES=$(docker logs "$CONTAINER" 2>&1)
 if echo "$LOG_LINES" | grep -qE 'client_ip|([0-9]{1,3}\.){3}[0-9]{1,3}'; then
-    echo -e "${YELLOW}[WARN]${NC} Possible IP found in byo-server logs — review manually:"
+    echo -e "${YELLOW}[WARN]${NC} Possible IP found in byo-relay logs — review manually:"
     echo "$LOG_LINES" | grep -E 'client_ip|([0-9]{1,3}\.){3}[0-9]{1,3}' | head -5
 fi
 
