@@ -36,7 +36,7 @@
     "fake-indexeddb": "^6.2.5",
     "svelte-eslint-parser": "^0.35.0",
     "svelte-preprocess": "^6.0.3",
-    "typescript": "^5.0.0",
+    "typescript": "^6.0.3",
     "vite": "^5.4.17",
     "vitest": "^2.1.0"
   }
