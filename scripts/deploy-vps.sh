@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 # =============================================================================
 # deploy-vps.sh — Bootstrap a Wattcloud BYO relay on Ubuntu 22.04+. Idempotent.
-# Provisions the VPS, writes /config.json from .env, logs Docker into GHCR, and
-# optionally hands off to scripts/update.sh for the first image roll. Does not
-# build anything — GitHub Actions owns the image pipeline.
+# Provisions the VPS, writes /config.json from .env, installs cosign for image
+# signature verification, and optionally hands off to scripts/update.sh for the
+# first image roll. Does not build anything — GitHub Actions owns the image
+# pipeline.
+#
+# Image trust model: the GHCR image is PUBLIC (anonymous pull). Integrity is
+# provided by sigstore/cosign keyless signatures produced by the release.yml
+# workflow, verified by scripts/update.sh on the VPS before every pull. No
+# long-lived GHCR credential is required or stored on the VPS — registry
+# access control is NOT the integrity mechanism.
 # =============================================================================
 set -euo pipefail
 
@@ -43,9 +50,13 @@ ALERT_SMTP_PASS="${ALERT_SMTP_PASS:-}"
 # it contains "@"; otherwise prompted (or provide ALERT_FROM for non-interactive).
 ALERT_FROM="${ALERT_FROM:-}"
 
-# GHCR auth for pulling ghcr.io/wattzupbyte/wattcloud (any read:packages PAT).
-GHCR_USER="${GHCR_USER:-}"
-GHCR_PAT="${GHCR_PAT:-}"
+# Cosign binary version to install (sigstore.dev signatures on the image).
+# The sha256 is fetched and verified from the release's own
+# cosign_checksums.txt file — this removes the need to hard-code a hash that
+# would drift. For paranoid operators: override COSIGN_SHA256_AMD64 with the
+# value you've independently verified, and the checksum fetch is skipped.
+COSIGN_VERSION="${COSIGN_VERSION:-v2.4.1}"
+COSIGN_SHA256_AMD64="${COSIGN_SHA256_AMD64:-}"
 
 # Optional first-image roll: INITIAL_DIGEST=ghcr.io/wattzupbyte/wattcloud@sha256:...
 INITIAL_DIGEST="${INITIAL_DIGEST:-}"
@@ -64,7 +75,8 @@ Usage: $0 DOMAIN [EMAIL] [SSH_PORT] [BYO_DOMAIN] [ALERT_EMAIL]
     BYO_HARDEN=0                    skip zero-logging OS hardening
     ALERT_SMTP_HOST/PORT/USER/PASS  SMTP relay for alerts (prompted if unset)
     ALERT_FROM                      From: address for alert mail (SPF/DMARC-safe)
-    GHCR_USER / GHCR_PAT            GitHub username + read:packages PAT (prompted if unset)
+    COSIGN_VERSION                  cosign binary version to install (default v2.4.1)
+    COSIGN_SHA256_AMD64             expected sha256 of cosign-linux-amd64 (pinned)
     INITIAL_DIGEST                  ghcr.io/...@sha256:... to roll immediately after provision
 USAGE
   exit 1
@@ -446,26 +458,51 @@ echo 'export PATH="/usr/local/bin:$PATH"' > /etc/profile.d/wattcloud.sh
 ok "PATH profile.d entry written."
 
 # =========================================================================
-# 12. GHCR docker login (as appuser — update.sh runs as appuser)
+# 12. cosign — image signature verification for scripts/update.sh
 # =========================================================================
-info "Configuring GHCR login for appuser..."
-if [ -z "$GHCR_USER" ] && [ -t 0 ]; then
-  printf "\nGitHub username for GHCR pulls: "; read -r GHCR_USER
-fi
-if [ -z "$GHCR_PAT" ] && [ -t 0 ]; then
-  printf "GitHub PAT with read:packages scope: "; read -rs GHCR_PAT; echo
+# The GHCR image is public. Instead of storing a long-lived PAT to gate pulls,
+# integrity comes from sigstore/cosign: release.yml keyless-signs every tag,
+# update.sh verifies the signature (identity = wattzupbyte/wattcloud release
+# workflow @ refs/tags/v*.*.*, OIDC issuer = token.actions.githubusercontent.com)
+# before pulling. This means a registry compromise can't roll forward a bad
+# image on our VPS — the signature check fails and update.sh aborts.
+info "Installing cosign $COSIGN_VERSION..."
+if command -v cosign >/dev/null 2>&1 && cosign version 2>/dev/null | grep -q "GitVersion:[[:space:]]*$COSIGN_VERSION"; then
+  ok "cosign $COSIGN_VERSION already installed."
+else
+  TMP_COSIGN=$(mktemp)
+  COSIGN_URL="https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64"
+  curl -fsSL "$COSIGN_URL" -o "$TMP_COSIGN" || die "Failed to download cosign from $COSIGN_URL."
+  ACTUAL_SHA="$(sha256sum "$TMP_COSIGN" | cut -d' ' -f1)"
+
+  if [ -n "$COSIGN_SHA256_AMD64" ]; then
+    # Operator supplied the expected sha256 — strict check, no network fetch.
+    EXPECTED_SHA="$COSIGN_SHA256_AMD64"
+  else
+    # Fetch the checksum from the release's cosign_checksums.txt and match on
+    # the cosign-linux-amd64 line. The release itself is hosted on GitHub; a
+    # compromise there could theoretically serve a matching pair. Operators
+    # who want to defend against that should export COSIGN_SHA256_AMD64 with
+    # a value independently verified via the sigstore announcement channel.
+    CHECKSUMS_URL="https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign_checksums.txt"
+    CHECKSUMS=$(curl -fsSL "$CHECKSUMS_URL") || die "Failed to fetch $CHECKSUMS_URL."
+    EXPECTED_SHA=$(printf '%s\n' "$CHECKSUMS" | awk '/cosign-linux-amd64$/ {print $1; exit}')
+    [ -n "$EXPECTED_SHA" ] || die "cosign_checksums.txt missing cosign-linux-amd64 entry."
+    info "cosign sha256 pulled from release checksums: $EXPECTED_SHA"
+  fi
+
+  if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+    rm -f "$TMP_COSIGN"
+    die "cosign sha256 mismatch. Expected $EXPECTED_SHA, got $ACTUAL_SHA. Refusing to install."
+  fi
+  install -m 0755 "$TMP_COSIGN" /usr/local/bin/cosign
+  rm -f "$TMP_COSIGN"
+  ok "cosign $COSIGN_VERSION installed (sha256 verified)."
 fi
 
-if [ -n "$GHCR_USER" ] && [ -n "$GHCR_PAT" ]; then
-  install -d -m 700 -o appuser -g appuser /home/appuser/.docker
-  if printf '%s' "$GHCR_PAT" | sudo -u appuser docker login ghcr.io -u "$GHCR_USER" --password-stdin > /dev/null 2>&1; then
-    ok "docker login ghcr.io succeeded (user: $GHCR_USER)."
-  else
-    die "docker login ghcr.io failed. Check GHCR_USER / GHCR_PAT (needs read:packages)."
-  fi
-else
-  warn "GHCR_USER/GHCR_PAT not provided — run 'docker login ghcr.io' as appuser before update.sh."
-fi
+# No GHCR docker login — the image is public. Anonymous pull via
+# docker compose works out of the box; signature verification provides
+# integrity; digest-pinning provides immutability.
 
 # =========================================================================
 # 13. Generate secrets & create .env
@@ -601,13 +638,15 @@ echo "  BYO domain:   https://$BYO_DOMAIN"
 echo "  SSH port:     $SSH_PORT"
 echo "  .env:         $ENV_FILE"
 echo "  /config.json: $CONFIG_JSON"
+echo "  cosign:       $(cosign version 2>/dev/null | awk '/GitVersion/{print $2; exit}' || echo 'NOT installed')"
 echo "  msmtp:        $([ "$MSMTP_CONFIGURED" -eq 1 ] && echo "configured (from: ${ALERT_FROM})" || echo "journal-only")"
 echo "  AIDE:         $([ -f /var/lib/aide/aide.db ] && echo "baseline ready" || echo "pending")"
 echo ""
 if [ -z "$INITIAL_DIGEST" ]; then
-  echo -e "${YELLOW}First-time deploy:${NC} push a v*.*.* tag to GitHub; release.yml publishes to"
-  echo "  ghcr.io/wattzupbyte/wattcloud and prints the digest. Then on the VPS as appuser:"
+  echo -e "${YELLOW}First-time deploy:${NC} push a v*.*.* tag to GitHub; release.yml publishes"
+  echo "  + cosign-signs the image on ghcr.io/wattzupbyte/wattcloud. Then on the VPS as appuser:"
   echo "    cd $APP_DIR && ./scripts/update.sh ghcr.io/wattzupbyte/wattcloud@sha256:<digest>"
+  echo "  update.sh will cosign-verify the signature before pulling."
   echo ""
 fi
 echo -e "${YELLOW}External next steps:${NC}"

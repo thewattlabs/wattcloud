@@ -109,15 +109,25 @@ Canonical pipeline is **GitHub Actions**. Two workflows under `.github/workflows
 - `ci.yml` — on push/PR: lint + test + build (sdk cargo test, byo-server cargo
   test, byo npm test, frontend npm test, wasm-pack build).
 - `release.yml` — on `v*.*.*` tag: builds the image, pushes to
-  `ghcr.io/wattzupbyte/wattcloud`, emits the `@sha256:…` digest in the release
-  notes. VPS then runs `./scripts/update.sh <digest>` to roll forward.
+  `ghcr.io/wattzupbyte/wattcloud`, **sigstore/cosign keyless-signs** via
+  Actions OIDC, emits the `@sha256:…` digest in the release notes. VPS then
+  runs `./scripts/update.sh <digest>` which cosign-verifies the signature
+  before pulling.
 
-All third-party actions are pinned by commit SHA (not by tag) to neutralize
-supply-chain risk. `.github/dependabot.yml` keeps those pinned SHAs current.
+All third-party actions are pinned by commit SHA (not by tag). `dependabot.yml`
+keeps those pinned SHAs current.
 
-`scripts/ci.sh` and `scripts/release.sh` remain as local convenience wrappers;
-they run the same commands the workflows invoke. `scripts/update.sh` runs on the
-VPS and is the only piece that is *not* invoked by Actions.
+**Image trust:** the GHCR image is public (anonymous pull). No GHCR credential
+is stored on the VPS — integrity is provided by the cosign signature chain,
+not by registry access control. `scripts/update.sh` enforces the signing
+identity = `…/wattzupbyte/wattcloud/.github/workflows/release.yml@refs/tags/v*.*.*`
+and the Actions OIDC issuer. Any deviation aborts the pull.
+
+`scripts/ci.sh` and `scripts/release.sh` remain as local convenience wrappers.
+`scripts/release.sh` does NOT sign (keyless signing needs the Actions OIDC
+token — it's not available locally). Only the tag-triggered Actions run
+produces a deployable image. `scripts/update.sh` runs on the VPS and is the
+only piece that is *not* invoked by Actions.
 
 ## Directory Rules
 

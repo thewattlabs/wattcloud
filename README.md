@@ -115,22 +115,42 @@ GitHub Actions is the canonical pipeline. Workflows live under
   byo TypeScript package and the frontend, and `wasm-pack build` for the
   browser kernel. Caches cargo + node for speed.
 - `release.yml` — on `v*.*.*` tag: builds the image, pushes to
-  `ghcr.io/wattzupbyte/wattcloud`, emits the resulting `@sha256:…` digest into
-  the GitHub release notes. The VPS side is a manual `./scripts/update.sh
-  <digest>` (we deliberately do *not* auto-deploy from Actions; every roll-out
-  is a hand-signed action).
+  `ghcr.io/wattzupbyte/wattcloud`, **sigstore/cosign keyless-signs the image**
+  via Actions OIDC, and emits the resulting `@sha256:…` digest into the
+  GitHub release notes. The VPS side is a manual `./scripts/update.sh
+  <digest>` (we deliberately do *not* auto-deploy from Actions; every
+  roll-out is a hand-signed action).
 - `.github/dependabot.yml` keeps pinned action SHAs, Cargo deps, and
   npm deps updated.
 
 All third-party actions are pinned by commit SHA (not by tag) to neutralize
 supply-chain risk.
 
+### Image trust model
+
+The GHCR image is **public** — no registry credential is required or stored
+on the VPS. Integrity comes from the cosign signature, not from access
+control:
+
+- `release.yml` keyless-signs with the Actions workflow's OIDC identity,
+  logging to the Sigstore Rekor transparency log. No long-lived signing
+  secret exists.
+- `scripts/update.sh` on the VPS runs `cosign verify` before every
+  `docker compose pull`, requiring the signing identity to match
+  `https://github.com/wattzupbyte/wattcloud/.github/workflows/release.yml@refs/tags/v*.*.*`
+  and the OIDC issuer to be `token.actions.githubusercontent.com`.
+  A registry compromise that swaps the image causes verification to fail
+  and the script to abort before any pull.
+- `scripts/deploy-vps.sh` installs the pinned cosign binary at provision
+  time (sha256 verified against the release's `cosign_checksums.txt`).
+
 Local convenience wrappers (identical command sets):
 
 - `./scripts/ci.sh --mode byo` — run the whole CI pipeline locally.
-- `./scripts/release.sh <tag>` — build + push + emit digest without Actions.
-- `./scripts/update.sh <digest>` — VPS-side: pin compose to digest, pull,
-  restart, health-check `/health`.
+- `./scripts/release.sh <tag>` — build + push (no signing locally — that's
+  Actions-only since keyless signing needs the workflow OIDC token).
+- `./scripts/update.sh <digest>` — VPS-side: cosign verify → pin compose
+  to digest → pull → restart → health-check `/health`.
 
 ## Deployment
 

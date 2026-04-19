@@ -1,21 +1,36 @@
 name: Release
 
 # Fires on v*.*.* tag push only. Builds the byo-server image (with the SPA
-# bundle embedded in /dist), pushes it to ghcr.io/wattzupbyte/wattcloud, and
-# writes the resulting @sha256:... digest into the GitHub Release body so the
-# VPS operator can run `./scripts/update.sh <digest>` without guessing.
+# bundle embedded in /dist), pushes it to ghcr.io/wattzupbyte/wattcloud,
+# KEYLESS-signs it with sigstore/cosign, and writes the resulting @sha256:...
+# digest + the signed-identity claim into the GitHub Release body so the VPS
+# operator can `cosign verify` before pull.
 #
 # Deploy is deliberately manual — we do NOT ssh into the VPS from Actions.
-# Every roll-out is hand-signed.
+# Every roll-out is hand-signed by the operator.
 #
-# Security notes:
-# - All third-party actions are pinned by commit SHA (see dependabot.yml for
-#   the version tags they correspond to).
-# - `run:` steps consume only validated git refs (github.ref_name, matched
-#   against a strict semver regex) and the immutable @sha256 digest emitted
-#   by docker/build-push-action. No issue titles, PR bodies, comment bodies,
-#   or commit messages are interpolated into shell commands — those are the
-#   classic workflow-injection surfaces and they are absent from this file.
+# Security model
+# --------------
+# The release image on GHCR is PUBLIC (anonymous pull). Integrity is not
+# provided by registry access control — it's provided by the cosign signature:
+#   - Signed keylessly from *this* Actions workflow via OIDC → Sigstore Fulcio
+#     (no long-lived signing secret; certificate issued per-workflow-run).
+#   - Transparency logged to Rekor so revocation + exfiltration of a valid
+#     signature is observable.
+#   - scripts/update.sh on the VPS runs `cosign verify` with a hard-coded
+#     certificate-identity-regexp = this repo's release.yml @ refs/tags/v*
+#     before `docker compose pull`. A swap on the registry side therefore
+#     cannot roll forward: the signature check fails and update.sh aborts.
+#
+# Workflow-injection notes
+# ------------------------
+# - All third-party actions pinned by commit SHA; dependabot.yml tracks the
+#   version tags they correspond to.
+# - `run:` steps consume only github.ref_name (validated by strict semver
+#   regex before shell use) and the immutable @sha256 digest emitted by
+#   docker/build-push-action. No issue titles, PR bodies, comment bodies,
+#   or commit messages are interpolated into shell — those are the classic
+#   injection surfaces and are absent from this file.
 
 on:
   push:
@@ -23,8 +38,9 @@ on:
       - 'v*.*.*'
 
 permissions:
-  contents: write    # required to create the GitHub Release
-  packages: write    # required to push to GHCR
+  contents: write    # create the GitHub Release
+  packages: write    # push image to GHCR
+  id-token: write    # OIDC token for keyless cosign signing
 
 concurrency:
   group: release-${{ github.ref }}
@@ -36,7 +52,7 @@ env:
 
 jobs:
   build-and-push:
-    name: Build + push + digest
+    name: Build + push + sign + digest
     runs-on: ubuntu-22.04
     outputs:
       digest: ${{ steps.push.outputs.digest }}
@@ -49,7 +65,8 @@ jobs:
       - name: Set up Buildx
         uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db
 
-      # docker/login-action@v3.3.0
+      # docker/login-action@v3.3.0 — push needs auth, but the resulting image
+      # is public and pullable without credentials.
       - name: Log in to GHCR
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
         with:
@@ -82,6 +99,19 @@ jobs:
           provenance: true
           sbom: true
 
+      # sigstore/cosign-installer@v3.7.0 — pins cosign binary version 2.4.1,
+      # the matching release. Installs to $PATH.
+      - name: Install cosign
+        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Keyless-sign image with cosign
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+          COSIGN_YES: "true"
+        run: cosign sign "${IMAGE_NAME}@${DIGEST}"
+
       - name: Write release notes
         env:
           DIGEST: ${{ steps.push.outputs.digest }}
@@ -97,15 +127,21 @@ jobs:
             echo
             echo "### Roll-out on VPS"
             echo
+            echo "On the VPS, verify the cosign signature then roll forward:"
+            echo
             echo '```bash'
             echo "./scripts/update.sh ${IMAGE_NAME}@${DIGEST}"
             echo '```'
             echo
+            echo "The script runs \`cosign verify\` with identity"
+            echo "\`https://github.com/wattzupbyte/wattcloud/.github/workflows/release.yml@refs/tags/$REF_NAME\`"
+            echo "and issuer \`https://token.actions.githubusercontent.com\` — a"
+            echo "tampered image at the registry will cause \`update.sh\` to abort."
+            echo
             echo "### Changes"
             echo
-            # Last tag → this tag (skip the current tag itself). `git log`
-            # output is static text; we do not interpolate commit metadata
-            # into shell, only into the release body.
+            # git log output is static text written to a markdown body; it is
+            # not interpolated into any later shell command.
             PREV_TAG=$(git tag --sort=-creatordate | grep -v "^$REF_NAME$" | head -n 1 || true)
             if [ -n "$PREV_TAG" ]; then
               git log --pretty=format:'- %s (%h)' "$PREV_TAG..$REF_NAME"
