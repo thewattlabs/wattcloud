@@ -63,7 +63,7 @@ jobs:
 
       # actions/upload-artifact@v4.3.6
       - name: Upload WASM artifact
-        uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: wattcloud-wasm
           path: frontend/src/pkg
