@@ -32,7 +32,7 @@
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "eslint": "^8.57.0",
-    "eslint-plugin-svelte": "^2.36.0",
+    "eslint-plugin-svelte": "^3.17.0",
     "fake-indexeddb": "^6.2.5",
     "svelte-eslint-parser": "^0.35.0",
     "svelte-preprocess": "^6.0.3",
