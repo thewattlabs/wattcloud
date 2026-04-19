@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
 # byo-smoke.sh — Spin up a BYO container and verify /health + byo-admin.
-# Run after `make byo-prod-image`. Exits 1 on any failure.
+# Prerequisite: the `wattcloud:ci` image must already exist locally (built
+# by scripts/ci.sh's Docker step, or via `docker build -f byo-server/Dockerfile
+# -t wattcloud:ci byo-server`). Exits 1 on any failure.
 # Cleans up on exit (healthy or not).
 # =============================================================================
 set -euo pipefail
@@ -62,7 +64,7 @@ RELAY_SIGNING_KEY=$(openssl rand -base64 48)
 RELAY_SHARE_SIGNING_KEY=$(openssl rand -base64 48)
 BYO_STATS_HMAC_KEY=$(openssl rand -base64 48)
 BYO_DOMAIN=localhost
-BYO_IMAGE=${BYO_IMAGE:-byo-server:local}
+BYO_IMAGE=${BYO_IMAGE:-wattcloud:ci}
 EOF
 chmod 600 "$ENV_SMOKE"
 

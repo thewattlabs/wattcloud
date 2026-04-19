@@ -18,7 +18,7 @@ must not come back.
 | `/byo-server` | Rust, Axum | Stateless relay (enrollment, SFTP, share pointers, stats). |
 | `/byo` | TypeScript | `@wattcloud/sdk` — StorageProvider dispatcher, Web Worker client, vault journal. |
 | `/frontend` | Svelte + Vite | Browser SPA. Single entry point (`src/main.ts`, `index.html`). |
-| `/scripts` | Bash | `deploy-vps.sh`, `ci.sh`, `release.sh`, `update.sh`, `harden-dev.sh`, `byo-smoke.sh`. |
+| `/scripts` | Bash | `deploy-vps.sh`, `update.sh` (VPS-side); `ci.sh`, `release.sh`, `byo-smoke.sh` (local dev). |
 
 ## Authoritative References
 
