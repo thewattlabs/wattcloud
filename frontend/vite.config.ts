@@ -19,7 +19,7 @@ function wasmSriPlugin(): Plugin {
     },
     load(id) {
       if (id === resolvedId) {
-        const wasmPath = resolve(__dirname, 'src/pkg/secure_cloud_sdk_wasm_bg.wasm');
+        const wasmPath = resolve(__dirname, 'src/pkg/wattcloud_sdk_wasm_bg.wasm');
         const wasmBytes = readFileSync(wasmPath);
         const hash = createHash('sha384').update(wasmBytes).digest('base64');
         const integrity = `sha384-${hash}`;
@@ -117,7 +117,7 @@ export default defineConfig({
   resolve: {
     alias: {
       $lib: resolve(__dirname, 'src/lib'),
-      '@wattcloud/wasm': resolve(__dirname, 'src/pkg/secure_cloud_sdk_wasm.js'),
+      '@wattcloud/wasm': resolve(__dirname, 'src/pkg/wattcloud_sdk_wasm.js'),
       // BYO storage package — resolved from source for development builds.
       '@wattcloud/sdk': resolve(__dirname, '../byo/src/index.ts'),
     },

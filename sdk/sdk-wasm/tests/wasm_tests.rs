@@ -9,14 +9,14 @@ use wasm_bindgen_test::*;
 
 wasm_bindgen_test_configure!(run_in_browser);
 
-use secure_cloud_sdk_wasm::auth::*;
-use secure_cloud_sdk_wasm::byo::*;
-use secure_cloud_sdk_wasm::crypto::*;
-use secure_cloud_sdk_wasm::filename::*;
-use secure_cloud_sdk_wasm::hashing::*;
-use secure_cloud_sdk_wasm::kek::*;
-use secure_cloud_sdk_wasm::keys::*;
-use secure_cloud_sdk_wasm::validation::*;
+use wattcloud_sdk_wasm::auth::*;
+use wattcloud_sdk_wasm::byo::*;
+use wattcloud_sdk_wasm::crypto::*;
+use wattcloud_sdk_wasm::filename::*;
+use wattcloud_sdk_wasm::hashing::*;
+use wattcloud_sdk_wasm::kek::*;
+use wattcloud_sdk_wasm::keys::*;
+use wattcloud_sdk_wasm::validation::*;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 

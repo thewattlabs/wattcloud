@@ -21,7 +21,7 @@ export default defineConfig({
   resolve: {
     alias: {
       // SDK WASM package — resolves to the built pkg directory
-      '@wattcloud/wasm': resolve(__dirname, '../sdk/sdk-wasm/pkg/secure_cloud_wasm.js'),
+      '@wattcloud/wasm': resolve(__dirname, '../sdk/sdk-wasm/pkg/wattcloud_sdk_wasm.js'),
     },
   },
   worker: {

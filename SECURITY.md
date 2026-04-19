@@ -478,12 +478,12 @@ Before implementing any function that sends data to the backend:
 As crypto code is added in Phase 1+, monitor with:
 
 ```bash
-wasm-pack build --target web --release --out-name secure_cloud_wasm
-gzip -c sdk-wasm/pkg/secure_cloud_wasm_bg.wasm | wc -c
+wasm-pack build --target web --release --out-name wattcloud_sdk_wasm
+gzip -c sdk-wasm/pkg/wattcloud_sdk_wasm_bg.wasm | wc -c
 ```
 
 If > 2 MB gzipped after Phase 1 crypto:
-1. Profile with `twiggy top sdk-wasm/pkg/secure_cloud_wasm_bg.wasm`
+1. Profile with `twiggy top sdk-wasm/pkg/wattcloud_sdk_wasm_bg.wasm`
 2. Disable unused `web-sys` features in sdk-wasm
 3. Consider `wasm-opt -Oz` (already applied by wasm-pack with `wasm-opt` feature)
 4. Feature-gate heavy crypto (e.g., argon2) behind a WASM-specific feature
