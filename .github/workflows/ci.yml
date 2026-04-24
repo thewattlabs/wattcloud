@@ -43,8 +43,8 @@ jobs:
           target: wasm32-unknown-unknown
           # Keep Swatinem/rust-cache as the explicit cache layer below.
           cache: false
-      # Swatinem/rust-cache@v2.7.3
-      - uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84
+      # Swatinem/rust-cache@v2.9.1
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
         with:
           workspaces: |
             .
@@ -84,7 +84,7 @@ jobs:
           toolchain: stable
           components: rustfmt, clippy
           cache: false
-      - uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
         with:
           workspaces: byo-relay
 
