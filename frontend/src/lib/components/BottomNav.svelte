@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   export type ViewType = 'files' | 'photos' | 'favorites' | 'settings';
 </script>
 
@@ -8,7 +8,11 @@
   import Image from 'phosphor-svelte/lib/Image';
   import Star from 'phosphor-svelte/lib/Star';
   import GearSix from 'phosphor-svelte/lib/GearSix';
-  export let activeView: ViewType = 'files';
+  interface Props {
+    activeView?: ViewType;
+  }
+
+  let { activeView = 'files' }: Props = $props();
 
   const dispatch = createEventDispatcher();
 
@@ -29,12 +33,11 @@
     <button
       class="nav-item"
       class:active={activeView === item.id}
-      on:click={() => handleNavClick(item.id)}
+      onclick={() => handleNavClick(item.id)}
       aria-label={item.label}
       aria-current={activeView === item.id ? 'page' : undefined}
     >
-      <svelte:component
-        this={item.icon}
+      <item.icon
         size={24}
         weight={activeView === item.id ? 'fill' : 'regular'}
         color={activeView === item.id ? 'var(--accent)' : 'var(--text-secondary)'}

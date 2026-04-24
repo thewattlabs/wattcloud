@@ -1,7 +1,11 @@
 <script lang="ts">
-  export let steps: string[];
-  export let currentStep: number; // 0-indexed, -1 if not on any step
-  export let completedSteps: number[] = [];
+  interface Props {
+    steps: string[];
+    currentStep: number; // 0-indexed, -1 if not on any step
+    completedSteps?: number[];
+  }
+
+  let { steps, currentStep, completedSteps = [] }: Props = $props();
 
   // A connector should be green if the step BEFORE it is completed
   // Connector after step 0 connects steps 0-1, should be green if step 0 is completed

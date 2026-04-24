@@ -1,20 +1,36 @@
 <script lang="ts">
+  import { run } from 'svelte/legacy';
+
   import { createEventDispatcher } from 'svelte';
   import { folders } from '../stores/files';
   import Icon from './Icons.svelte';
   import FolderTree from './FolderTree.svelte';
   import BottomSheet from './BottomSheet.svelte';
 
-  export let open = false;
-  export let mode: 'move' | 'copy' = 'move';
-  export let itemType: 'files' | 'folders' | 'mixed' = 'files';
-  export let selectedItemCount = 0;
-  export let items: Array<{ id: number; name: string; type: 'file' | 'folder' }> = [];
 
-  // When provided, overrides the $folders store for the folder list.
-  export let allFolders: import('../stores/files').Folder[] | null = null;
-  // Inject create-folder implementation (BYO or managed); handles encrypt + persist.
-  export let onCreateFolder: ((name: string, parentId: number | null) => Promise<import('../stores/files').Folder>) | null = null;
+  
+  
+  interface Props {
+    open?: boolean;
+    mode?: 'move' | 'copy';
+    itemType?: 'files' | 'folders' | 'mixed';
+    selectedItemCount?: number;
+    items?: Array<{ id: number; name: string; type: 'file' | 'folder' }>;
+    // When provided, overrides the $folders store for the folder list.
+    allFolders?: import('../stores/files').Folder[] | null;
+    // Inject create-folder implementation (BYO or managed); handles encrypt + persist.
+    onCreateFolder?: ((name: string, parentId: number | null) => Promise<import('../stores/files').Folder>) | null;
+  }
+
+  let {
+    open = false,
+    mode = 'move',
+    itemType = 'files',
+    selectedItemCount = 0,
+    items = [],
+    allFolders = null,
+    onCreateFolder = null
+  }: Props = $props();
 
   const dispatch = createEventDispatcher();
 
@@ -22,45 +38,49 @@
   // the same `destinationId` (null == vault root), but the UI needs a
   // separate `selectRoot` flag so we can visually distinguish "user
   // picked root" from "user hasn't picked anything yet".
-  let selectedDestinationId: number | null = null;
-  let selectRoot = false;
-  let operationInProgress = false;
-  let error = '';
-  let showNewFolderInput = false;
-  let newFolderName = '';
-  let creatingFolder = false;
-  let folderSearch = '';
-  let activeTab: 'folders' | 'files' = 'folders';
+  let selectedDestinationId: number | null = $state(null);
+  let selectRoot = $state(false);
+  let operationInProgress = $state(false);
+  let error = $state('');
+  let showNewFolderInput = $state(false);
+  let newFolderName = $state('');
+  let creatingFolder = $state(false);
+  let folderSearch = $state('');
+  let activeTab: 'folders' | 'files' = $state('folders');
 
-  $: hasSelection = selectRoot || selectedDestinationId !== null;
+  let hasSelection = $derived(selectRoot || selectedDestinationId !== null);
 
   // Use allFolders prop (BYO) or $folders store (managed)
-  $: sourceFolders = allFolders ?? $folders;
-  $: filteredFolders = folderSearch
+  let sourceFolders = $derived(allFolders ?? $folders);
+  let filteredFolders = $derived(folderSearch
     ? sourceFolders.filter(f => {
         const name = f.decrypted_name || f.name;
         return name.toLowerCase().includes(folderSearch.toLowerCase());
       })
-    : sourceFolders;
+    : sourceFolders);
 
-  $: fileItems = items.filter(item => item.type === 'file');
-  $: folderItems = items.filter(item => item.type === 'folder');
+  let fileItems = $derived(items.filter(item => item.type === 'file'));
+  let folderItems = $derived(items.filter(item => item.type === 'folder'));
 
-  $: if (!open) {
-    selectedDestinationId = null;
-    selectRoot = false;
-    error = '';
-    operationInProgress = false;
-    showNewFolderInput = false;
-    newFolderName = '';
-    folderSearch = '';
-  }
+  run(() => {
+    if (!open) {
+      selectedDestinationId = null;
+      selectRoot = false;
+      error = '';
+      operationInProgress = false;
+      showNewFolderInput = false;
+      newFolderName = '';
+      folderSearch = '';
+    }
+  });
 
-  $: if (open && itemType === 'folders') {
-    activeTab = 'folders';
-  } else if (open && itemType === 'files') {
-    activeTab = 'files';
-  }
+  run(() => {
+    if (open && itemType === 'folders') {
+      activeTab = 'folders';
+    } else if (open && itemType === 'files') {
+      activeTab = 'files';
+    }
+  });
 
   async function handleCreateFolder() {
     if (!newFolderName.trim()) return;
@@ -133,7 +153,7 @@
       <button
         class="tab"
         class:active={activeTab === 'folders'}
-        on:click={() => activeTab = 'folders'}
+        onclick={() => activeTab = 'folders'}
       >
         <Icon name="folder" size={16} />
         Folders ({folderItems.length})
@@ -141,7 +161,7 @@
       <button
         class="tab"
         class:active={activeTab === 'files'}
-        on:click={() => activeTab = 'files'}
+        onclick={() => activeTab = 'files'}
       >
         <Icon name="file" size={16} />
         Files ({fileItems.length})
@@ -181,19 +201,19 @@
           type="text"
           placeholder="Folder name"
           bind:value={newFolderName}
-          on:keydown={(e) => e.key === 'Enter' && handleCreateFolder()}
+          onkeydown={(e) => e.key === 'Enter' && handleCreateFolder()}
           disabled={creatingFolder}
           class="input"
         />
-        <button class="btn btn-primary btn-sm" on:click={handleCreateFolder} disabled={creatingFolder || !newFolderName.trim()}>
+        <button class="btn btn-primary btn-sm" onclick={handleCreateFolder} disabled={creatingFolder || !newFolderName.trim()}>
           {creatingFolder ? 'Creating...' : 'Create'}
         </button>
-        <button class="btn btn-ghost btn-sm" on:click={() => { showNewFolderInput = false; newFolderName = ''; }}>
+        <button class="btn btn-ghost btn-sm" onclick={() => { showNewFolderInput = false; newFolderName = ''; }}>
           Cancel
         </button>
       </div>
     {:else}
-      <button class="new-folder-btn" on:click={() => showNewFolderInput = true}>
+      <button class="new-folder-btn" onclick={() => showNewFolderInput = true}>
         <Icon name="folderPlus" size={16} />
         New Folder
       </button>
@@ -209,7 +229,7 @@
       bind:value={folderSearch}
     />
     {#if folderSearch}
-      <button class="clear-search" on:click={() => folderSearch = ''}>
+      <button class="clear-search" onclick={() => folderSearch = ''}>
         <Icon name="close" size={16} />
       </button>
     {/if}
@@ -223,7 +243,7 @@
       type="button"
       class="vault-root-option"
       class:selected={selectRoot}
-      on:click={handleRootSelect}
+      onclick={handleRootSelect}
     >
       <Icon name="home" size={16} />
       <span>Vault root</span>
@@ -245,14 +265,14 @@
   <div class="sheet-actions">
     <button
       class="btn btn-secondary"
-      on:click={handleCancel}
+      onclick={handleCancel}
       disabled={operationInProgress}
     >
       Cancel
     </button>
     <button
       class="btn btn-primary"
-      on:click={handleConfirm}
+      onclick={handleConfirm}
       disabled={operationInProgress || !hasSelection}
     >
       {#if operationInProgress}

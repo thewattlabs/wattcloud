@@ -36,14 +36,18 @@
   import { getVaultSessionId, getProvider } from '../../byo/VaultLifecycle';
   import { byoToast } from '../../byo/stores/byoToasts';
 
-  export let vaultId: string;
+  interface Props {
+    vaultId: string;
+  }
+
+  let { vaultId }: Props = $props();
 
   const dispatch = createEventDispatcher<{ openSettings: void }>();
 
-  let visible = false;
-  let dontAskAgain = false;
+  let visible = $state(false);
+  let dontAskAgain = $state(false);
   let record: DeviceRecord | null = null;
-  let busy = false;
+  let busy = $state(false);
 
   onMount(async () => {
     if (!vaultId) return;
@@ -206,12 +210,12 @@
         <span>Don't ask again for this vault</span>
       </label>
       <div class="offer-actions">
-        <button class="offer-ghost" on:click={handleDismiss} disabled={busy}>
+        <button class="offer-ghost" onclick={handleDismiss} disabled={busy}>
           Not now
         </button>
         <button
           class="offer-primary"
-          on:click={handleEnable}
+          onclick={handleEnable}
           disabled={busy}
           aria-busy={busy}
         >
@@ -225,7 +229,7 @@
       </div>
       <button
         class="offer-settings-link"
-        on:click={handleOpenSettings}
+        onclick={handleOpenSettings}
         disabled={busy}
         type="button"
       >

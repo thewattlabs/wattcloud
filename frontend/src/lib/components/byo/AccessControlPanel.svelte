@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { self } from 'svelte/legacy';
+
   /**
    * AccessControlPanel — Settings surface for the restricted-enrollment
    * feature. Rendered inside `ByoSettings` in a collapsible row.
@@ -47,32 +49,32 @@
 
   // ── State ────────────────────────────────────────────────────────────────
 
-  let loading = true;
-  let info: RelayInfo | null = null;
-  let me: MeDevice | null = null;
+  let loading = $state(true);
+  let info: RelayInfo | null = $state(null);
+  let me: MeDevice | null = $state(null);
   /** Set when the device-list fetch returns 403 — current user is enrolled
    *  but not an owner. Admin sections stay hidden. */
-  let notOwner = false;
-  let invites: InviteRow[] = [];
-  let devices: DeviceRow[] = [];
-  let loadError = '';
+  let notOwner = $state(false);
+  let invites: InviteRow[] = $state([]);
+  let devices: DeviceRow[] = $state([]);
+  let loadError = $state('');
 
   // Invite-mint modal state.
-  let showMintModal = false;
-  let mintLabel = '';
-  let mintTtlKey: TtlKey = '24h';
-  let mintBusy = false;
-  let mintError = '';
-  let mintedCode: { code: string; label: string; expiresAt: number } | null = null;
+  let showMintModal = $state(false);
+  let mintLabel = $state('');
+  let mintTtlKey: TtlKey = $state('24h');
+  let mintBusy = $state(false);
+  let mintError = $state('');
+  let mintedCode: { code: string; label: string; expiresAt: number } | null = $state(null);
 
   // Confirm modals.
-  let confirmRevokeInvite: InviteRow | null = null;
-  let confirmRevokeDevice: DeviceRow | null = null;
-  let confirmSignOut = false;
-  let signOutBusy = false;
+  let confirmRevokeInvite: InviteRow | null = $state(null);
+  let confirmRevokeDevice: DeviceRow | null = $state(null);
+  let confirmSignOut = $state(false);
+  let signOutBusy = $state(false);
   /** When the sole owner tries to sign out — 409 last_owner from the server.
    *  Render an explicit recovery panel instead of a toast. */
-  let soleOwnerBlock = false;
+  let soleOwnerBlock = $state(false);
 
   type TtlKey = '1h' | '24h' | '7d';
   interface TtlOption {
@@ -274,7 +276,7 @@
     <p class="muted">Loading…</p>
   {:else if loadError}
     <p class="error" role="alert">{loadError}</p>
-    <button class="link-btn" on:click={reload}>
+    <button class="link-btn" onclick={reload}>
       <ArrowClockwise size={14} />
       Retry
     </button>
@@ -312,7 +314,7 @@
 
       <!-- Members can still sign out of their own session. -->
       <section class="section">
-        <button class="signout-btn" on:click={() => (confirmSignOut = true)}>
+        <button class="signout-btn" onclick={() => (confirmSignOut = true)}>
           <SignOut size={14} weight="bold" />
           Sign out on this device
         </button>
@@ -327,7 +329,7 @@
       <section class="section">
         <div class="section-head">
           <h3 class="section-title">Invites</h3>
-          <button class="ghost-btn" on:click={openMintModal}>
+          <button class="ghost-btn" onclick={openMintModal}>
             <Plus size={14} weight="bold" />
             Generate invite
           </button>
@@ -347,7 +349,7 @@
                 <button
                   class="icon-btn"
                   title="Revoke"
-                  on:click={() => (confirmRevokeInvite = row)}
+                  onclick={() => (confirmRevokeInvite = row)}
                   disabled={!!row.used_at}
                 >
                   <Trash size={14} />
@@ -375,10 +377,10 @@
               Then re-claim ownership from the bootstrap screen. Or invite another owner
               first so this device isn't load-bearing.
             </p>
-            <button class="link-btn" on:click={() => (soleOwnerBlock = false)}>Got it</button>
+            <button class="link-btn" onclick={() => (soleOwnerBlock = false)}>Got it</button>
           </div>
         {:else}
-          <button class="signout-btn" on:click={() => (confirmSignOut = true)}>
+          <button class="signout-btn" onclick={() => (confirmSignOut = true)}>
             <SignOut size={14} weight="bold" />
             Sign out on this device
           </button>
@@ -418,7 +420,7 @@
                   <button
                     class="icon-btn"
                     title="Revoke"
-                    on:click={() => (confirmRevokeDevice = row)}
+                    onclick={() => (confirmRevokeDevice = row)}
                   >
                     <Trash size={14} />
                   </button>
@@ -434,7 +436,7 @@
 
 <!-- Mint invite modal — split into create form and reveal-once result. -->
 {#if showMintModal}
-  <div class="modal-backdrop" on:click|self={closeMintModal} role="presentation">
+  <div class="modal-backdrop" onclick={self(closeMintModal)} role="presentation">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mint-title">
       {#if mintedCode}
         <h3 id="mint-title" class="modal-title">Invite for "{mintedCode.label}"</h3>
@@ -447,11 +449,11 @@
           Expires {formatRelative(mintedCode.expiresAt)}. Single-use. Revokable from the list.
         </p>
         <div class="modal-actions">
-          <button class="btn-secondary" on:click={handleCopyCode}>
+          <button class="btn-secondary" onclick={handleCopyCode}>
             <Copy size={14} />
             Copy code
           </button>
-          <button class="btn-primary" on:click={closeMintModal}>Done</button>
+          <button class="btn-primary" onclick={closeMintModal}>Done</button>
         </div>
       {:else}
         <h3 id="mint-title" class="modal-title">Generate invite</h3>
@@ -476,7 +478,7 @@
                 type="button"
                 class="ttl-btn"
                 class:ttl-btn-active={mintTtlKey === opt.key}
-                on:click={() => (mintTtlKey = opt.key)}
+                onclick={() => (mintTtlKey = opt.key)}
                 disabled={mintBusy}
               >{opt.label}</button>
             {/each}
@@ -488,8 +490,8 @@
         {/if}
 
         <div class="modal-actions">
-          <button class="btn-secondary" on:click={closeMintModal} disabled={mintBusy}>Cancel</button>
-          <button class="btn-primary" on:click={handleMint} disabled={mintBusy}>
+          <button class="btn-secondary" onclick={closeMintModal} disabled={mintBusy}>Cancel</button>
+          <button class="btn-primary" onclick={handleMint} disabled={mintBusy}>
             {mintBusy ? 'Generating…' : 'Generate'}
           </button>
         </div>

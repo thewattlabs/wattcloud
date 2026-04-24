@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { preventDefault } from 'svelte/legacy';
+
   /**
    * SftpReauthSheet — re-collect SFTP credentials for a legacy vault.
    *
@@ -17,25 +19,35 @@
   import PasswordInput from '../common/PasswordInput.svelte';
   import Lock from 'phosphor-svelte/lib/Lock';
 
-  export let config: ProviderConfig;
-  export let vaultLabel: string = '';
-  export let busy: boolean = false;
-  export let error: string = '';
+  interface Props {
+    config: ProviderConfig;
+    vaultLabel?: string;
+    busy?: boolean;
+    error?: string;
+  }
+
+  let {
+    config,
+    vaultLabel = '',
+    busy = false,
+    error = ''
+  }: Props = $props();
 
   const dispatch = createEventDispatcher<{
     submit: { username: string; password: string; privateKey: string; passphrase: string };
     cancel: void;
   }>();
 
-  let username = config.sftpUsername ?? '';
-  let password = '';
-  let privateKey = '';
-  let passphrase = '';
+  // svelte-ignore state_referenced_locally
+  let username = $state(config.sftpUsername ?? '');
+  let password = $state('');
+  let privateKey = $state('');
+  let passphrase = $state('');
 
-  $: host = config.sftpHost ?? '';
-  $: port = config.sftpPort ?? 22;
-  $: basePath = config.sftpBasePath ?? '';
-  $: canSubmit = username.trim().length > 0 && (password.length > 0 || privateKey.length > 0) && !busy;
+  let host = $derived(config.sftpHost ?? '');
+  let port = $derived(config.sftpPort ?? 22);
+  let basePath = $derived(config.sftpBasePath ?? '');
+  let canSubmit = $derived(username.trim().length > 0 && (password.length > 0 || privateKey.length > 0) && !busy);
 
   function handleSubmit() {
     if (!canSubmit) return;
@@ -72,7 +84,7 @@
     {/if}
   </dl>
 
-  <form class="form" on:submit|preventDefault={handleSubmit}>
+  <form class="form" onsubmit={preventDefault(handleSubmit)}>
     <label class="field">
       <span class="label-text">Username</span>
       <input
@@ -84,7 +96,7 @@
       />
     </label>
 
-    <!-- svelte-ignore a11y-label-has-associated-control -->
+    <!-- svelte-ignore a11y_label_has_associated_control -->
     <label class="field">
       <span class="label-text">Password</span>
       <PasswordInput
@@ -110,7 +122,7 @@
     </label>
 
     {#if privateKey}
-      <!-- svelte-ignore a11y-label-has-associated-control -->
+      <!-- svelte-ignore a11y_label_has_associated_control -->
       <label class="field">
         <span class="label-text">Key passphrase <span class="field-optional">(optional)</span></span>
         <PasswordInput
@@ -127,7 +139,7 @@
     {/if}
 
     <div class="actions">
-      <button type="button" class="btn btn-ghost" on:click={() => dispatch('cancel')} disabled={busy}>
+      <button type="button" class="btn btn-ghost" onclick={() => dispatch('cancel')} disabled={busy}>
         Cancel
       </button>
       <button type="submit" class="btn btn-primary" disabled={!canSubmit}>

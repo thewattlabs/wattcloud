@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { run } from 'svelte/legacy';
+
   /**
    * VaultContextSheet — per-vault action sheet shown from VaultsListScreen.
    *
@@ -19,8 +21,12 @@
   import PencilSimple from 'phosphor-svelte/lib/PencilSimple';
   import Trash from 'phosphor-svelte/lib/Trash';
 
-  export let open = false;
-  export let vault: PersistedVaultSummary | null = null;
+  interface Props {
+    open?: boolean;
+    vault?: PersistedVaultSummary | null;
+  }
+
+  let { open = false, vault = null }: Props = $props();
 
   const dispatch = createEventDispatcher<{
     close: void;
@@ -30,16 +36,18 @@
   }>();
 
   type SheetMode = 'menu' | 'rename' | 'confirm-forget';
-  let mode: SheetMode = 'menu';
-  let newLabel = '';
-  let busy = false;
-  let err = '';
+  let mode: SheetMode = $state('menu');
+  let newLabel = $state('');
+  let busy = $state(false);
+  let err = $state('');
 
-  $: if (!open) {
-    mode = 'menu';
-    newLabel = vault?.vault_label ?? '';
-    err = '';
-  }
+  run(() => {
+    if (!open) {
+      mode = 'menu';
+      newLabel = vault?.vault_label ?? '';
+      err = '';
+    }
+  });
 
   async function doRename() {
     if (!vault) return;
@@ -93,7 +101,7 @@
       <div class="rows">
         <button
           class="row"
-          on:click={() => { dispatch('open', { vault_id: vault.vault_id }); dispatch('close'); }}
+          onclick={() => { dispatch('open', { vault_id: vault.vault_id }); dispatch('close'); }}
         >
           <span class="row-icon"><ArrowRight size={18} weight="bold" /></span>
           <span class="row-text">
@@ -101,14 +109,14 @@
             <span class="row-sub">Unlock and open this vault</span>
           </span>
         </button>
-        <button class="row" on:click={() => { mode = 'rename'; newLabel = vault.vault_label; }}>
+        <button class="row" onclick={() => { mode = 'rename'; newLabel = vault.vault_label; }}>
           <span class="row-icon"><PencilSimple size={18} weight="bold" /></span>
           <span class="row-text">
             <span class="row-title">Rename</span>
             <span class="row-sub">Local label only — other devices keep the original</span>
           </span>
         </button>
-        <button class="row danger" on:click={() => { mode = 'confirm-forget'; }}>
+        <button class="row danger" onclick={() => { mode = 'confirm-forget'; }}>
           <span class="row-icon"><Trash size={18} weight="bold" /></span>
           <span class="row-text">
             <span class="row-title">Forget on this device</span>
@@ -130,8 +138,8 @@
         />
         {#if err}<p class="input-error-msg">{err}</p>{/if}
         <div class="btn-row">
-          <button class="btn btn-secondary" on:click={() => (mode = 'menu')} disabled={busy}>Cancel</button>
-          <button class="btn btn-primary" on:click={doRename} disabled={busy || !newLabel.trim()}>Save</button>
+          <button class="btn btn-secondary" onclick={() => (mode = 'menu')} disabled={busy}>Cancel</button>
+          <button class="btn btn-primary" onclick={doRename} disabled={busy || !newLabel.trim()}>Save</button>
         </div>
       </div>
     {:else if mode === 'confirm-forget'}
@@ -143,8 +151,8 @@
         </p>
         {#if err}<p class="input-error-msg">{err}</p>{/if}
         <div class="btn-row">
-          <button class="btn btn-secondary" on:click={() => (mode = 'menu')} disabled={busy}>Cancel</button>
-          <button class="btn btn-danger" on:click={doForget} disabled={busy}>
+          <button class="btn btn-secondary" onclick={() => (mode = 'menu')} disabled={busy}>Cancel</button>
+          <button class="btn btn-danger" onclick={doForget} disabled={busy}>
             {busy ? 'Forgetting…' : 'Forget'}
           </button>
         </div>

@@ -11,8 +11,12 @@
   import { createEventDispatcher } from 'svelte';
   import CloudSlash from 'phosphor-svelte/lib/CloudSlash';
 
-  export let providerName: string;
-  export let retrying = false;
+  interface Props {
+    providerName: string;
+    retrying?: boolean;
+  }
+
+  let { providerName, retrying = false }: Props = $props();
 
   const dispatch = createEventDispatcher<{ retry: void }>();
 </script>
@@ -25,7 +29,7 @@
   <button
     class="retry-btn"
     disabled={retrying}
-    on:click={() => dispatch('retry')}
+    onclick={() => dispatch('retry')}
     aria-label="Retry connection to {providerName}"
   >
     {retrying ? 'Retrying…' : 'Retry'}

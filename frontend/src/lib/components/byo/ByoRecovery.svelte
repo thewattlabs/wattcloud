@@ -22,7 +22,11 @@
   import Argon2Progress from './Argon2Progress.svelte';
   import PasswordInput from '../common/PasswordInput.svelte';
 
-  export let provider: StorageProvider;
+  interface Props {
+    provider: StorageProvider;
+  }
+
+  let { provider }: Props = $props();
 
   const dispatch = createEventDispatcher<{
     complete: void;
@@ -32,23 +36,23 @@
   const STEPS = ['Recovery Key', 'New Passphrase', 'Re-keying', 'New Recovery Key'];
   type RecoveryStep = 'enter-key' | 'verifying' | 'new-passphrase' | 'rekeying' | 'new-recovery-key' | 'error';
 
-  let step: RecoveryStep = 'enter-key';
-  let recoveryInput = '';
-  let error = '';
-  let argon2Done = false;
-  let newRecoveryKeyB64 = '';
+  let step: RecoveryStep = $state('enter-key');
+  let recoveryInput = $state('');
+  let error = $state('');
+  let argon2Done = $state(false);
+  let newRecoveryKeyB64 = $state('');
   let vaultIdB64 = '';
 
-  $: stepIndex = {
+  let stepIndex = $derived({
     'enter-key': 0,
     'verifying': 0,
     'new-passphrase': 1,
     'rekeying': 2,
     'new-recovery-key': 3,
     'error': 0,
-  }[step] ?? 0;
+  }[step] ?? 0);
 
-  $: completedSteps = Array.from({ length: stepIndex }, (_, i) => i);
+  let completedSteps = $derived(Array.from({ length: stepIndex }, (_, i) => i));
 
   async function verifyRecoveryKey() {
     const trimmed = recoveryInput.trim();
@@ -269,12 +273,12 @@
       </div>
       <button
         class="btn btn-primary"
-        on:click={verifyRecoveryKey}
+        onclick={verifyRecoveryKey}
         disabled={step === 'verifying' || !recoveryInput.trim()}
       >
         {step === 'verifying' ? 'Verifying…' : 'Continue'}
       </button>
-      <button class="btn btn-secondary" on:click={() => dispatch('cancel')}>Cancel</button>
+      <button class="btn btn-secondary" onclick={() => dispatch('cancel')}>Cancel</button>
     </div>
 
   {:else if step === 'new-passphrase'}
@@ -319,10 +323,10 @@
   {:else if step === 'error'}
     <div class="step-content">
       <p class="error-msg" role="alert">{error}</p>
-      <button class="btn btn-secondary" on:click={() => { error = ''; step = 'enter-key'; }}>
+      <button class="btn btn-secondary" onclick={() => { error = ''; step = 'enter-key'; }}>
         Try again
       </button>
-      <button class="btn btn-ghost" on:click={() => dispatch('cancel')}>Cancel</button>
+      <button class="btn btn-ghost" onclick={() => dispatch('cancel')}>Cancel</button>
     </div>
   {/if}
 </div>

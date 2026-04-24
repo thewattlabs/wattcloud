@@ -35,29 +35,38 @@
   import { migrateDeviceKey } from '../../byo/DeviceKeyMigration';
   import type { StorageProvider } from '@wattcloud/sdk';
 
-  export let vaultId: string;
-  export let vaultLabel: string;
-  export let provider: StorageProvider;
-  export let vaultSessionId: number;
+  interface Props {
+    vaultId: string;
+    vaultLabel: string;
+    provider: StorageProvider;
+    vaultSessionId: number;
+  }
+
+  let {
+    vaultId,
+    vaultLabel,
+    provider,
+    vaultSessionId
+  }: Props = $props();
 
   // ── State ────────────────────────────────────────────────────────────────
 
-  let loading = true;
-  let record: DeviceWebAuthnRecord | null = null;
-  let busy = false;
-  let webauthnAvailable = false;
-  let confirmRemove: WebAuthnCredentialEntry | null = null;
-  let confirmDisable = false;
+  let loading = $state(true);
+  let record: DeviceWebAuthnRecord | null = $state(null);
+  let busy = $state(false);
+  let webauthnAvailable = $state(false);
+  let confirmRemove: WebAuthnCredentialEntry | null = $state(null);
+  let confirmDisable = $state(false);
   /** When true, the passkey-replaces-passphrase confirm modal is showing. */
-  let confirmEnablePasskeyUnlock = false;
+  let confirmEnablePasskeyUnlock = $state(false);
   /** When true, the passkey-replaces-passphrase disable confirm modal is showing. */
-  let confirmDisablePasskeyUnlock = false;
+  let confirmDisablePasskeyUnlock = $state(false);
   /**
    * The presence-fallback educational modal is async-driven: when
    * WebAuthnGate's `onPrfUnavailable` fires, it stashes a resolver here and
    * awaits the user's Enable / Cancel decision before returning.
    */
-  let presenceFallbackResolve: ((accepted: boolean) => void) | null = null;
+  let presenceFallbackResolve: ((accepted: boolean) => void) | null = $state(null);
 
   onMount(async () => {
     webauthnAvailable = isWebAuthnAvailable();
@@ -369,15 +378,15 @@
     return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
-  $: modeLabel =
-    record?.mode === 'prf'
+  let modeLabel =
+    $derived(record?.mode === 'prf'
       ? 'Cryptographic (PRF)'
       : record?.mode === 'presence'
         ? 'Presence check'
-        : 'Off';
-  $: modeColor =
-    record && record.mode !== 'none' ? 'var(--accent)' : 'var(--text-secondary)';
-  $: isEnabled = record !== null && record.mode !== 'none';
+        : 'Off');
+  let modeColor =
+    $derived(record && record.mode !== 'none' ? 'var(--accent)' : 'var(--text-secondary)');
+  let isEnabled = $derived(record !== null && record.mode !== 'none');
 </script>
 
 {#if loading}
@@ -407,7 +416,7 @@
         to enable protection there separately. Enrolled passkeys never leave
         this browser's IndexedDB.
       </p>
-      <button class="cp-primary" on:click={handleEnable} disabled={busy}>
+      <button class="cp-primary" onclick={handleEnable} disabled={busy}>
         {busy ? 'Setting up…' : 'Enable Credential Protection'}
       </button>
     {:else if record}
@@ -439,7 +448,7 @@
             </div>
             <button
               class="cp-remove"
-              on:click={() => requestRemove(cred)}
+              onclick={() => requestRemove(cred)}
               disabled={busy || record.credentials.length === 1}
               aria-label="Remove {cred.display_name}"
               title={record.credentials.length === 1
@@ -450,7 +459,7 @@
         {/each}
       </div>
 
-      <button class="cp-secondary" on:click={handleAddBackup} disabled={busy}>
+      <button class="cp-secondary" onclick={handleAddBackup} disabled={busy}>
         <Icon name="plus" size={14} />
         <span>Add another passkey</span>
       </button>
@@ -471,7 +480,7 @@
             <input
               type="checkbox"
               checked={!!record.passkey_unlocks_vault}
-              on:change={handlePasskeyUnlockToggle}
+              onchange={handlePasskeyUnlockToggle}
               disabled={busy}
               aria-label="Passkey unlocks this vault without passphrase"
             />
@@ -480,7 +489,7 @@
         </div>
       {/if}
 
-      <button class="cp-danger" on:click={requestDisable} disabled={busy}>
+      <button class="cp-danger" onclick={requestDisable} disabled={busy}>
         Disable Credential Protection
       </button>
     {/if}
@@ -598,14 +607,14 @@
       <div class="cp-modal-actions">
         <button
           class="cp-modal-ghost"
-          on:click={() => {
+          onclick={() => {
             presenceFallbackResolve?.(false);
             presenceFallbackResolve = null;
           }}
         >Cancel</button>
         <button
           class="cp-modal-primary"
-          on:click={() => {
+          onclick={() => {
             presenceFallbackResolve?.(true);
             presenceFallbackResolve = null;
           }}

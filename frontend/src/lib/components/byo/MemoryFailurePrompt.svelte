@@ -1,6 +1,10 @@
 <script lang="ts">
-  export let onRetry: () => void;
-  export let onBack: () => void;
+  interface Props {
+    onRetry: () => void;
+    onBack: () => void;
+  }
+
+  let { onRetry, onBack }: Props = $props();
 </script>
 
 <div class="memory-failure">
@@ -18,8 +22,8 @@
     desktop browser with more available RAM.
   </p>
   <div class="actions">
-    <button class="btn btn-primary" on:click={onRetry}>Try again</button>
-    <button class="btn btn-secondary" on:click={onBack}>Back</button>
+    <button class="btn btn-primary" onclick={onRetry}>Try again</button>
+    <button class="btn btn-secondary" onclick={onBack}>Back</button>
   </div>
 </div>
 

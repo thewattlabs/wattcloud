@@ -10,10 +10,19 @@
   use the relevant Phosphor icon on its own, not layered over this badge.
 -->
 <script lang="ts">
-  export let size: number = 24;
-  export let variant: 'outline' | 'solid' = 'outline';
-  export let color: string = 'var(--accent)';
-  export let fillColor: string = 'var(--accent-muted)';
+  interface Props {
+    size?: number;
+    variant?: 'outline' | 'solid';
+    color?: string;
+    fillColor?: string;
+  }
+
+  let {
+    size = 24,
+    variant = 'outline',
+    color = 'var(--accent)',
+    fillColor = 'var(--accent-muted)'
+  }: Props = $props();
 
   // Phosphor-style cloud path on a 48x48 viewBox.
   // pathLength=100 normalises the path so stroke-dash animations in

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { self } from 'svelte/legacy';
+
   import { createEventDispatcher } from 'svelte';
   import { slide } from 'svelte/transition';
   import List from 'phosphor-svelte/lib/List';
@@ -13,15 +15,28 @@
   import CloudArrowUp from 'phosphor-svelte/lib/CloudArrowUp';
   import Warning from 'phosphor-svelte/lib/Warning';
 
-  export let showSearch: boolean = false;
-  export let showSearchPanel: boolean = true;
-  export let headerVisible: boolean = true;
-  export let searchQuery: string = '';
-  export let searchFileType: string = '';
-  export let currentView: string = 'files';
-  /** Hides the right-side search button (used on screens where search
+  
+  interface Props {
+    showSearch?: boolean;
+    showSearchPanel?: boolean;
+    headerVisible?: boolean;
+    searchQuery?: string;
+    searchFileType?: string;
+    currentView?: string;
+    /** Hides the right-side search button (used on screens where search
       doesn't apply, e.g. Settings). */
-  export let hideSearch: boolean = false;
+    hideSearch?: boolean;
+  }
+
+  let {
+    showSearch = false,
+    showSearchPanel = true,
+    headerVisible = true,
+    searchQuery = $bindable(''),
+    searchFileType = $bindable(''),
+    currentView = 'files',
+    hideSearch = false
+  }: Props = $props();
 
   const dispatch = createEventDispatcher();
 
@@ -81,7 +96,7 @@
 <header class="header-wrapper" class:hidden={!headerVisible}>
   <!-- ===== DESKTOP: Top Nav Bar (>= 600px) ===== -->
   <div class="top-nav">
-    <button class="btn-icon" on:click={handleToggleDrawer} aria-label="Toggle sidebar">
+    <button class="btn-icon" onclick={handleToggleDrawer} aria-label="Toggle sidebar">
       {#if $drawerCollapsed}<ArrowLineRight size={20} weight="regular" />{:else}<ArrowLineLeft size={20} weight="regular" />{/if}
     </button>
     <div class="top-nav-spacer"></div>
@@ -102,7 +117,7 @@
       </span>
     {/if}
     {#if !hideSearch}
-      <button class="btn-icon" on:click={handleSearchToggle} aria-label="Search">
+      <button class="btn-icon" onclick={handleSearchToggle} aria-label="Search">
         {#if showSearch}<X size={20} weight="regular" />{:else}<MagnifyingGlass size={20} weight="regular" />{/if}
       </button>
     {/if}
@@ -110,7 +125,7 @@
 
   <!-- ===== MOBILE: Top Bar (< 600px) ===== -->
   <div class="top-bar mobile-top-bar">
-    <button class="btn-icon" on:click={handleOpenDrawer} aria-label="Open menu">
+    <button class="btn-icon" onclick={handleOpenDrawer} aria-label="Open menu">
       <List size={24} weight="regular" />
     </button>
     <div class="mobile-logo">
@@ -124,7 +139,7 @@
       <span class="vault-status-dot saved" title="Vault saved" aria-label="Saved"><CloudCheck size={18} weight="regular" /></span>
     {/if}
     {#if !hideSearch}
-      <button class="btn-icon" on:click={handleSearchToggle} aria-label="Search">
+      <button class="btn-icon" onclick={handleSearchToggle} aria-label="Search">
         {#if showSearch}<X size={20} weight="regular" />{:else}<MagnifyingGlass size={20} weight="regular" />{/if}
       </button>
     {/if}
@@ -134,7 +149,7 @@
 
 <!-- Search overlay (outside fixed header, positioned below it) -->
 {#if showSearch && showSearchPanel}
-  <div class="search-overlay" on:click|self={handleSearchClose} on:keydown={() => {}} role="presentation">
+  <div class="search-overlay" onclick={self(handleSearchClose)} onkeydown={() => {}} role="presentation">
     <div class="search-dropdown" transition:slide={{ duration: 250 }}>
       <div class="search-container">
         <div class="search-input-wrapper">
@@ -146,10 +161,10 @@
             placeholder="Search all files and folders..."
             class="search-input"
             value={searchQuery}
-            on:input={handleSearchInput}
+            oninput={handleSearchInput}
           />
           {#if searchQuery}
-            <button class="search-clear" on:click={clearSearch} aria-label="Clear search" title="Clear search">
+            <button class="search-clear" onclick={clearSearch} aria-label="Clear search" title="Clear search">
               <X size={16} />
             </button>
           {/if}
@@ -161,7 +176,7 @@
               <button
                 class="filter-pill"
                 class:active={searchFileType === ft.value}
-                on:click={() => {
+                onclick={() => {
                   const newValue = searchFileType === ft.value ? '' : ft.value;
                   searchFileType = newValue;
                   dispatch('searchChange', { query: searchQuery, fileType: newValue });

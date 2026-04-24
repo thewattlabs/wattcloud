@@ -3,11 +3,21 @@
   import type { FileEntry, FolderEntry } from '../../byo/DataProvider';
   import BottomSheet from '../BottomSheet.svelte';
 
-  export let file: FileEntry | null = null;
-  export let isOpen: boolean = false;
-  export let isFavorite: boolean = false;
-  export let folders: FolderEntry[] = [];
-  export let onClose: () => void = () => {};
+  interface Props {
+    file?: FileEntry | null;
+    isOpen?: boolean;
+    isFavorite?: boolean;
+    folders?: FolderEntry[];
+    onClose?: () => void;
+  }
+
+  let {
+    file = null,
+    isOpen = false,
+    isFavorite = false,
+    folders = [],
+    onClose = () => {}
+  }: Props = $props();
 
   function formatSize(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;

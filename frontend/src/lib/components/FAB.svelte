@@ -6,8 +6,12 @@
   import FolderPlus from 'phosphor-svelte/lib/FolderPlus';
   import FolderSimple from 'phosphor-svelte/lib/FolderSimple';
 
-  export let showMenu: boolean = false;
-  export let disabled: boolean = false;
+  interface Props {
+    showMenu?: boolean;
+    disabled?: boolean;
+  }
+
+  let { showMenu = false, disabled = false }: Props = $props();
 
   const dispatch = createEventDispatcher();
 
@@ -36,10 +40,10 @@
 </script>
 
 {#if showMenu}
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div
     class="fab-backdrop"
-    on:click={handleBackdropClick}
+    onclick={handleBackdropClick}
     role="button"
     tabindex="-1"
     transition:fade={{ duration: 150 }}
@@ -48,7 +52,7 @@
   <div class="fab-speed-dial">
     <button
       class="fab-speed-item"
-      on:click={handleNewFolder}
+      onclick={handleNewFolder}
       {disabled}
       transition:fly={{ y: 16, duration: 200, delay: 100 }}
     >
@@ -58,7 +62,7 @@
 
     <button
       class="fab-speed-item"
-      on:click={handleUploadFolder}
+      onclick={handleUploadFolder}
       {disabled}
       transition:fly={{ y: 16, duration: 200, delay: 50 }}
     >
@@ -68,7 +72,7 @@
 
     <button
       class="fab-speed-item"
-      on:click={handleUpload}
+      onclick={handleUpload}
       {disabled}
       transition:fly={{ y: 16, duration: 200, delay: 0 }}
     >
@@ -83,7 +87,7 @@
   class:active={showMenu}
   class:fab-disabled={disabled}
   {disabled}
-  on:click={toggle}
+  onclick={toggle}
   aria-label={showMenu ? 'Close menu' : 'Add new'}
 >
   <span class="fab-icon" class:rotated={showMenu}>

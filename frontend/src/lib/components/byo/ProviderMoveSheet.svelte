@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { run } from 'svelte/legacy';
+
   /**
    * ProviderMoveSheet — bottom sheet for cross-provider file move.
    */
@@ -10,13 +12,25 @@
 
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  export let open = false;
-  export let fileCount = 0;
-  export let currentProviderId = '';
-  export let providers: ProviderMeta[] = [];
-  export let progress: { done: number; total: number } | null = null;
-  export let fileErrors: { fileId: number; fileName: string; error: string }[] = [];
-  export let succeededCount: number | null = null;
+  interface Props {
+    open?: boolean;
+    fileCount?: number;
+    currentProviderId?: string;
+    providers?: ProviderMeta[];
+    progress?: { done: number; total: number } | null;
+    fileErrors?: { fileId: number; fileName: string; error: string }[];
+    succeededCount?: number | null;
+  }
+
+  let {
+    open = false,
+    fileCount = 0,
+    currentProviderId = '',
+    providers = [],
+    progress = null,
+    fileErrors = [],
+    succeededCount = null
+  }: Props = $props();
 
   const dispatch = createEventDispatcher<{
     confirm: { destProviderId: string };
@@ -25,15 +39,17 @@
     close: void;
   }>();
 
-  let selectedProviderId: string | null = null;
-  let confirmed = false;
+  let selectedProviderId: string | null = $state(null);
+  let confirmed = $state(false);
 
-  $: otherProviders = providers.filter(p => p.providerId !== currentProviderId);
+  let otherProviders = $derived(providers.filter(p => p.providerId !== currentProviderId));
 
-  $: if (!open) {
-    selectedProviderId = null;
-    confirmed = false;
-  }
+  run(() => {
+    if (!open) {
+      selectedProviderId = null;
+      confirmed = false;
+    }
+  });
 
   function selectProvider(p: ProviderMeta) {
     if (p.status === 'offline' || p.status === 'error' || p.status === 'unauthorized') return;
@@ -53,11 +69,11 @@
     return icons[type] ?? '?';
   }
 
-  $: inProgress = progress !== null;
-  $: progressPct = progress ? Math.round((progress.done / Math.max(progress.total, 1)) * 100) : 0;
-  $: isSuccess = succeededCount !== null && fileErrors.length === 0;
-  $: hasErrors = fileErrors.length > 0;
-  $: showResult = succeededCount !== null;
+  let inProgress = $derived(progress !== null);
+  let progressPct = $derived(progress ? Math.round((progress.done / Math.max(progress.total, 1)) * 100) : 0);
+  let isSuccess = $derived(succeededCount !== null && fileErrors.length === 0);
+  let hasErrors = $derived(fileErrors.length > 0);
+  let showResult = $derived(succeededCount !== null);
 </script>
 
 {#if open}
@@ -66,13 +82,13 @@
     role="button"
     tabindex="-1"
     aria-label="Close"
-    on:click={() => !inProgress && dispatch('close')}
-    on:keydown={(e) => e.key === 'Escape' && !inProgress && dispatch('close')}
+    onclick={() => !inProgress && dispatch('close')}
+    onkeydown={(e) => e.key === 'Escape' && !inProgress && dispatch('close')}
     transition:fade={{ duration: reducedMotion ? 0 : 150 }}
-  />
+></div>
 
   <div class="sheet" role="dialog" aria-modal="true" aria-label="Move to provider" transition:slide={{ duration: reducedMotion ? 0 : 220, axis: 'y' }}>
-    <div class="sheet-handle" aria-hidden="true" />
+    <div class="sheet-handle" aria-hidden="true"></div>
 
     {#if inProgress}
       <div class="sheet-section">
@@ -100,7 +116,7 @@
         <p class="success-label">Integrity verified · {succeededCount} file{succeededCount !== 1 ? 's' : ''}</p>
       </div>
       <div class="sheet-actions">
-        <button class="btn btn-primary" on:click={() => dispatch('close')}>Done</button>
+        <button class="btn btn-primary" onclick={() => dispatch('close')}>Done</button>
       </div>
 
     {:else if showResult && hasErrors}
@@ -125,16 +141,16 @@
               <span class="error-msg">{e.error}</span>
             </div>
             <div class="error-actions">
-              <button class="btn-sm btn-sm-primary" on:click={() => dispatch('retry', { fileIds: [e.fileId] })}>Retry</button>
-              <button class="btn-sm btn-sm-ghost" on:click={() => dispatch('skipErrors', { fileId: e.fileId })}>Skip</button>
+              <button class="btn-sm btn-sm-primary" onclick={() => dispatch('retry', { fileIds: [e.fileId] })}>Retry</button>
+              <button class="btn-sm btn-sm-ghost" onclick={() => dispatch('skipErrors', { fileId: e.fileId })}>Skip</button>
             </div>
           </div>
         {/each}
       </div>
 
       <div class="sheet-actions">
-        <button class="btn btn-ghost" on:click={() => dispatch('close')}>Close</button>
-        <button class="btn btn-primary" on:click={() => dispatch('retry', { fileIds: fileErrors.map(e => e.fileId) })}>
+        <button class="btn btn-ghost" onclick={() => dispatch('close')}>Close</button>
+        <button class="btn btn-primary" onclick={() => dispatch('retry', { fileIds: fileErrors.map(e => e.fileId) })}>
           Retry all
         </button>
       </div>
@@ -164,7 +180,7 @@
             role="option"
             aria-selected={p.providerId === selectedProviderId}
             title={isOffline ? `${p.displayName} is offline` : p.displayName}
-            on:click={() => selectProvider(p)}
+            onclick={() => selectProvider(p)}
           >
             <span class="prow-icon" aria-hidden="true">{providerIcon(p.type)}</span>
             <span class="prow-name">{p.displayName}</span>
@@ -183,11 +199,11 @@
       </div>
 
       <div class="sheet-actions">
-        <button class="btn btn-ghost" on:click={() => dispatch('close')}>Cancel</button>
+        <button class="btn btn-ghost" onclick={() => dispatch('close')}>Cancel</button>
         <button
           class="btn btn-primary"
           disabled={!selectedProviderId}
-          on:click={handleConfirm}
+          onclick={handleConfirm}
         >
           <ArrowSquareOut size={16} />
           Move here

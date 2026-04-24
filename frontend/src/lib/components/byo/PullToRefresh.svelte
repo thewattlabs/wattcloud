@@ -14,38 +14,66 @@
      blink while the refresh runs.
 -->
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import type { Snippet } from 'svelte';
+  import { createBubbler } from 'svelte/legacy';
 
-  /** Called when the user releases past the pull threshold.
-      Return a promise that resolves once the refresh completes. */
-  export let onRefresh: () => Promise<void> | void;
-  /** Disable the gesture when the underlying view doesn't support refresh. */
-  export let disabled = false;
-  /** Pull distance in px required to trigger refresh. */
-  export let threshold = 64;
-  /** Max visual pull distance (caps the indicator's travel). */
-  export let maxPull = 96;
-  /** Classes applied to the scroll container — let the caller keep the
-      same layout/padding it had on its original scroll element. */
-  let className = '';
-  export { className as class };
+  interface Props {
+    /** Called when the user releases past the pull threshold.
+        Return a promise that resolves once the refresh completes. */
+    onRefresh: () => Promise<void> | void;
+    /** Disable the gesture when the underlying view doesn't support refresh. */
+    disabled?: boolean;
+    /** Pull distance in px required to trigger refresh. */
+    threshold?: number;
+    /** Max visual pull distance (caps the indicator's travel). */
+    maxPull?: number;
+    /** Classes applied to the scroll container — let the caller keep the
+        same layout/padding it had on its original scroll element. */
+    class?: string;
+    children?: Snippet;
+  }
+
+  let {
+    onRefresh,
+    disabled = false,
+    threshold = 64,
+    maxPull = 96,
+    class: className = '',
+    children,
+  }: Props = $props();
+
+  const bubble = createBubbler();
 
   // pathLength=100 normalises the cloud path length; dashoffset
   // animates 100→0 to draw the outline as the user pulls down.
   const SHIELD_CIRCUMFERENCE = 100;
 
   let container: HTMLDivElement;
-  let startY: number | null = null;
-  let pullDistance = 0;
-  let refreshing = false;
-  let completing = false; // post-threshold spin phase
-  let reducedMotion = false;
+  let startY: number | null = $state(null);
+  let pullDistance = $state(0);
+  let refreshing = $state(false);
+  let completing = $state(false); // post-threshold spin phase
+  let reducedMotion = $state(false);
 
-  $: progress = Math.min(pullDistance / threshold, 1);
-  $: visualPull = Math.min(pullDistance, maxPull);
-  $: dashOffset = SHIELD_CIRCUMFERENCE * (1 - progress);
+  let progress = $derived(Math.min(pullDistance / threshold, 1));
+  let visualPull = $derived(Math.min(pullDistance, maxPull));
+  let dashOffset = $derived(SHIELD_CIRCUMFERENCE * (1 - progress));
 
-  onMount(() => {
+  // touchstart / touchmove need `passive: false` so `preventDefault()` can
+  // suppress the native overscroll during the pull gesture. Svelte 5 has no
+  // event-modifier syntax, so attach via addEventListener in an effect.
+  $effect(() => {
+    if (!container) return;
+    const opts: AddEventListenerOptions = { passive: false };
+    container.addEventListener('touchstart', onTouchStart, opts);
+    container.addEventListener('touchmove', onTouchMove, opts);
+    return () => {
+      container.removeEventListener('touchstart', onTouchStart);
+      container.removeEventListener('touchmove', onTouchMove);
+    };
+  });
+
+  $effect(() => {
     reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   });
 
@@ -100,14 +128,13 @@
   }
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="ptr-container {className}"
   bind:this={container}
-  on:touchstart|nonpassive={onTouchStart}
-  on:touchmove|nonpassive={onTouchMove}
-  on:touchend={onTouchEnd}
-  on:touchcancel={onTouchEnd}
-  on:pointerdown
+  ontouchend={onTouchEnd}
+  ontouchcancel={onTouchEnd}
+  onpointerdown={bubble('pointerdown')}
 >
   {#if pullDistance > 0 || refreshing}
     <div
@@ -141,7 +168,7 @@
     </div>
   {/if}
 
-  <slot />
+  {@render children?.()}
 </div>
 
 <style>

@@ -1,16 +1,31 @@
 <script lang="ts">
+  import { createBubbler, stopPropagation } from 'svelte/legacy';
+
+  const bubble = createBubbler();
   import { createEventDispatcher } from 'svelte';
   import FolderSimple from 'phosphor-svelte/lib/FolderSimple';
   import DotsThree from 'phosphor-svelte/lib/DotsThree';
   import Check from 'phosphor-svelte/lib/Check';
 
-  export let folder: { id: number; name: string; decrypted_name?: string; created_at?: string };
-  export let isSelected: boolean = false;
-  export let isSelectionMode: boolean = false;
-  export let isRenaming: boolean = false;
-  export let isFavorite: boolean = false;
-  export let renameValue: string = '';
-  export let viewMode: 'list' | 'grid' = 'grid';
+  interface Props {
+    folder: { id: number; name: string; decrypted_name?: string; created_at?: string };
+    isSelected?: boolean;
+    isSelectionMode?: boolean;
+    isRenaming?: boolean;
+    isFavorite?: boolean;
+    renameValue?: string;
+    viewMode?: 'list' | 'grid';
+  }
+
+  let {
+    folder,
+    isSelected = false,
+    isSelectionMode = false,
+    isRenaming = false,
+    isFavorite = false,
+    renameValue = $bindable(''),
+    viewMode = 'grid'
+  }: Props = $props();
 
   const dispatch = createEventDispatcher();
 
@@ -72,27 +87,30 @@
 
 {#if viewMode === 'list'}
   <!-- List view folder item (DESIGN.md 14.1) -->
-  <button
+  <div
     class="list-item folder-list-item"
     class:item-selected={isSelected}
     class:item-favorite={isFavorite}
-    on:click={handleClick}
-    on:touchstart={handleTouchStart}
-    on:touchmove={handleTouchMove}
-    on:touchend={handleTouchEnd}
+    role="button"
+    tabindex="0"
+    onclick={handleClick}
+    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(e as unknown as MouseEvent); } }}
+    ontouchstart={handleTouchStart}
+    ontouchmove={handleTouchMove}
+    ontouchend={handleTouchEnd}
   >
     <div class="file-icon file-icon-folder">
       <FolderSimple size={20} color="var(--accent-text)" />
     </div>
 
     {#if isRenaming}
-      <div class="rename-form" on:click|stopPropagation on:keydown|stopPropagation role="presentation">
-        <!-- svelte-ignore a11y-autofocus -->
+      <div class="rename-form" onclick={stopPropagation(bubble('click'))} onkeydown={stopPropagation(bubble('keydown'))} role="presentation">
+        <!-- svelte-ignore a11y_autofocus -->
         <input
           type="text"
           bind:value={renameValue}
-          on:keydown={handleRenameKeydown}
-          on:blur={handleRenameBlur}
+          onkeydown={handleRenameKeydown}
+          onblur={handleRenameBlur}
           class="input"
           autofocus
         />
@@ -114,7 +132,7 @@
         class="folder-action-btn"
         class:checked={isSelectionMode && isSelected}
         class:favorite={!isSelectionMode && isFavorite}
-        on:click={isSelectionMode ? handleCheckboxClick : handleMenuClick}
+        onclick={isSelectionMode ? handleCheckboxClick : handleMenuClick}
         aria-label={isSelectionMode ? (isSelected ? 'Deselect folder' : 'Select folder') : 'Folder actions'}
       >
         {#if isSelectionMode}
@@ -126,17 +144,20 @@
         {/if}
       </button>
     {/if}
-  </button>
+  </div>
 {:else}
   <!-- Grid view folder item (DESIGN.md 14.2) -->
-  <button
+  <div
     class="grid-item folder-grid-item"
     class:item-selected={isSelected}
     class:item-favorite={isFavorite}
-    on:click={handleClick}
-    on:touchstart={handleTouchStart}
-    on:touchmove={handleTouchMove}
-    on:touchend={handleTouchEnd}
+    role="button"
+    tabindex="0"
+    onclick={handleClick}
+    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(e as unknown as MouseEvent); } }}
+    ontouchstart={handleTouchStart}
+    ontouchmove={handleTouchMove}
+    ontouchend={handleTouchEnd}
   >
     <div class="grid-item-thumbnail file-icon-folder">
       <FolderSimple size={32} color="var(--accent-text)" />
@@ -145,7 +166,7 @@
         class="grid-action-btn"
         class:checked={isSelectionMode && isSelected}
         class:favorite={!isSelectionMode && isFavorite}
-        on:click={isSelectionMode ? handleCheckboxClick : handleMenuClick}
+        onclick={isSelectionMode ? handleCheckboxClick : handleMenuClick}
         aria-label={isSelectionMode ? (isSelected ? 'Deselect' : 'Select') : 'Folder actions'}
       >
         {#if isSelectionMode}
@@ -159,13 +180,13 @@
     </div>
 
     {#if isRenaming}
-      <div class="grid-item-info" on:click|stopPropagation on:keydown|stopPropagation role="presentation">
-        <!-- svelte-ignore a11y-autofocus -->
+      <div class="grid-item-info" onclick={stopPropagation(bubble('click'))} onkeydown={stopPropagation(bubble('keydown'))} role="presentation">
+        <!-- svelte-ignore a11y_autofocus -->
         <input
           type="text"
           bind:value={renameValue}
-          on:keydown={handleRenameKeydown}
-          on:blur={handleRenameBlur}
+          onkeydown={handleRenameKeydown}
+          onblur={handleRenameBlur}
           class="input rename-input"
           autofocus
         />
@@ -175,7 +196,7 @@
         <span class="grid-item-name">{folder.decrypted_name || folder.name}</span>
       </div>
     {/if}
-  </button>
+  </div>
 {/if}
 
 <style>

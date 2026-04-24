@@ -17,9 +17,9 @@
   // animate 100→0 to draw it on screen regardless of its real length.
   const SHIELD_CIRCUMFERENCE = 100;
 
-  let visible = false;
-  let shieldProgress = 0;
-  let fading = false;
+  let visible = $state(false);
+  let shieldProgress = $state(0);
+  let fading = $state(false);
   let reducedMotion = false;
 
   onMount(() => {
@@ -67,7 +67,7 @@
     return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
   }
 
-  $: dashOffset = SHIELD_CIRCUMFERENCE * (1 - shieldProgress);
+  let dashOffset = $derived(SHIELD_CIRCUMFERENCE * (1 - shieldProgress));
 </script>
 
 {#if visible}

@@ -12,26 +12,52 @@
   that wouldn't apply anyway.
 -->
 <script lang="ts">
-  export let value: string = '';
-  export let id: string | undefined = undefined;
-  export let name: string | undefined = undefined;
-  export let placeholder: string = '';
-  export let autocomplete: string = 'current-password';
-  export let required: boolean = false;
-  export let disabled: boolean = false;
-  export let spellcheck: boolean = false;
-  /** Red error border — matches .input-error / .danger border in surrounding forms. */
-  export let error: boolean = false;
-  /** Monospace + wider letter-spacing — for recovery keys and similar codes. */
-  export let mono: boolean = false;
-  /** Small variant — smaller font-size (matches --t-body-sm-size surfaces). */
-  export let sm: boolean = false;
-  /** aria-label when the toggle would reveal text. */
-  export let showLabel: string = 'Show';
-  /** aria-label when the toggle would hide text. */
-  export let hideLabel: string = 'Hide';
+  import { createBubbler } from 'svelte/legacy';
 
-  let shown = false;
+  const bubble = createBubbler();
+  
+  
+  
+  
+  
+  interface Props {
+    value?: string;
+    id?: string | undefined;
+    name?: string | undefined;
+    placeholder?: string;
+    autocomplete?: string;
+    required?: boolean;
+    disabled?: boolean;
+    spellcheck?: boolean;
+    /** Red error border — matches .input-error / .danger border in surrounding forms. */
+    error?: boolean;
+    /** Monospace + wider letter-spacing — for recovery keys and similar codes. */
+    mono?: boolean;
+    /** Small variant — smaller font-size (matches --t-body-sm-size surfaces). */
+    sm?: boolean;
+    /** aria-label when the toggle would reveal text. */
+    showLabel?: string;
+    /** aria-label when the toggle would hide text. */
+    hideLabel?: string;
+  }
+
+  let {
+    value = $bindable(''),
+    id = undefined,
+    name = undefined,
+    placeholder = '',
+    autocomplete = 'current-password',
+    required = false,
+    disabled = false,
+    spellcheck = false,
+    error = false,
+    mono = false,
+    sm = false,
+    showLabel = 'Show',
+    hideLabel = 'Hide'
+  }: Props = $props();
+
+  let shown = $state(false);
 
   function handleInput(e: Event) {
     const target = e.currentTarget as HTMLInputElement;
@@ -60,18 +86,18 @@
     class:is-mono={mono}
     class:is-sm={sm}
     {value}
-    on:input={handleInput}
-    on:keydown
-    on:keyup
-    on:focus
-    on:blur
+    oninput={handleInput}
+    onkeydown={bubble('keydown')}
+    onkeyup={bubble('keyup')}
+    onfocus={bubble('focus')}
+    onblur={bubble('blur')}
   />
   <button
     type="button"
     class="pw-toggle"
     aria-label={shown ? hideLabel : showLabel}
     aria-pressed={shown}
-    on:click={() => (shown = !shown)}
+    onclick={() => (shown = !shown)}
     tabindex="-1"
   >
     {#if shown}

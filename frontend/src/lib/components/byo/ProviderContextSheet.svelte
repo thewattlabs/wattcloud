@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { self, preventDefault } from 'svelte/legacy';
+
   /**
    * ProviderContextSheet — action sheet for a provider chip.
    *
@@ -18,22 +20,27 @@
   import PasswordInput from '../common/PasswordInput.svelte';
   import { byoToast } from '../../byo/stores/byoToasts';
 
-  export let provider: ProviderMeta;
-  export let isOnlyProvider = false;
+  interface Props {
+    provider: ProviderMeta;
+    isOnlyProvider?: boolean;
+  }
+
+  let { provider, isOnlyProvider = false }: Props = $props();
 
   const dispatch = createEventDispatcher<{ close: void; change: void }>();
 
   // ── State ────────────────────────────────────────────────────────────────
 
   type Sheet = 'menu' | 'rename' | 'confirm-remove' | 'sftp-reconnect' | 'confirm-forget';
-  let sheet: Sheet = 'menu';
-  let newName = provider.displayName;
+  let sheet: Sheet = $state('menu');
+  // svelte-ignore state_referenced_locally
+  let newName = $state(provider.displayName);
 
   // SFTP reconnect form state
-  let sftpPass = '';
-  let sftpKey = '';
-  let sftpPassphrase = '';
-  let reconnecting = false;
+  let sftpPass = $state('');
+  let sftpKey = $state('');
+  let sftpPassphrase = $state('');
+  let reconnecting = $state(false);
 
   // Svelte action: focus the input once it mounts. Replaces the
   // deprecated autofocus attribute so screen readers / modal-with-focus
@@ -118,8 +125,8 @@
   }
 </script>
 
-<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-<div class="sheet-overlay" on:click|self={() => dispatch('close')}>
+<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+<div class="sheet-overlay" onclick={self(() => dispatch('close'))}>
   <div class="sheet" role="dialog" aria-modal="true" aria-label="Provider options">
     <div class="drag-handle" aria-hidden="true"></div>
 
@@ -135,7 +142,7 @@
         <button
           class="action-row"
           disabled={provider.isPrimary || isOnlyProvider}
-          on:click={handleSetAsPrimary}
+          onclick={handleSetAsPrimary}
         >
           <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
             <path d="M10 2l2.4 5H18l-4.4 3.3 1.7 5.2L10 12.5 4.7 15.5l1.7-5.2L2 7h5.6L10 2z"/>
@@ -143,7 +150,7 @@
           Set as primary
         </button>
 
-        <button class="action-row" on:click={() => { sheet = 'rename'; newName = provider.displayName; }}>
+        <button class="action-row" onclick={() => { sheet = 'rename'; newName = provider.displayName; }}>
           <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
             <path d="M14.7 3.3a1 1 0 011.4 1.4l-10 10L3 16l1.3-3.1 10.4-9.6z"/>
           </svg>
@@ -151,7 +158,7 @@
         </button>
 
         {#if provider.type === 'sftp' && provider.status === 'offline'}
-          <button class="action-row action-accent" on:click={() => { sheet = 'sftp-reconnect'; }}>
+          <button class="action-row action-accent" onclick={() => { sheet = 'sftp-reconnect'; }}>
             <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
               <path d="M4 10a6 6 0 1 1 12 0" stroke-linecap="round"/>
               <path d="M4 10l-2 2m2-2l2 2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -160,7 +167,7 @@
           </button>
         {/if}
 
-        <button class="action-row" on:click={() => { sheet = 'confirm-forget'; }}>
+        <button class="action-row" onclick={() => { sheet = 'confirm-forget'; }}>
           <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
             <path d="M5 5h10v12H5z"/>
             <path d="M8 8v6M12 8v6" stroke-linecap="round"/>
@@ -171,7 +178,7 @@
         <button
           class="action-row action-danger"
           disabled={provider.isPrimary || isOnlyProvider}
-          on:click={() => { sheet = 'confirm-remove'; }}
+          onclick={() => { sheet = 'confirm-remove'; }}
         >
           <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
             <path d="M5 5l10 10M15 5L5 15" stroke-linecap="round"/>
@@ -181,7 +188,7 @@
       </div>
 
     {:else if sheet === 'rename'}
-      <form class="inline-form" on:submit|preventDefault={handleRename}>
+      <form class="inline-form" onsubmit={preventDefault(handleRename)}>
         <label class="field-label">Provider name
           <input
             class="field-input"
@@ -193,27 +200,27 @@
           />
         </label>
         <div class="form-actions">
-          <button type="button" class="btn-ghost-sm" on:click={() => sheet = 'menu'}>Back</button>
+          <button type="button" class="btn-ghost-sm" onclick={() => sheet = 'menu'}>Back</button>
           <button type="submit" class="btn-primary-sm">Save</button>
         </div>
       </form>
 
     {:else if sheet === 'sftp-reconnect'}
-      <form class="inline-form" on:submit|preventDefault={handleSftpReconnect}>
+      <form class="inline-form" onsubmit={preventDefault(handleSftpReconnect)}>
         <p class="reconnect-hint">Enter credentials to reconnect <strong>{provider.displayName}</strong>.</p>
-        <!-- svelte-ignore a11y-label-has-associated-control -->
+        <!-- svelte-ignore a11y_label_has_associated_control -->
         <label class="field-label">Password
           <PasswordInput bind:value={sftpPass} autocomplete="current-password" showLabel="Show password" hideLabel="Hide password" />
         </label>
         <label class="field-label">Private key (PEM)
           <textarea class="field-input field-textarea" bind:value={sftpKey} rows="3" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea>
         </label>
-        <!-- svelte-ignore a11y-label-has-associated-control -->
+        <!-- svelte-ignore a11y_label_has_associated_control -->
         <label class="field-label">Key passphrase
           <PasswordInput bind:value={sftpPassphrase} autocomplete="off" showLabel="Show passphrase" hideLabel="Hide passphrase" />
         </label>
         <div class="form-actions">
-          <button type="button" class="btn-ghost-sm" on:click={() => sheet = 'menu'}>Back</button>
+          <button type="button" class="btn-ghost-sm" onclick={() => sheet = 'menu'}>Back</button>
           <button type="submit" class="btn-primary-sm" disabled={reconnecting}>
             {reconnecting ? 'Connecting…' : 'Connect'}
           </button>
@@ -225,8 +232,8 @@
         <p>Remove <strong>{provider.displayName}</strong> from this vault?</p>
         <p class="confirm-sub">Files stored on this provider remain encrypted. You can reconnect it later.</p>
         <div class="form-actions">
-          <button class="btn-ghost-sm" on:click={() => sheet = 'menu'}>Cancel</button>
-          <button class="btn-danger-sm" on:click={handleRemove}>Remove</button>
+          <button class="btn-ghost-sm" onclick={() => sheet = 'menu'}>Cancel</button>
+          <button class="btn-danger-sm" onclick={handleRemove}>Remove</button>
         </div>
       </div>
 
@@ -235,13 +242,13 @@
         <p>Forget <strong>{provider.displayName}</strong> on this device?</p>
         <p class="confirm-sub">Deletes the saved credentials from this browser only. The provider stays enrolled in the vault and continues working on your other devices. Re-entering credentials will restore access here.</p>
         <div class="form-actions">
-          <button class="btn-ghost-sm" on:click={() => sheet = 'menu'}>Cancel</button>
-          <button class="btn-danger-sm" on:click={handleForgetLocal}>Forget</button>
+          <button class="btn-ghost-sm" onclick={() => sheet = 'menu'}>Cancel</button>
+          <button class="btn-danger-sm" onclick={handleForgetLocal}>Forget</button>
         </div>
       </div>
     {/if}
 
-    <button class="btn-ghost" on:click={() => dispatch('close')}>Dismiss</button>
+    <button class="btn-ghost" onclick={() => dispatch('close')}>Dismiss</button>
   </div>
 </div>
 

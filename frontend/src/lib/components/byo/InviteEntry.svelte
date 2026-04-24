@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { preventDefault } from 'svelte/legacy';
+
   /**
    * InviteEntry — first-run screen shown when the relay is in
    * `restricted` mode, an owner has bootstrapped, and this device has no
@@ -22,17 +24,22 @@
     AccessControlError,
   } from '../../byo/accessControl';
 
-  /** When the SPA has a prior-enrollment hint but the server says we're no
+  
+  interface Props {
+    /** When the SPA has a prior-enrollment hint but the server says we're no
    *  longer logged in, we're in the "session expired" variant: different
    *  header + explanatory copy, same form underneath. */
-  export let expired: boolean = false;
+    expired?: boolean;
+  }
 
-  let code = '';
-  let label = defaultDeviceLabel();
-  let busy = false;
-  let error = '';
+  let { expired = false }: Props = $props();
 
-  $: canSubmit = isInviteCodeComplete(code) && label.trim().length > 0 && !busy;
+  let code = $state('');
+  let label = $state(defaultDeviceLabel());
+  let busy = $state(false);
+  let error = $state('');
+
+  let canSubmit = $derived(isInviteCodeComplete(code) && label.trim().length > 0 && !busy);
 
   function handleCodeInput(e: Event) {
     const target = e.target as HTMLInputElement;
@@ -84,13 +91,13 @@
     {/if}
   </div>
 
-  <form on:submit|preventDefault={handleSubmit} class="form">
+  <form onsubmit={preventDefault(handleSubmit)} class="form">
     <label class="field">
       <span class="field-label">Invite code</span>
       <input
         type="text"
         value={code}
-        on:input={handleCodeInput}
+        oninput={handleCodeInput}
         class="code-input"
         maxlength="13"
         spellcheck="false"

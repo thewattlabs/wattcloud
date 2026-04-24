@@ -5,9 +5,13 @@
 	import ArrowDown from 'phosphor-svelte/lib/ArrowDown';
 	import ArrowUp from 'phosphor-svelte/lib/ArrowUp';
 
-	export let sorting: SortingState;
-	export let onByChange: (by: SortBy) => void;
-	export let onToggleDirection: () => void;
+	interface Props {
+		sorting: SortingState;
+		onByChange: (by: SortBy) => void;
+		onToggleDirection: () => void;
+	}
+
+	let { sorting, onByChange, onToggleDirection }: Props = $props();
 
 	const sortByOptions: { value: SortBy; label: string; icon: 'calendar' | 'name' }[] = [
 		{ value: 'date', label: 'Date', icon: 'calendar' },
@@ -22,7 +26,7 @@
 			<button
 				class="sort-option"
 				class:active={sorting.by === option.value}
-				on:click={() => onByChange(option.value)}
+				onclick={() => onByChange(option.value)}
 				title={`Sort by ${option.label}`}
 			>
 				{#if option.icon === 'calendar'}
@@ -38,7 +42,7 @@
 	<!-- Sort Direction Toggle -->
 	<button
 		class="sort-direction"
-		on:click={onToggleDirection}
+		onclick={onToggleDirection}
 		title={sorting.direction === 'down' ? 'Descending (newest first)' : 'Ascending (oldest first)'}
 	>
 		{#if sorting.direction === 'down'}

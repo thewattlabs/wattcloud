@@ -1,11 +1,25 @@
 <script lang="ts">
+  import { createBubbler, stopPropagation } from 'svelte/legacy';
+
+  const bubble = createBubbler();
   import { createEventDispatcher } from 'svelte';
   import { fly, fade } from 'svelte/transition';
 
-  export let open: boolean = false;
-  export let title: string = '';
-  export let subtitle: string = '';
-  export let variant: 'default' | 'wide' = 'default';
+  interface Props {
+    open?: boolean;
+    title?: string;
+    subtitle?: string;
+    variant?: 'default' | 'wide';
+    children?: import('svelte').Snippet;
+  }
+
+  let {
+    open = false,
+    title = '',
+    subtitle = '',
+    variant = 'default',
+    children
+  }: Props = $props();
 
   const dispatch = createEventDispatcher();
 
@@ -24,21 +38,21 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 {#if open}
   <div
     class="sheet-overlay"
-    on:click={handleOverlayClick}
+    onclick={handleOverlayClick}
     role="presentation"
     transition:fade={{ duration: 200 }}
   ></div>
 
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions a11y_interactive_supports_focus -->
   <div
     class="sheet"
     class:sheet--wide={variant === 'wide'}
-    on:click|stopPropagation
+    onclick={stopPropagation(bubble('click'))}
     transition:fly={{ y: 300, duration: 300, easing: t => 1 - Math.pow(1 - t, 3) }}
     role="dialog"
     aria-modal="true"
@@ -55,7 +69,7 @@
     {/if}
 
     <div class="sheet-content">
-      <slot />
+      {@render children?.()}
     </div>
   </div>
 {/if}

@@ -27,8 +27,9 @@
       },
       "extends": ["plugin:svelte/recommended"],
       "rules": {
-        "svelte/no-unused-svelte-ignore": "warn",
-        "svelte/no-at-html-tags": "error"
+        "svelte/no-unused-svelte-ignore": "off",
+        "svelte/no-at-html-tags": "error",
+        "prefer-const": "off"
       }
     }
   ],

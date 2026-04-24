@@ -31,7 +31,7 @@
       <WarningCircle size={20} weight="fill" color="var(--danger, #D64545)" />
     {/if}
     <span class="toast-text">{t.text}</span>
-    <button class="toast-dismiss" on:click={byoToast.dismiss} aria-label="Dismiss">×</button>
+    <button class="toast-dismiss" onclick={byoToast.dismiss} aria-label="Dismiss">×</button>
   </div>
 {/if}
 

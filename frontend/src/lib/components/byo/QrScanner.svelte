@@ -5,22 +5,22 @@
 
   const dispatch = createEventDispatcher<{ scanned: string; error: string }>();
 
-  let video: HTMLVideoElement;
-  let canvas: HTMLCanvasElement;
+  let video: HTMLVideoElement = $state();
+  let canvas: HTMLCanvasElement = $state();
   let ctx: CanvasRenderingContext2D | null = null;
   let stream: MediaStream | null = null;
   let animFrame: number | null = null;
-  let permissionDenied = false;
-  let starting = true;
-  let showRetryBanner = false;
-  let showManualEntry = false;
-  let manualCode = '';
-  let manualError = '';
+  let permissionDenied = $state(false);
+  let starting = $state(true);
+  let showRetryBanner = $state(false);
+  let showManualEntry = $state(false);
+  let manualCode = $state('');
+  let manualError = $state('');
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Torch support
-  let torchSupported = false;
-  let torchOn = false;
+  let torchSupported = $state(false);
+  let torchOn = $state(false);
   let videoTrack: MediaStreamTrack | null = null;
 
   onMount(async () => {
@@ -137,7 +137,7 @@
       <button
         class="torch-btn"
         class:torch-on={torchOn}
-        on:click={toggleTorch}
+        onclick={toggleTorch}
         aria-label={torchOn ? 'Turn torch off' : 'Turn torch on'}
         title={torchOn ? 'Torch: on' : 'Torch: off'}
       >
@@ -151,7 +151,7 @@
     {#if showRetryBanner}
       <div class="retry-banner">
         <span>Having trouble scanning?</span>
-        <button type="button" class="retry-link" on:click={() => showManualEntry = true}>Enter code manually</button>
+        <button type="button" class="retry-link" onclick={() => showManualEntry = true}>Enter code manually</button>
       </div>
     {/if}
   {/if}
@@ -170,12 +170,12 @@
       spellcheck={false}
       placeholder="Paste code or URL here"
       bind:value={manualCode}
-      on:keydown={(e) => e.key === 'Enter' && submitManual()}
+      onkeydown={(e) => e.key === 'Enter' && submitManual()}
     />
     {#if manualError}
       <p class="input-error-msg" role="alert">{manualError}</p>
     {/if}
-    <button class="btn btn-primary manual-submit" on:click={submitManual}>Continue</button>
+    <button class="btn btn-primary manual-submit" onclick={submitManual}>Continue</button>
   </div>
 {/if}
 

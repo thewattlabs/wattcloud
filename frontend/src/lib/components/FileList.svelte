@@ -1,26 +1,19 @@
 <script lang="ts">
+  import { run, createBubbler, stopPropagation } from 'svelte/legacy';
+
+  const bubble = createBubbler();
   import { createEventDispatcher, onMount } from 'svelte';
   import type { FileRecord } from '../stores/files';
   import { selectionMode, toggleFileSelection, selectedFiles, clearFileSelection } from '../stores/files';
 
   // ── BYO dual-mode extension ──────────────────────────────────────────────
   // When provided, replaces the managed-mode selection stores.
-  // BYO mode passes its own selection state; managed mode leaves this null.
-  export let selectionContext: {
-    isSelectionMode: boolean;
-    selectedFiles: Set<number>;
-    toggle: (id: number) => void;
-    selectAll: (ids: number[]) => void;
-    clear: () => void;
-  } | null = null;
+  
 
   // When provided (BYO), replaces managed api.renameFile + encryptFilename.
-  // Called with (fileId, plaintextName).
-  export let onRename: ((fileId: number, plaintextName: string) => Promise<void>) | null = null;
-  // When provided (managed), handles encrypt + API rename with the decrypted file key.
-  export let managedRename: ((fileId: number, newName: string, fileKey: Uint8Array) => Promise<void>) | null = null;
-  // When provided (managed), decrypts an encrypted filename using the file key.
-  export let decryptName: ((encryptedName: string, key: Uint8Array) => Promise<string>) | null = null;
+  
+  
+  
   // ─────────────────────────────────────────────────────────────────────────
   import CloudEncBadge from './CloudEncBadge.svelte';
 
@@ -38,36 +31,61 @@
   import UploadSimple from 'phosphor-svelte/lib/UploadSimple';
   import Check from 'phosphor-svelte/lib/Check';
 
-  export let files: FileRecord[] = [];
-  export let fileDecryptedKeys: Record<number, Uint8Array> = {};
-  export let renameFileId: number | null = null;
-  export let favoriteFileIds: Set<number> = new Set();
-  export let showFolderContext: boolean = false;
-  export let folderNames: Record<number, string> = {};
-  export let viewMode: 'list' | 'grid' = 'list';
-  /** BYO mode: show encryption badge on all file thumbnails (§29.1). */
-  export let showEncryptionBadge: boolean = false;
+  
+  interface Props {
+    // BYO mode passes its own selection state; managed mode leaves this null.
+    selectionContext?: {
+    isSelectionMode: boolean;
+    selectedFiles: Set<number>;
+    toggle: (id: number) => void;
+    selectAll: (ids: number[]) => void;
+    clear: () => void;
+  } | null;
+    // Called with (fileId, plaintextName).
+    onRename?: ((fileId: number, plaintextName: string) => Promise<void>) | null;
+    // When provided (managed), handles encrypt + API rename with the decrypted file key.
+    managedRename?: ((fileId: number, newName: string, fileKey: Uint8Array) => Promise<void>) | null;
+    // When provided (managed), decrypts an encrypted filename using the file key.
+    decryptName?: ((encryptedName: string, key: Uint8Array) => Promise<string>) | null;
+    files?: FileRecord[];
+    fileDecryptedKeys?: Record<number, Uint8Array>;
+    renameFileId?: number | null;
+    favoriteFileIds?: Set<number>;
+    showFolderContext?: boolean;
+    folderNames?: Record<number, string>;
+    viewMode?: 'list' | 'grid';
+    /** BYO mode: show encryption badge on all file thumbnails (§29.1). */
+    showEncryptionBadge?: boolean;
+  }
+
+  let {
+    selectionContext = null,
+    onRename = null,
+    managedRename = null,
+    decryptName = null,
+    files = [],
+    fileDecryptedKeys = {},
+    renameFileId = $bindable(null),
+    favoriteFileIds = new Set(),
+    showFolderContext = false,
+    folderNames = {},
+    viewMode = 'list',
+    showEncryptionBadge = false
+  }: Props = $props();
 
   const dispatch = createEventDispatcher();
 
-  let draggedFileId: number | null = null;
-  let showSelectionMode = false;
+  let draggedFileId: number | null = $state(null);
+  let showSelectionMode = $state(false);
   let longPressTimer: ReturnType<typeof setTimeout> | null = null;
   let touchStartPos = { x: 0, y: 0 };
   const LONG_PRESS_DURATION = 500;
 
   // Rename state
-  let renamingFileId: number | null = null;
-  let fileRenameValue = '';
+  let renamingFileId: number | null = $state(null);
+  let fileRenameValue = $state('');
 
-  // Use selectionContext when provided (BYO mode), else fall back to managed stores.
-  $: showSelectionMode = selectionContext ? selectionContext.isSelectionMode : $selectionMode;
-  $: activeSelectedFiles = selectionContext ? selectionContext.selectedFiles : $selectedFiles;
 
-  $: if (renameFileId !== null) {
-    startFileRename(renameFileId);
-    renameFileId = null;
-  }
 
   onMount(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -343,6 +361,17 @@
   function handleUploadClick() {
     dispatch('upload');
   }
+  // Use selectionContext when provided (BYO mode), else fall back to managed stores.
+  run(() => {
+    showSelectionMode = selectionContext ? selectionContext.isSelectionMode : $selectionMode;
+  });
+  let activeSelectedFiles = $derived(selectionContext ? selectionContext.selectedFiles : $selectedFiles);
+  run(() => {
+    if (renameFileId !== null) {
+      startFileRename(renameFileId);
+      renameFileId = null;
+    }
+  });
 </script>
 
 {#if files.length === 0}
@@ -353,7 +382,7 @@
     </div>
     <h3 class="empty-state-heading">Your vault is empty</h3>
     <p class="empty-state-text">Upload files to start.</p>
-    <button class="btn btn-primary" on:click={handleUploadClick}>
+    <button class="btn btn-primary" onclick={handleUploadClick}>
       <UploadSimple size={20} />
       Upload
     </button>
@@ -374,7 +403,7 @@
   {/if}
   <div class="file-list" role="list">
     {#each files as file (file.id)}
-      <!-- svelte-ignore a11y-no-noninteractive-element-interactions a11y-no-noninteractive-tabindex -->
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
       <div
         class="list-item"
         class:item-selected={activeSelectedFiles.has(file.id)}
@@ -383,14 +412,14 @@
         role="listitem"
         tabindex="0"
         draggable={!showSelectionMode}
-        on:dragstart={(e) => handleDragStart(e, file)}
-        on:dragend={handleDragEnd}
-        on:click={(e) => handleFileClick(e, file)}
-        on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && handleFileClick(e, file)}
-        on:touchstart={(e) => handleTouchStart(e, file)}
-        on:touchmove={handleTouchMove}
-        on:touchend={handleTouchEnd}
-        on:touchcancel={handleTouchCancel}
+        ondragstart={(e) => handleDragStart(e, file)}
+        ondragend={handleDragEnd}
+        onclick={(e) => handleFileClick(e, file)}
+        onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && handleFileClick(e, file)}
+        ontouchstart={(e) => handleTouchStart(e, file)}
+        ontouchmove={handleTouchMove}
+        ontouchend={handleTouchEnd}
+        ontouchcancel={handleTouchCancel}
       >
         <div class="file-icon-wrap">
           <div class="file-icon {getFileIconClass(getFileIconType(getDecryptedFileName(file)))}">
@@ -420,13 +449,13 @@
         </div>
 
         {#if renamingFileId === file.id}
-          <div class="rename-form" on:click|stopPropagation on:keydown|stopPropagation role="presentation">
-            <!-- svelte-ignore a11y-autofocus -->
+          <div class="rename-form" onclick={stopPropagation(bubble('click'))} onkeydown={stopPropagation(bubble('keydown'))} role="presentation">
+            <!-- svelte-ignore a11y_autofocus -->
             <input
               type="text"
               bind:value={fileRenameValue}
-              on:keydown={handleFileRenameKeydown}
-              on:blur={submitFileRename}
+              onkeydown={handleFileRenameKeydown}
+              onblur={submitFileRename}
               class="input"
               autofocus
             />
@@ -464,7 +493,7 @@
             class="file-action-btn"
             class:checked={showSelectionMode && activeSelectedFiles.has(file.id)}
             class:favorite={!showSelectionMode && favoriteFileIds.has(file.id)}
-            on:click={(e) => showSelectionMode ? handleCheckboxClick(e, file) : handleMenuClick(e, file.id)}
+            onclick={(e) => showSelectionMode ? handleCheckboxClick(e, file) : handleMenuClick(e, file.id)}
             aria-label={showSelectionMode ? (activeSelectedFiles.has(file.id) ? 'Deselect file' : 'Select file') : 'Select file'}
           >
             {#if showSelectionMode}
@@ -483,7 +512,7 @@
   <!-- Grid View per DESIGN.md 14.2 -->
   <div class="file-grid" role="list">
     {#each files as file (file.id)}
-      <!-- svelte-ignore a11y-no-noninteractive-element-interactions a11y-no-noninteractive-tabindex -->
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
       <div
         class="grid-item"
         class:item-selected={activeSelectedFiles.has(file.id)}
@@ -492,14 +521,14 @@
         role="listitem"
         tabindex="0"
         draggable={!showSelectionMode}
-        on:dragstart={(e) => handleDragStart(e, file)}
-        on:dragend={handleDragEnd}
-        on:click={(e) => handleFileClick(e, file)}
-        on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && handleFileClick(e, file)}
-        on:touchstart={(e) => handleTouchStart(e, file)}
-        on:touchmove={handleTouchMove}
-        on:touchend={handleTouchEnd}
-        on:touchcancel={handleTouchCancel}
+        ondragstart={(e) => handleDragStart(e, file)}
+        ondragend={handleDragEnd}
+        onclick={(e) => handleFileClick(e, file)}
+        onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && handleFileClick(e, file)}
+        ontouchstart={(e) => handleTouchStart(e, file)}
+        ontouchmove={handleTouchMove}
+        ontouchend={handleTouchEnd}
+        ontouchcancel={handleTouchCancel}
       >
         <div class="grid-item-thumbnail {getFileIconClass(getFileIconType(getDecryptedFileName(file)))}">
           {#if getFileIconType(getDecryptedFileName(file)) === 'image'}
@@ -526,7 +555,7 @@
             class="grid-action-btn"
             class:checked={showSelectionMode && activeSelectedFiles.has(file.id)}
             class:favorite={!showSelectionMode && favoriteFileIds.has(file.id)}
-            on:click={(e) => showSelectionMode ? handleCheckboxClick(e, file) : handleMenuClick(e, file.id)}
+            onclick={(e) => showSelectionMode ? handleCheckboxClick(e, file) : handleMenuClick(e, file.id)}
             aria-label={showSelectionMode ? (activeSelectedFiles.has(file.id) ? 'Deselect' : 'Select') : 'Select file'}
           >
             {#if showSelectionMode}
@@ -540,13 +569,13 @@
         </div>
 
         {#if renamingFileId === file.id}
-          <div class="grid-item-info" on:click|stopPropagation on:keydown|stopPropagation role="presentation">
-            <!-- svelte-ignore a11y-autofocus -->
+          <div class="grid-item-info" onclick={stopPropagation(bubble('click'))} onkeydown={stopPropagation(bubble('keydown'))} role="presentation">
+            <!-- svelte-ignore a11y_autofocus -->
             <input
               type="text"
               bind:value={fileRenameValue}
-              on:keydown={handleFileRenameKeydown}
-              on:blur={submitFileRename}
+              onkeydown={handleFileRenameKeydown}
+              onblur={submitFileRename}
               class="input grid-rename-input"
               autofocus
             />

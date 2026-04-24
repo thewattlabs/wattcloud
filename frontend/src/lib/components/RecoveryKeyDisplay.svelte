@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { run } from 'svelte/legacy';
+
   import { createEventDispatcher, onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';
   import Copy from 'phosphor-svelte/lib/Copy';
@@ -6,17 +8,21 @@
   import ArrowRight from 'phosphor-svelte/lib/ArrowRight';
   import Lock from 'phosphor-svelte/lib/Lock';
 
-  export let recoveryKey: string;
-  export let onConfirmed: () => void;
-  export let embedded: boolean = false;
+  interface Props {
+    recoveryKey: string;
+    onConfirmed: () => void;
+    embedded?: boolean;
+  }
+
+  let { recoveryKey = $bindable(), onConfirmed, embedded = false }: Props = $props();
 
   const dispatch = createEventDispatcher();
 
-  let confirmed = false;
-  let copied = false;
-  let displayKey = '';
+  let confirmed = $state(false);
+  let copied = $state(false);
+  let displayKey = $state('');
 
-  $: {
+  run(() => {
     if (recoveryKey) {
       const clean = recoveryKey.replace(/[-\s]/g, '');
       const groups: string[] = [];
@@ -25,7 +31,7 @@
     } else {
       displayKey = '';
     }
-  }
+  });
 
   async function copyToClipboard() {
     try {
@@ -67,7 +73,7 @@
       <button
         type="button"
         class="rkd-copy"
-        on:click={copyToClipboard}
+        onclick={copyToClipboard}
         aria-label={copied ? 'Copied' : 'Copy recovery key'}
       >
         {#if copied}
@@ -88,7 +94,7 @@
 
     <button
       class="btn btn-primary rkd-continue"
-      on:click={handleContinue}
+      onclick={handleContinue}
       disabled={!confirmed}
     >
       <span>Continue</span>

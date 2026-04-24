@@ -5,7 +5,11 @@
   encrypted vault". No nested icon: the cloud IS the indicator.
 -->
 <script lang="ts">
-  export let size: number = 16;
+  interface Props {
+    size?: number;
+  }
+
+  let { size = 16 }: Props = $props();
 </script>
 
 <svg

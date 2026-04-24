@@ -2,7 +2,11 @@
   import { createEventDispatcher } from 'svelte';
   import CloudBadge from '../CloudBadge.svelte';
 
-  export let sasCode: string;
+  interface Props {
+    sasCode: string;
+  }
+
+  let { sasCode }: Props = $props();
 
   const dispatch = createEventDispatcher<{ confirm: void; mismatch: void }>();
 </script>
@@ -23,10 +27,10 @@
   </p>
 
   <div class="actions">
-    <button class="btn btn-secondary danger-btn" on:click={() => dispatch('mismatch')}>
+    <button class="btn btn-secondary danger-btn" onclick={() => dispatch('mismatch')}>
       No — abort
     </button>
-    <button class="btn btn-primary" on:click={() => dispatch('confirm')}>
+    <button class="btn btn-primary" onclick={() => dispatch('confirm')}>
       Yes, they match
     </button>
   </div>

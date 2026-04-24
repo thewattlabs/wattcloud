@@ -18,14 +18,14 @@
 
   const dataProvider = getContext<{ current: DataProvider }>('byo:dataProvider').current;
 
-  let shares: ShareEntry[] = [];
-  let displayNames: Map<string, string> = new Map(); // share_id → label
-  let revoking: Set<string> = new Set();
+  let shares: ShareEntry[] = $state([]);
+  let displayNames: Map<string, string> = $state(new Map()); // share_id → label
+  let revoking: Set<string> = $state(new Set());
   let pollInterval: ReturnType<typeof setInterval> | null = null;
 
   // Revoke confirmation (§11.2 — destructive action needs consequence line).
-  let confirmShareId: string | null = null;
-  let confirmDisplayName = '';
+  let confirmShareId: string | null = $state(null);
+  let confirmDisplayName = $state('');
 
   async function loadShares() {
     shares = dataProvider.listShares();
@@ -153,9 +153,10 @@
   {:else}
     <ul class="shares-items" aria-label="Active share links">
       {#each shares as share (share.share_id)}
+        {@const SvelteComponent = kindIcon(share.kind)}
         <li class="share-item">
           <div class="share-item-icon" aria-hidden="true">
-            <svelte:component this={kindIcon(share.kind)} size={20} />
+            <SvelteComponent size={20} />
           </div>
           <div class="share-item-body">
             <div class="share-item-top">
@@ -175,14 +176,14 @@
           </div>
           <button
             class="revoke-btn"
-            on:click={() => promptRevoke(share)}
+            onclick={() => promptRevoke(share)}
             disabled={revoking.has(share.share_id)}
             aria-label="Revoke share link for {displayNames.get(share.share_id) ?? 'share'}"
             title="Revoke"
           >
             <span class="revoke-visual" aria-hidden="true">
               {#if revoking.has(share.share_id)}
-                <span class="spinner-sm" />
+                <span class="spinner-sm"></span>
               {:else}
                 <Trash size={18} />
               {/if}

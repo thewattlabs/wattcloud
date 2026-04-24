@@ -1,13 +1,20 @@
 <script lang="ts">
+  import { run } from 'svelte/legacy';
+
   import { onMount } from 'svelte';
   import QRCode from 'qrcode';
 
-  export let data: string;
-  /** Describes what the QR encodes — used as the canvas aria-label. */
-  export let ariaLabel = 'QR code';
+  
+  interface Props {
+    data: string;
+    /** Describes what the QR encodes — used as the canvas aria-label. */
+    ariaLabel?: string;
+  }
 
-  let canvas: HTMLCanvasElement;
-  let error = '';
+  let { data, ariaLabel = 'QR code' }: Props = $props();
+
+  let canvas: HTMLCanvasElement = $state();
+  let error = $state('');
 
   async function render() {
     if (!canvas || !data) return;
@@ -28,7 +35,9 @@
   }
 
   onMount(() => { render(); });
-  $: if (canvas && data) render();
+  run(() => {
+    if (canvas && data) render();
+  });
 </script>
 
 <div class="qr-wrap">

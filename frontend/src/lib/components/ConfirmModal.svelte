@@ -2,12 +2,25 @@
   import { createEventDispatcher } from 'svelte';
   import BottomSheet from './BottomSheet.svelte';
 
-  export let isOpen: boolean = false;
-  export let title: string = 'Confirm';
-  export let message: string = '';
-  export let confirmText: string = 'Confirm';
-  export let confirmClass: string = 'btn-danger';
-  export let loading: boolean = false;
+  interface Props {
+    isOpen?: boolean;
+    title?: string;
+    message?: string;
+    confirmText?: string;
+    confirmClass?: string;
+    loading?: boolean;
+    children?: import('svelte').Snippet;
+  }
+
+  let {
+    isOpen = false,
+    title = 'Confirm',
+    message = '',
+    confirmText = 'Confirm',
+    confirmClass = 'btn-danger',
+    loading = false,
+    children
+  }: Props = $props();
 
   const dispatch = createEventDispatcher();
 
@@ -31,18 +44,18 @@
 
 <BottomSheet open={isOpen} {title} on:close={handleCancel}>
   <div class="confirm-body">
-    <slot>
+    {#if children}{@render children()}{:else}
       {#if message}
         <p class="confirm-message">{message}</p>
       {/if}
-    </slot>
+    {/if}
   </div>
 
   <div class="sheet-actions">
-    <button class="btn btn-ghost" on:click={handleCancel} disabled={loading}>
+    <button class="btn btn-ghost" onclick={handleCancel} disabled={loading}>
       Cancel
     </button>
-    <button class={resolveButtonClass(confirmClass)} on:click={handleConfirm} disabled={loading}>
+    <button class={resolveButtonClass(confirmClass)} onclick={handleConfirm} disabled={loading}>
       {#if loading}
         <span class="spinner"></span>
       {:else}

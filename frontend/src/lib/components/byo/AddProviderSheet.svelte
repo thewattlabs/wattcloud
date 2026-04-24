@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { run, preventDefault } from 'svelte/legacy';
+
   /**
    * AddProviderSheet — bottom sheet (DESIGN.md §11.2) for adding a storage provider.
    *
@@ -30,8 +32,13 @@
   import DeviceMobile from 'phosphor-svelte/lib/DeviceMobile';
   import type { ComponentType } from 'svelte';
 
-  /** Set to true when used as the first-run provider selection screen. */
-  export let firstRun = false;
+  
+  interface Props {
+    /** Set to true when used as the first-run provider selection screen. */
+    firstRun?: boolean;
+  }
+
+  let { firstRun = false }: Props = $props();
 
   const dispatch = createEventDispatcher<{
     added: { providerId: string };
@@ -68,10 +75,10 @@
 
   // ── State ──────────────────────────────────────────────────────────────────
 
-  let activeInline: ProviderType | null = null;
-  let oauthLoading: ProviderType | null = null;
-  let connecting = false;
-  let error = '';
+  let activeInline: ProviderType | null = $state(null);
+  let oauthLoading: ProviderType | null = $state(null);
+  let connecting = $state(false);
+  let error = $state('');
 
   // Surface an error to the user via the global toast host — replaces the
   // old top-of-sheet banner that users couldn't see when scrolled down to
@@ -83,18 +90,18 @@
   }
 
   // WebDAV form
-  let wdavUrl = ''; let wdavUser = ''; let wdavPass = '';
+  let wdavUrl = $state(''); let wdavUser = $state(''); let wdavPass = $state('');
   // SFTP form
-  let sftpHost = ''; let sftpPort = 22; let sftpUser = '';
-  let sftpPass = ''; let sftpKey = ''; let sftpPassphrase = '';
+  let sftpHost = $state(''); let sftpPort = $state(22); let sftpUser = $state('');
+  let sftpPass = $state(''); let sftpKey = $state(''); let sftpPassphrase = '';
   /** Optional server-absolute directory the vault lives under (e.g. `/wattcloud`). */
-  let sftpBasePath = '';
+  let sftpBasePath = $state('');
   // S3 form
-  let s3Endpoint = ''; let s3Region = ''; let s3Bucket = '';
-  let s3AccessKeyId = ''; let s3SecretAccessKey = '';
-  let s3PathStyle = false; let s3CorsError = false;
+  let s3Endpoint = $state(''); let s3Region = $state(''); let s3Bucket = $state('');
+  let s3AccessKeyId = $state(''); let s3SecretAccessKey = $state('');
+  let s3PathStyle = $state(false); let s3CorsError = $state(false);
   /** Optional in-bucket prefix. Non-empty → vault at `{bucket}/{prefix}/WattcloudVault/`. */
-  let s3BasePath = '';
+  let s3BasePath = $state('');
 
   type S3Service = 'cloudflare-r2' | 'wasabi' | 'minio' | null;
   function detectS3Service(ep: string): S3Service {
@@ -104,9 +111,13 @@
     if (ep.includes('minio') || /:[0-9]{4,5}$/.test(ep)) return 'minio';
     return null;
   }
-  $: s3Detected = detectS3Service(s3Endpoint);
-  $: if (s3Detected === 'minio' || s3Detected === 'wasabi') s3PathStyle = true;
-  $: if (s3Detected === 'cloudflare-r2') s3PathStyle = false;
+  let s3Detected = $derived(detectS3Service(s3Endpoint));
+  run(() => {
+    if (s3Detected === 'minio' || s3Detected === 'wasabi') s3PathStyle = true;
+  });
+  run(() => {
+    if (s3Detected === 'cloudflare-r2') s3PathStyle = false;
+  });
 
   const S3_CORS_JSON = JSON.stringify({
     CORSRules: [{ AllowedOrigins: ['*'], AllowedMethods: ['GET', 'PUT', 'HEAD', 'DELETE'],
@@ -139,7 +150,7 @@
   }
 
   // SSH TOFU confirmation
-  let pendingHostKey: { fingerprint: string; resolve: (v: boolean) => void } | null = null;
+  let pendingHostKey: { fingerprint: string; resolve: (v: boolean) => void } | null = $state(null);
 
   // ── OAuth providers ────────────────────────────────────────────────────────
 
@@ -290,7 +301,7 @@
   }
 </script>
 
-<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 {#if firstRun}
   <!-- First-run: tile grid (DESIGN.md §14.2 – 2 cols mobile / 3 cols desktop). -->
   <div class="fr-page" role="region" aria-label="Choose storage provider">
@@ -326,11 +337,11 @@
           class="tile"
           class:active={activeInline === p.type}
           disabled={connecting}
-          on:click={() => { activeInline = p.type; error = ''; }}
+          onclick={() => { activeInline = p.type; error = ''; }}
           aria-label={`Connect ${p.name}`}
         >
           <span class="tile-logo" aria-hidden="true">
-            <svelte:component this={p.icon} size={32} weight="regular" />
+            <p.icon size={32} weight="regular" />
           </span>
           <span class="tile-name">{p.name}</span>
         </button>
@@ -424,7 +435,7 @@
     <!-- Secondary path: join a vault that already exists on another device.
          Demoted from a pill to a small text link so it doesn't compete with
          the tile grid as a primary action. -->
-    <button class="link-device-link" on:click={() => dispatch('linkDevice')}>
+    <button class="link-device-link" onclick={() => dispatch('linkDevice')}>
       <DeviceMobile size={14} weight="regular" />
       <span>Already enrolled? Link this device</span>
     </button>
@@ -435,7 +446,7 @@
     <div
       class="sheet-overlay"
       role="presentation"
-      on:click={(e) => { if (e.target === e.currentTarget) activeInline = null; }}
+      onclick={(e) => { if (e.target === e.currentTarget) activeInline = null; }}
     >
       <div class="sheet" role="dialog" aria-modal="true" aria-label={`Connect ${activeInline}`}>
         <div class="drag-handle" aria-hidden="true"></div>
@@ -444,7 +455,7 @@
             <h2 class="sheet-title">WebDAV</h2>
             <p class="sheet-subtitle">Nextcloud, ownCloud, Synology, or any WebDAV-compatible server.</p>
           </div>
-          <form class="inline-form borderless" on:submit|preventDefault={submitWebDAV}>
+          <form class="inline-form borderless" onsubmit={preventDefault(submitWebDAV)}>
             <label class="field-label">Server URL
               <input class="field-input" type="url" bind:value={wdavUrl} placeholder="https://cloud.example.com" required autocomplete="off"/>
               <span class="field-hint">The vault folder is always named <code>WattcloudVault/</code> and is created directly under this URL. Point the URL at a subfolder to nest the vault inside it. Your vault will land at <code>{(wdavUrl.trim() || 'https://cloud.example.com').replace(/\/+$/, '')}/WattcloudVault/</code>.</span>
@@ -452,7 +463,7 @@
             <label class="field-label">Username
               <input class="field-input" type="text" bind:value={wdavUser} required autocomplete="username"/>
             </label>
-            <!-- svelte-ignore a11y-label-has-associated-control -->
+            <!-- svelte-ignore a11y_label_has_associated_control -->
             <label class="field-label">Password
               <PasswordInput
                 bind:value={wdavPass}
@@ -462,7 +473,7 @@
               />
             </label>
             <div class="form-actions">
-              <button type="button" class="btn-ghost" on:click={() => { activeInline = null; }}>Cancel</button>
+              <button type="button" class="btn-ghost" onclick={() => { activeInline = null; }}>Cancel</button>
               <button type="submit" class="btn-primary" disabled={connecting}>
                 {connecting ? 'Connecting…' : 'Connect'}
               </button>
@@ -473,7 +484,7 @@
             <h2 class="sheet-title">SFTP</h2>
             <p class="sheet-subtitle">Any SSH server you control.</p>
           </div>
-          <form class="inline-form borderless" on:submit|preventDefault={submitSFTP}>
+          <form class="inline-form borderless" onsubmit={preventDefault(submitSFTP)}>
             <label class="field-label">Hostname
               <input class="field-input" type="text" bind:value={sftpHost} required autocomplete="off"/>
             </label>
@@ -490,7 +501,7 @@
               <input class="field-input" type="text" bind:value={sftpBasePath} placeholder="/MyFolder" autocomplete="off"/>
               <span class="field-hint">Optional. The vault folder is always named <code>WattcloudVault/</code>. Setting a base path prefixes where it's created. Leave empty to place it at the SFTP session root. Your vault will land at <code>{(sftpBasePath.trim() || '').replace(/\/+$/, '')}/WattcloudVault/</code>.</span>
             </label>
-            <!-- svelte-ignore a11y-label-has-associated-control -->
+            <!-- svelte-ignore a11y_label_has_associated_control -->
             <label class="field-label">Password
               <PasswordInput
                 bind:value={sftpPass}
@@ -503,7 +514,7 @@
               <textarea class="field-input field-textarea" bind:value={sftpKey} rows="3" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea>
             </label>
             <div class="form-actions">
-              <button type="button" class="btn-ghost" on:click={() => { activeInline = null; }}>Cancel</button>
+              <button type="button" class="btn-ghost" onclick={() => { activeInline = null; }}>Cancel</button>
               <button type="submit" class="btn-primary" disabled={connecting}>
                 {connecting ? 'Connecting…' : 'Connect'}
               </button>
@@ -514,7 +525,7 @@
             <h2 class="sheet-title">S3 / R2 / Wasabi / MinIO</h2>
             <p class="sheet-subtitle">AWS, Cloudflare R2, Wasabi, MinIO, Backblaze B2, or any S3-compatible endpoint.</p>
           </div>
-          <form class="inline-form borderless" on:submit|preventDefault={submitS3}>
+          <form class="inline-form borderless" onsubmit={preventDefault(submitS3)}>
             {#if s3Detected}
               <div class="detect-chip">
                 <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -543,7 +554,7 @@
             <label class="field-label">Access Key ID
               <input class="field-input" type="text" bind:value={s3AccessKeyId} required autocomplete="off" spellcheck="false"/>
             </label>
-            <!-- svelte-ignore a11y-label-has-associated-control -->
+            <!-- svelte-ignore a11y_label_has_associated_control -->
             <label class="field-label">Secret Access Key
               <PasswordInput
                 bind:value={s3SecretAccessKey}
@@ -561,11 +572,11 @@
               <div class="cors-card" role="alert">
                 <p class="cors-title">CORS not configured on this bucket</p>
                 <p class="cors-body">Add this CORS rule to your bucket, then try again.</p>
-                <button type="button" class="btn-copy" on:click={copyS3CorsJson}>Copy CORS JSON</button>
+                <button type="button" class="btn-copy" onclick={copyS3CorsJson}>Copy CORS JSON</button>
               </div>
             {/if}
             <div class="form-actions">
-              <button type="button" class="btn-ghost" on:click={() => { activeInline = null; }}>Cancel</button>
+              <button type="button" class="btn-ghost" onclick={() => { activeInline = null; }}>Cancel</button>
               <button type="submit" class="btn-primary" disabled={connecting}>
                 {connecting ? 'Connecting…' : 'Test & Connect'}
               </button>
@@ -579,7 +590,7 @@
   <!-- Dashboard "add provider": bottom sheet (DESIGN.md §11.2, role=dialog). -->
   <div
     class="sheet-overlay"
-    on:click={(e) => { if (e.target === e.currentTarget) dispatch('close'); }}
+    onclick={(e) => { if (e.target === e.currentTarget) dispatch('close'); }}
   >
     <div class="sheet" role="dialog" aria-modal="true" aria-label="Add storage provider">
       <div class="drag-handle" aria-hidden="true"></div>
@@ -613,10 +624,10 @@
                 class="provider-btn"
                 class:loading={oauthLoading === p.type}
                 disabled={connecting || !!oauthLoading}
-                on:click={() => connectOAuth(p.type)}
+                onclick={() => connectOAuth(p.type)}
               >
                 <span class="provider-icon" aria-hidden="true">
-                  <svelte:component this={p.icon} size={22} weight="regular" />
+                  <p.icon size={22} weight="regular" />
                 </span>
                 <span class="provider-name">{p.name}</span>
                 <span class="provider-desc">{p.description}</span>
@@ -633,10 +644,10 @@
                 class="provider-btn"
                 class:active={activeInline === p.type}
                 disabled={connecting}
-                on:click={() => { activeInline = activeInline === p.type ? null : p.type; error = ''; }}
+                onclick={() => { activeInline = activeInline === p.type ? null : p.type; error = ''; }}
               >
                 <span class="provider-icon" aria-hidden="true">
-                  <svelte:component this={p.icon} size={22} weight="regular" />
+                  <p.icon size={22} weight="regular" />
                 </span>
                 <span class="provider-name">{p.name}</span>
                 <span class="provider-desc">{p.description}</span>
@@ -646,7 +657,7 @@
               </button>
 
               {#if activeInline === 'webdav' && p.type === 'webdav'}
-                <form class="inline-form" on:submit|preventDefault={submitWebDAV}>
+                <form class="inline-form" onsubmit={preventDefault(submitWebDAV)}>
                   <label class="field-label">Server URL
                     <input class="field-input" type="url" bind:value={wdavUrl} placeholder="https://cloud.example.com" required autocomplete="off"/>
                     <span class="field-hint">The vault folder is always named <code>WattcloudVault/</code> and is created directly under this URL. Point the URL at a subfolder to nest the vault inside it. Your vault will land at <code>{(wdavUrl.trim() || 'https://cloud.example.com').replace(/\/+$/, '')}/WattcloudVault/</code>.</span>
@@ -654,7 +665,7 @@
                   <label class="field-label">Username
                     <input class="field-input" type="text" bind:value={wdavUser} required autocomplete="username"/>
                   </label>
-                  <!-- svelte-ignore a11y-label-has-associated-control -->
+                  <!-- svelte-ignore a11y_label_has_associated_control -->
                   <label class="field-label">Password
                     <PasswordInput
                       bind:value={wdavPass}
@@ -670,7 +681,7 @@
               {/if}
 
               {#if activeInline === 'sftp' && p.type === 'sftp'}
-                <form class="inline-form" on:submit|preventDefault={submitSFTP}>
+                <form class="inline-form" onsubmit={preventDefault(submitSFTP)}>
                   <label class="field-label">Hostname
                     <input class="field-input" type="text" bind:value={sftpHost} required autocomplete="off"/>
                   </label>
@@ -687,7 +698,7 @@
                     <input class="field-input" type="text" bind:value={sftpBasePath} placeholder="/MyFolder" autocomplete="off"/>
                     <span class="field-hint">Optional. The vault folder is always named <code>WattcloudVault/</code>. Setting a base path prefixes where it's created. Leave empty to place it at the SFTP session root. Your vault will land at <code>{(sftpBasePath.trim() || '').replace(/\/+$/, '')}/WattcloudVault/</code>.</span>
                   </label>
-                  <!-- svelte-ignore a11y-label-has-associated-control -->
+                  <!-- svelte-ignore a11y_label_has_associated_control -->
                   <label class="field-label">Password
                     <PasswordInput
                       bind:value={sftpPass}
@@ -706,7 +717,7 @@
               {/if}
 
               {#if activeInline === 's3' && p.type === 's3'}
-                <form class="inline-form" on:submit|preventDefault={submitS3}>
+                <form class="inline-form" onsubmit={preventDefault(submitS3)}>
                   {#if s3Detected}
                     <div class="detect-chip">
                       <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -735,7 +746,7 @@
                   <label class="field-label">Access Key ID
                     <input class="field-input" type="text" bind:value={s3AccessKeyId} required autocomplete="off" spellcheck="false"/>
                   </label>
-                  <!-- svelte-ignore a11y-label-has-associated-control -->
+                  <!-- svelte-ignore a11y_label_has_associated_control -->
                   <label class="field-label">Secret Access Key
                     <PasswordInput
                       bind:value={s3SecretAccessKey}
@@ -753,7 +764,7 @@
                     <div class="cors-card" role="alert">
                       <p class="cors-title">CORS not configured on this bucket</p>
                       <p class="cors-body">Add this CORS rule to your bucket, then try again.</p>
-                      <button type="button" class="btn-copy" on:click={copyS3CorsJson}>Copy CORS JSON</button>
+                      <button type="button" class="btn-copy" onclick={copyS3CorsJson}>Copy CORS JSON</button>
                     </div>
                   {/if}
                   <button type="submit" class="btn-primary" disabled={connecting}>
@@ -766,7 +777,7 @@
         {/each}
       </div>
 
-      <button class="btn-ghost" on:click={() => dispatch('close')}>Cancel</button>
+      <button class="btn-ghost" onclick={() => dispatch('close')}>Cancel</button>
     </div>
   </div>
 {/if}
@@ -779,8 +790,8 @@
       <p>First connection to this SFTP server. Confirm the fingerprint before trusting it.</p>
       <div class="fp-box">{pendingHostKey.fingerprint}</div>
       <div class="tofu-actions">
-        <button class="btn btn-secondary btn-sm" on:click={() => { pendingHostKey?.resolve(false); pendingHostKey = null; }}>Reject</button>
-        <button class="btn btn-primary btn-sm" on:click={() => { pendingHostKey?.resolve(true); pendingHostKey = null; }}>Trust &amp; Connect</button>
+        <button class="btn btn-secondary btn-sm" onclick={() => { pendingHostKey?.resolve(false); pendingHostKey = null; }}>Reject</button>
+        <button class="btn btn-primary btn-sm" onclick={() => { pendingHostKey?.resolve(true); pendingHostKey = null; }}>Trust &amp; Connect</button>
       </div>
     </div>
   </div>

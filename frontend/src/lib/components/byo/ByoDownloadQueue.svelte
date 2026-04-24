@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { run, stopPropagation } from 'svelte/legacy';
+
   import { slide, fly, fade } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -11,13 +13,15 @@
   import type { ByoDownloadItem } from '../../byo/stores/byoDownloadQueue';
   import Icon from '../Icons.svelte';
 
-  let expanded = false;
+  let expanded = $state(false);
 
-  $: if ($isByoDownloading && !expanded) expanded = true;
-  $: items = $byoDownloadQueue.items as ByoDownloadItem[];
-  $: totalCount = items.length;
-  $: inProgressCount = items.filter((i) => i.status === 'downloading' || i.status === 'decrypting' || i.status === 'paused' || i.status === 'ready-to-save').length;
-  $: errorCount = $byoDownloadErrorCount;
+  run(() => {
+    if ($isByoDownloading && !expanded) expanded = true;
+  });
+  let items = $derived($byoDownloadQueue.items as ByoDownloadItem[]);
+  let totalCount = $derived(items.length);
+  let inProgressCount = $derived(items.filter((i) => i.status === 'downloading' || i.status === 'decrypting' || i.status === 'paused' || i.status === 'ready-to-save').length);
+  let errorCount = $derived($byoDownloadErrorCount);
 
   function formatBytes(bytes: number): string {
     if (bytes <= 0) return '0 B';
@@ -52,7 +56,13 @@
 
 {#if items.length > 0}
   <div class="download-queue" transition:slide={{ duration: reducedMotion ? 0 : 200 }}>
-    <button class="queue-header" on:click={() => expanded = !expanded}>
+    <div
+      class="queue-header"
+      role="button"
+      tabindex="0"
+      onclick={() => expanded = !expanded}
+      onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); expanded = !expanded; } }}
+    >
       <Icon name="download" size={16} />
       <span class="queue-label">
         {#if inProgressCount > 0}
@@ -63,11 +73,11 @@
           {$byoDownloadCompletedCount} / {totalCount} downloaded
         {/if}
       </span>
-      <button class="clear-btn" on:click|stopPropagation={() => byoDownloadQueue.clearCompleted()}>
+      <button class="clear-btn" onclick={stopPropagation(() => byoDownloadQueue.clearCompleted())}>
         Clear done
       </button>
       <Icon name={expanded ? 'chevronUp' : 'chevronDown'} size={16} />
-    </button>
+    </div>
 
     {#if expanded}
       <div class="queue-items" transition:slide={{ duration: reducedMotion ? 0 : 200 }}>
@@ -107,13 +117,13 @@
               {#if item.status === 'ready-to-save' && item.iosSaveHandle}
                 <button
                   class="action-btn action-btn--save"
-                  on:click|stopPropagation={() => onIOSSaveTap(item)}
+                  onclick={stopPropagation(() => onIOSSaveTap(item))}
                   aria-label="Save file"
                   title="Save"
                 >
                   Save
                 </button>
-                <button class="remove-btn" on:click={() => byoDownloadQueue.cancelDownload(item.id)} aria-label="Cancel">
+                <button class="remove-btn" onclick={() => byoDownloadQueue.cancelDownload(item.id)} aria-label="Cancel">
                   <Icon name="close" size={14} />
                 </button>
               {:else if isActive(item)}
@@ -122,42 +132,42 @@
                 </div>
                 <button
                   class="action-btn"
-                  on:click|stopPropagation={() => byoDownloadQueue.pauseDownload(item.id)}
+                  onclick={stopPropagation(() => byoDownloadQueue.pauseDownload(item.id))}
                   aria-label="Pause download"
                   title="Pause"
                 >
                   <Icon name="pause" size={14} />
                 </button>
-                <button class="remove-btn" on:click={() => byoDownloadQueue.cancelDownload(item.id)} aria-label="Cancel">
+                <button class="remove-btn" onclick={() => byoDownloadQueue.cancelDownload(item.id)} aria-label="Cancel">
                   <Icon name="close" size={14} />
                 </button>
               {:else if item.status === 'paused'}
                 <button
                   class="action-btn action-btn--resume"
-                  on:click|stopPropagation={() => byoDownloadQueue.resumeDownload(item.id)}
+                  onclick={stopPropagation(() => byoDownloadQueue.resumeDownload(item.id))}
                   aria-label="Resume download"
                   title="Resume"
                 >
                   <Icon name="play" size={14} />
                 </button>
-                <button class="remove-btn" on:click={() => byoDownloadQueue.cancelDownload(item.id)} aria-label="Cancel">
+                <button class="remove-btn" onclick={() => byoDownloadQueue.cancelDownload(item.id)} aria-label="Cancel">
                   <Icon name="close" size={14} />
                 </button>
               {:else if item.status === 'error'}
                 <button
                   class="action-btn action-btn--retry"
-                  on:click|stopPropagation={() => byoDownloadQueue.retryDownload(item.id)}
+                  onclick={stopPropagation(() => byoDownloadQueue.retryDownload(item.id))}
                   aria-label="Retry download"
                   title="Retry"
                 >
                   <Icon name="retry" size={14} />
                 </button>
-                <button class="remove-btn" on:click={() => byoDownloadQueue.removeItem(item.id)} aria-label="Remove">
+                <button class="remove-btn" onclick={() => byoDownloadQueue.removeItem(item.id)} aria-label="Remove">
                   <Icon name="close" size={14} />
                 </button>
               {:else}
                 <Icon name={item.status === 'completed' ? 'check' : item.status === 'cancelled' ? 'close' : 'download'} size={16} />
-                <button class="remove-btn" on:click={() => byoDownloadQueue.removeItem(item.id)} aria-label="Remove">
+                <button class="remove-btn" onclick={() => byoDownloadQueue.removeItem(item.id)} aria-label="Remove">
                   <Icon name="close" size={14} />
                 </button>
               {/if}

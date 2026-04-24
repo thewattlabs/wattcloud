@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { run, self, preventDefault } from 'svelte/legacy';
+
   /**
    * ByoDashboard — BYO mode file manager dashboard.
    *
@@ -71,19 +73,15 @@
   import ByoFileDetails from './ByoFileDetails.svelte';
   import ProviderMoveSheet from './ProviderMoveSheet.svelte';
 
-  /** Bound by ByoApp so the shared Drawer can highlight the right link
+  
+  interface Props {
+    /** Bound by ByoApp so the shared Drawer can highlight the right link
       and navigation from Settings → Dashboard lands on the chosen tab. */
-  export let view: 'files' | 'photos' | 'favorites' = 'files';
-
-  // Selection is screen-local — switching from Photos to Files (or
-  // vice-versa) carries over stale selections that reference items the
-  // user can't see, and the selection toolbar would then act on photos
-  // from another screen. Clear on every view change; the initial fire
-  // is a no-op against the already-empty store.
-  $: {
-    view;
-    clearByoSelection();
+    view?: 'files' | 'photos' | 'favorites';
   }
+
+  let { view = $bindable('files') }: Props = $props();
+
 
   const dataProvider = getContext<{ current: DataProvider }>('byo:dataProvider').current;
 
@@ -93,17 +91,16 @@
   // check, not something that changes during a session.
   const iosDevice = isIOSDevice();
 
-  let loading = false;
-  let error = '';
-  let moveRevokedMsg = '';
+  let loading = $state(false);
+  let error = $state('');
+  let moveRevokedMsg = $state('');
   let moveRevokedTimer: ReturnType<typeof setTimeout> | null = null;
-  let showSearch = false;
+  let showSearch = $state(false);
   let sortBy: 'name' | 'date' | 'size' = 'name';
-  let sortDir: 'asc' | 'desc' = 'asc';
+  let sortDir: 'asc' | 'desc' = $state('asc');
 
   // Folder navigation stack
-  let folderStack: Array<{ id: number | null; name: string }> = [{ id: null, name: 'Home' }];
-  $: currentFolderId = folderStack[folderStack.length - 1].id;
+  let folderStack: Array<{ id: number | null; name: string }> = $state([{ id: null, name: 'Home' }]);
 
   // ── View mode (list / grid) ───────────────────────────────────────────────
   // Persisted per-folder in localStorage, keyed by vault id. When a folder
@@ -114,12 +111,12 @@
   const VIEW_MODE_STORAGE_PREFIX = 'wc:fileView:';
   const FOLDER_STRIP_THRESHOLD = 8;
 
-  let filesViewMode: FilesViewMode = 'list';
+  let filesViewMode: FilesViewMode = $state('list');
   /** When `true` in grid mode, a tall folder count is expanded into the
       full tile grid instead of the horizontal scroll strip. Resets on
       folder navigation so long lists re-collapse when the user enters
       another folder with many subfolders. */
-  let folderStripExpanded = false;
+  let folderStripExpanded = $state(false);
 
   function readViewMode(vaultId: string | null, folderId: number | null): FilesViewMode {
     if (!vaultId || typeof localStorage === 'undefined') return 'list';
@@ -161,73 +158,64 @@
     writeViewMode($vaultStore.vaultId, currentFolderId, next);
   }
 
-  // Re-read the preferred view whenever the active folder (or vault) changes.
-  // Keeping this reactive means opening a deeply-nested folder that the user
-  // previously set to grid restores that choice without any extra wiring.
-  $: {
-    const vid = $vaultStore.vaultId;
-    const fid = currentFolderId;
-    filesViewMode = readViewMode(vid, fid);
-    folderStripExpanded = false;
-  }
 
   // Modals
-  let showNewFolderModal = false;
-  let newFolderName = '';
-  let creatingFolder = false;
+  let showNewFolderModal = $state(false);
+  let newFolderName = $state('');
+  let creatingFolder = $state(false);
 
-  let showDeleteModal = false;
-  let deleteTarget: { type: 'file' | 'folder'; id: number; name: string } | null = null;
-  let deleteLoading = false;
+  let showDeleteModal = $state(false);
+  let deleteTarget: { type: 'file' | 'folder'; id: number; name: string } | null = $state(null);
+  let deleteLoading = $state(false);
 
-  let showMoveCopyDialog = false;
-  let moveCopyMode: 'move' | 'copy' = 'move';
+  let showMoveCopyDialog = $state(false);
+  let moveCopyMode: 'move' | 'copy' = $state('move');
   /** Flat list of every folder in the active provider — sourced from
       listAllFolders() and refreshed before opening the MoveCopyDialog so
       the tree isn't empty (the $byoFolders store only holds the *current*
       folder's children). */
-  let moveCopyFolders: FolderEntry[] = [];
+  let moveCopyFolders: FolderEntry[] = $state([]);
   async function refreshMoveCopyFolders() {
     try { moveCopyFolders = await dataProvider.listAllFolders(); }
     catch { moveCopyFolders = []; }
   }
 
   // Add-to-collection dialog (photos view)
-  let showAddToCollection = false;
-  let addToCollectionNewName = '';
-  let addingToCollection = false;
+  let showAddToCollection = $state(false);
+  let addToCollectionNewName = $state('');
+  let addingToCollection = $state(false);
 
   // Cross-provider move
-  let showProviderMoveSheet = false;
-  let crossMoveProgress: { done: number; total: number } | null = null;
-  let crossMoveErrors: { fileId: number; fileName: string; error: string }[] = [];
-  let crossMoveSucceeded: number | null = null;
+  let showProviderMoveSheet = $state(false);
+  let crossMoveProgress: { done: number; total: number } | null = $state(null);
+  let crossMoveErrors: { fileId: number; fileName: string; error: string }[] = $state([]);
+  let crossMoveSucceeded: number | null = $state(null);
   let crossMoveDestProviderId = '';
 
-  let previewFile: FileEntry | null = null;
-  let previewOpen = false;
+  let previewFile: FileEntry | null = $state(null);
+  let previewOpen = $state(false);
 
-  let showFabMenu = false;
-  let folderInput: HTMLInputElement | null = null;
+  let showFabMenu = $state(false);
+  let folderInput: HTMLInputElement | null = $state(null);
 
   // File details modal
-  let showDetailsModal = false;
-  let detailsFile: FileEntry | null = null;
+  let showDetailsModal = $state(false);
+  let detailsFile: FileEntry | null = $state(null);
 
   // Share link sheet
-  let showShareSheet = false;
+  let showShareSheet = $state(false);
   type ShareSheetSource =
     | { kind: 'file'; file: FileEntry }
     | { kind: 'folder'; folder: FolderEntry }
     | { kind: 'collection'; collection: CollectionEntry }
     | { kind: 'files'; files: FileEntry[] };
-  let shareSource: ShareSheetSource | null = null;
+  let shareSource: ShareSheetSource | null = $state(null);
 
   // Favorites
-  let favoriteFileIds: Set<number> = new Set();
-  let favoriteFolderIds: Set<number> = new Set();
-  let favoriteFiles: FileEntry[] = [];
-  let favoriteFolders: FolderEntry[] = [];
+  let favoriteFileIds: Set<number> = $state(new Set());
+  let favoriteFolderIds: Set<number> = $state(new Set());
+  let favoriteFiles: FileEntry[] = $state([]);
+  let favoriteFolders: FolderEntry[] = $state([]);
 
   // Services
   let offlineDetector: OfflineDetector | null = null;
@@ -235,10 +223,10 @@
   // ── Selection ripple (§29.3.4) ─────────────────────────────────────────
   // Record the last pointerdown inside .main-content so we can burst a ring
   // from that spot when long-press enters selection mode.
-  let rippleX: number | null = null;
-  let rippleY: number | null = null;
-  let rippleKey = 0;
-  let lastSelectionMode = false;
+  let rippleX: number | null = $state(null);
+  let rippleY: number | null = $state(null);
+  let rippleKey = $state(0);
+  let lastSelectionMode = $state(false);
   const reducedMotion = typeof window !== 'undefined'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -265,22 +253,10 @@
     return FILE_TYPE_MAP[v] ?? null;
   }
 
-  $: {
-    const now = $byoSelectionMode;
-    if (now && !lastSelectionMode && rippleX !== null && rippleY !== null && !reducedMotion) {
-      rippleKey++; // force re-render of the ripple element
-    }
-    lastSelectionMode = now;
-  }
 
-  // Per-provider offline state
-  $: activeProvider = $vaultStore.providers.find(p => p.providerId === $vaultStore.activeProviderId) ?? null;
-  $: activeProviderOffline = activeProvider?.status === 'offline' || activeProvider?.status === 'error' || activeProvider?.status === 'unauthorized';
-  $: offlineProviderCount = $vaultStore.providers.filter(p => p.status === 'offline' || p.status === 'error' || p.status === 'unauthorized').length;
-  $: canWrite = !activeProviderOffline && $canOperate;
 
   // Retry ping for active provider
-  let retrying = false;
+  let retrying = $state(false);
   async function retryActiveProvider() {
     if (!activeProvider || retrying) return;
     retrying = true;
@@ -296,60 +272,15 @@
     }
   }
 
-  // Derived selection state for FileList selectionContext.
-  // `toggle` must also flip selection mode on (matching managed-mode behavior
-  // in FileList.handleMenuClick) — without this, clicking the three-dots
-  // button on a file silently adds it to the selection set but the UI never
-  // enters selection mode, so nothing visible happens.
-  $: selectionContext = {
-    isSelectionMode: $byoSelectionMode,
-    selectedFiles: $byoSelectedFiles,
-    toggle: (id: number) => {
-      if (!get(byoSelectionMode)) byoSelectionMode.set(true);
-      toggleByoFileSelection(id);
-    },
-    selectAll: (ids: number[]) => {
-      byoSelectionMode.set(true);
-      byoSelectedFiles.set(new Set(ids));
-    },
-    clear: clearByoSelection,
-  };
 
   // Files/folders for current folder
-  let currentFiles: FileEntry[] = [];
-  let currentFolders: FolderEntry[] = [];
+  let currentFiles: FileEntry[] = $state([]);
+  let currentFolders: FolderEntry[] = $state([]);
 
-  // Reference sortBy + sortDir in the reactive expression so Svelte's static
-  // dependency tracker picks them up. Without an explicit read here the
-  // scheduler only re-runs sortEntries when the input array changes, and
-  // clicking the sort pills silently leaves the list untouched.
-  $: sortedFiles = ((_by: SortByT, _dir: 'asc' | 'desc') =>
-    sortEntries(
-      view === 'favorites'
-        ? favoriteFiles
-        : $hasByoActiveFilters ? ($byoSearchResults as unknown as FileEntry[]) : currentFiles,
-    ))(sortBy as SortByT, sortDir);
-  $: sortedFolders = ((_by: SortByT, _dir: 'asc' | 'desc') =>
-    view === 'favorites'
-      ? sortFolders(favoriteFolders)
-      : $hasByoActiveFilters ? [] : sortFolders(currentFolders))(sortBy as SortByT, sortDir);
 
-  // Sorting state for SortControl
-  $: sortingState = { by: sortBy as SortByT, direction: (sortDir === 'asc' ? 'up' : 'down') as SortDirT };
   function onSortByChange(by: SortByT) { sortBy = by; }
   function onToggleSortDir() { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
 
-  // Typed aliases for template use (Svelte 4 / Acorn doesn't support `as` casts in templates)
-  $: sortedFilesAny = sortedFiles as unknown as any[];
-  // Scoped folder list for MoveCopyDialog — only folders belonging to the active provider.
-  $: activeFolders = moveCopyFolders.filter(
-    (f) => !f.provider_id || f.provider_id === ($vaultStore.activeProviderId ?? ''),
-  );
-  $: activeFoldersAny = activeFolders as unknown as any[];
-  $: previewFileAny = previewFile as unknown as any;
-  $: favoriteFilesAny = favoriteFiles as unknown as any[];
-  $: detailsFolders = [...currentFolders, ...($byoFolders as unknown as FolderEntry[])];
-  $: createFolderAny = handleByoCreateFolder as any;
 
   function sortEntries(files: FileEntry[]): FileEntry[] {
     return [...files].sort((a, b) => {
@@ -456,12 +387,6 @@
     folderStack = folderStack.slice(0, index + 1);
   }
 
-  $: {
-    // Reload when current folder changes
-    if (typeof currentFolderId !== 'undefined') {
-      loadCurrentFolder();
-    }
-  }
 
   // ── File operations ────────────────────────────────────────────────────────
 
@@ -1087,10 +1012,10 @@
 
   // ── Provider switcher (P9) ────────────────────────────────────────────────
 
-  let showAddProvider = false;
+  let showAddProvider = $state(false);
 
   // Provider context sheet (long-press / right-click on chip)
-  let contextSheetProvider: ProviderMeta | null = null;
+  let contextSheetProvider: ProviderMeta | null = $state(null);
   let longPressTimer: ReturnType<typeof setTimeout> | null = null;
 
   function openContextSheet(p: ProviderMeta) {
@@ -1187,7 +1112,7 @@
 
   // ── Drag and drop ──────────────────────────────────────────────────────────
 
-  let isDragOver = false;
+  let isDragOver = $state(false);
 
   function handleDragOver(e: DragEvent) {
     e.preventDefault();
@@ -1204,13 +1129,95 @@
     if (e.dataTransfer?.files) handleFiles(e.dataTransfer.files);
   }
 
+  // Selection is screen-local — switching from Photos to Files (or
+  // vice-versa) carries over stale selections that reference items the
+  // user can't see, and the selection toolbar would then act on photos
+  // from another screen. Clear on every view change; the initial fire
+  // is a no-op against the already-empty store.
+  run(() => {
+    view;
+    clearByoSelection();
+  });
+  let currentFolderId = $derived(folderStack[folderStack.length - 1].id);
+  // Re-read the preferred view whenever the active folder (or vault) changes.
+  // Keeping this reactive means opening a deeply-nested folder that the user
+  // previously set to grid restores that choice without any extra wiring.
+  run(() => {
+    const vid = $vaultStore.vaultId;
+    const fid = currentFolderId;
+    filesViewMode = readViewMode(vid, fid);
+    folderStripExpanded = false;
+  });
+  run(() => {
+    const now = $byoSelectionMode;
+    if (now && !lastSelectionMode && rippleX !== null && rippleY !== null && !reducedMotion) {
+      rippleKey++; // force re-render of the ripple element
+    }
+    lastSelectionMode = now;
+  });
+  // Per-provider offline state
+  let activeProvider = $derived($vaultStore.providers.find(p => p.providerId === $vaultStore.activeProviderId) ?? null);
+  let activeProviderOffline = $derived(activeProvider?.status === 'offline' || activeProvider?.status === 'error' || activeProvider?.status === 'unauthorized');
+  let offlineProviderCount = $derived($vaultStore.providers.filter(p => p.status === 'offline' || p.status === 'error' || p.status === 'unauthorized').length);
+  let canWrite = $derived(!activeProviderOffline && $canOperate);
+  // Derived selection state for FileList selectionContext.
+  // `toggle` must also flip selection mode on (matching managed-mode behavior
+  // in FileList.handleMenuClick) — without this, clicking the three-dots
+  // button on a file silently adds it to the selection set but the UI never
+  // enters selection mode, so nothing visible happens.
+  let selectionContext = $derived({
+    isSelectionMode: $byoSelectionMode,
+    selectedFiles: $byoSelectedFiles,
+    toggle: (id: number) => {
+      if (!get(byoSelectionMode)) byoSelectionMode.set(true);
+      toggleByoFileSelection(id);
+    },
+    selectAll: (ids: number[]) => {
+      byoSelectionMode.set(true);
+      byoSelectedFiles.set(new Set(ids));
+    },
+    clear: clearByoSelection,
+  });
+  // Reference sortBy + sortDir in the reactive expression so Svelte's static
+  // dependency tracker picks them up. Without an explicit read here the
+  // scheduler only re-runs sortEntries when the input array changes, and
+  // clicking the sort pills silently leaves the list untouched.
+  let sortedFiles = $derived(((_by: SortByT, _dir: 'asc' | 'desc') =>
+    sortEntries(
+      view === 'favorites'
+        ? favoriteFiles
+        : $hasByoActiveFilters ? ($byoSearchResults as unknown as FileEntry[]) : currentFiles,
+    ))(sortBy as SortByT, sortDir));
+  let sortedFolders = $derived(((_by: SortByT, _dir: 'asc' | 'desc') =>
+    view === 'favorites'
+      ? sortFolders(favoriteFolders)
+      : $hasByoActiveFilters ? [] : sortFolders(currentFolders))(sortBy as SortByT, sortDir));
+  // Sorting state for SortControl
+  let sortingState = $derived({ by: sortBy as SortByT, direction: (sortDir === 'asc' ? 'up' : 'down') as SortDirT });
+  // Typed aliases for template use (Svelte 4 / Acorn doesn't support `as` casts in templates)
+  let sortedFilesAny = $derived(sortedFiles as unknown as any[]);
+  // Scoped folder list for MoveCopyDialog — only folders belonging to the active provider.
+  let activeFolders = $derived(moveCopyFolders.filter(
+    (f) => !f.provider_id || f.provider_id === ($vaultStore.activeProviderId ?? ''),
+  ));
+  let activeFoldersAny = $derived(activeFolders as unknown as any[]);
+  let previewFileAny = $derived(previewFile as unknown as any);
+  let favoriteFilesAny = $derived(favoriteFiles as unknown as any[]);
+  let detailsFolders = $derived([...currentFolders, ...($byoFolders as unknown as FolderEntry[])]);
+  let createFolderAny = $derived(handleByoCreateFolder as any);
+  run(() => {
+    // Reload when current folder changes
+    if (typeof currentFolderId !== 'undefined') {
+      loadCurrentFolder();
+    }
+  });
 </script>
 
 <div
   class="byo-dashboard"
-  on:dragover={handleDragOver}
-  on:dragleave={handleDragLeave}
-  on:drop={handleDrop}
+  ondragover={handleDragOver}
+  ondragleave={handleDragLeave}
+  ondrop={handleDrop}
   role="main"
 >
   <!-- Header — drawer controls drive the shared `stores/drawer` stores
@@ -1256,25 +1263,25 @@
             role="tab"
             aria-selected={p.providerId === $vaultStore.activeProviderId}
             title="{p.displayName}{p.status === 'unauthorized' ? ' · Token expired' : (p.status === 'offline' || p.status === 'error') ? ' · Offline' : ''}"
-            on:click={() => switchProvider(p)}
-            on:contextmenu={(e) => onChipContextMenu(e, p)}
-            on:pointerdown={(e) => onChipPointerDown(e, p)}
-            on:pointerup={onChipPointerUp}
-            on:pointerleave={onChipPointerUp}
+            onclick={() => switchProvider(p)}
+            oncontextmenu={(e) => onChipContextMenu(e, p)}
+            onpointerdown={(e) => onChipPointerDown(e, p)}
+            onpointerup={onChipPointerUp}
+            onpointerleave={onChipPointerUp}
           >
             <span class="provider-chip-icon" aria-hidden="true">{providerIcon(p.type)}</span>
             <span class="provider-chip-name">{p.displayName}{p.status === 'unauthorized' ? ' · Token expired' : (p.status === 'offline' || p.status === 'error') ? ' · Offline' : ''}</span>
             {#if p.status === 'syncing'}
-              <span class="chip-status chip-syncing" aria-label="Syncing" />
+              <span class="chip-status chip-syncing" aria-label="Syncing"></span>
             {:else if p.status === 'offline' || p.status === 'error' || p.status === 'unauthorized'}
-              <span class="chip-status chip-offline" aria-label="Offline" />
+              <span class="chip-status chip-offline" aria-label="Offline"></span>
             {/if}
           </button>
         {/each}
         <button
           class="provider-chip provider-chip-add"
           title="Add provider"
-          on:click={() => showAddProvider = true}
+          onclick={() => showAddProvider = true}
           aria-label="Add storage provider"
         >
           <span aria-hidden="true">+</span>
@@ -1298,7 +1305,7 @@
     <div class="move-revoke-toast" role="status" aria-live="polite">
       <span class="move-revoke-icon" aria-hidden="true">ℹ</span>
       <span>{moveRevokedMsg}</span>
-      <button class="move-revoke-dismiss" on:click={() => { moveRevokedMsg = ''; }} aria-label="Dismiss">✕</button>
+      <button class="move-revoke-dismiss" onclick={() => { moveRevokedMsg = ''; }} aria-label="Dismiss">✕</button>
     </div>
   {/if}
 
@@ -1376,7 +1383,7 @@
     {#if view === 'files'}
       <!-- Breadcrumb pill -->
       <nav class="breadcrumb-pill" aria-label="Folder navigation">
-        <button class="breadcrumb-home" on:click={() => navigateToBreadcrumb(0)} aria-label="Home">
+        <button class="breadcrumb-home" onclick={() => navigateToBreadcrumb(0)} aria-label="Home">
           <House size={16} weight="fill" />
         </button>
         {#each folderStack.slice(1) as crumb, i}
@@ -1384,7 +1391,7 @@
           {#if i === folderStack.length - 2}
             <span class="breadcrumb-current" title={crumb.name}>{crumb.name}</span>
           {:else}
-            <button class="breadcrumb-item" on:click={() => navigateToBreadcrumb(i + 1)}>{crumb.name}</button>
+            <button class="breadcrumb-item" onclick={() => navigateToBreadcrumb(i + 1)}>{crumb.name}</button>
           {/if}
         {/each}
       </nav>
@@ -1406,7 +1413,7 @@
             aria-checked={filesViewMode === 'list'}
             aria-label="List view"
             title="List view"
-            on:click={() => onViewModeChange('list')}
+            onclick={() => onViewModeChange('list')}
           >
             <Rows size={16} />
           </button>
@@ -1417,7 +1424,7 @@
             aria-checked={filesViewMode === 'grid'}
             aria-label="Grid view"
             title="Grid view"
-            on:click={() => onViewModeChange('grid')}
+            onclick={() => onViewModeChange('grid')}
           >
             <SquaresFour size={16} />
           </button>
@@ -1431,7 +1438,7 @@
       {:else if error}
         <div class="error-state">
           <p>{error}</p>
-          <button class="btn btn-secondary btn-sm" on:click={loadCurrentFolder}>Retry</button>
+          <button class="btn btn-secondary btn-sm" onclick={loadCurrentFolder}>Retry</button>
         </div>
       {:else}
         <!-- Folders.
@@ -1469,7 +1476,7 @@
                 <span class="folder-strip-label">{sortedFolders.length} folders</span>
                 <button
                   class="folder-strip-expand"
-                  on:click={() => { folderStripExpanded = true; }}
+                  onclick={() => { folderStripExpanded = true; }}
                 >
                   Show all
                 </button>
@@ -1577,7 +1584,7 @@
               aria-checked={filesViewMode === 'list'}
               aria-label="List view"
               title="List view"
-              on:click={() => onViewModeChange('list')}
+              onclick={() => onViewModeChange('list')}
             >
               <Rows size={16} />
             </button>
@@ -1588,7 +1595,7 @@
               aria-checked={filesViewMode === 'grid'}
               aria-label="Grid view"
               title="Grid view"
-              on:click={() => onViewModeChange('grid')}
+              onclick={() => onViewModeChange('grid')}
             >
               <SquaresFour size={16} />
             </button>
@@ -1621,7 +1628,7 @@
                 <span class="folder-strip-label">{favoriteFolders.length} folders</span>
                 <button
                   class="folder-strip-expand"
-                  on:click={() => { folderStripExpanded = true; }}
+                  onclick={() => { folderStripExpanded = true; }}
                 >
                   Show all
                 </button>
@@ -1719,7 +1726,7 @@
   <input
     type="file"
     bind:this={folderInput}
-    on:change={onFolderSelected}
+    onchange={onFolderSelected}
     {...{'webkitdirectory': true}}
     multiple
     style="display: none;"
@@ -1744,7 +1751,7 @@
         bind:value={newFolderName}
         placeholder="Folder name"
         class="input"
-        on:keydown={(e) => e.key === 'Enter' && handleCreateFolder()}
+        onkeydown={(e) => e.key === 'Enter' && handleCreateFolder()}
       />
     </ConfirmModal>
   {/if}
@@ -1830,7 +1837,7 @@
 
   <!-- Add-to-collection picker -->
   {#if showAddToCollection}
-    <div class="atc-overlay" role="presentation" on:click|self={() => (showAddToCollection = false)} on:keydown={() => {}}>
+    <div class="atc-overlay" role="presentation" onclick={self(() => (showAddToCollection = false))} onkeydown={() => {}}>
       <div class="atc-sheet" role="dialog" aria-label="Add photos to collection" aria-modal="true">
         <header class="atc-header">
           <h3 class="atc-title">Add to collection</h3>
@@ -1844,7 +1851,7 @@
               {#each $byoCollections as c (c.id)}
                 <button
                   class="atc-row"
-                  on:click={() => handleAddToCollection(c.id)}
+                  onclick={() => handleAddToCollection(c.id)}
                   disabled={addingToCollection}
                 >
                   <Stack size={18} weight="regular" />
@@ -1858,8 +1865,8 @@
 
         <section class="atc-section">
           <h4 class="atc-section-label">New collection</h4>
-          <form class="atc-new" on:submit|preventDefault={handleCreateAndAddCollection}>
-            <!-- svelte-ignore a11y-autofocus -->
+          <form class="atc-new" onsubmit={preventDefault(handleCreateAndAddCollection)}>
+            <!-- svelte-ignore a11y_autofocus -->
             <input
               type="text"
               class="input atc-new-input"
@@ -1877,7 +1884,7 @@
         </section>
 
         <footer class="atc-footer">
-          <button class="btn btn-ghost" on:click={() => (showAddToCollection = false)} disabled={addingToCollection}>Cancel</button>
+          <button class="btn btn-ghost" onclick={() => (showAddToCollection = false)} disabled={addingToCollection}>Cancel</button>
         </footer>
       </div>
     </div>

@@ -26,14 +26,19 @@
   import ArrowLeft from 'phosphor-svelte/lib/ArrowLeft';
   import BottomSheet from '../BottomSheet.svelte';
 
-  export let provider: StorageProvider;
-  /**
+  
+  interface Props {
+    provider: StorageProvider;
+    /**
    * Hex vault_id known from a prior unlock on this device, passed by
    * ByoApp when the user opens a vault from the persisted list. Threaded
    * into `unlockVault` so the IDB cache fallback engages if the provider
    * is unreachable at unlock time (H2).
    */
-  export let vaultIdHint: string | null = null;
+    vaultIdHint?: string | null;
+  }
+
+  let { provider, vaultIdHint = null }: Props = $props();
 
   const dispatch = createEventDispatcher<{
     unlocked: { db: import('sql.js').Database; sessionId: string };
@@ -44,16 +49,16 @@
 
   type UnlockStep = 'passphrase' | 'unlocking';
 
-  let step: UnlockStep = 'passphrase';
-  let argon2Done = false;
-  let memoryError = false;
-  let showRollback = false;
-  let error = '';
+  let step: UnlockStep = $state('passphrase');
+  let argon2Done = $state(false);
+  let memoryError = $state(false);
+  let showRollback = $state(false);
+  let error = $state('');
   let db: import('sql.js').Database | null = null;
   // §29.3.1 vault lock animation plays on cold unlock, then the passphrase
   // form fades in beneath. VaultLockAnimation self-skips within a 5-minute
   // session via sessionStorage, so re-renders on the same tab stay snappy.
-  let vaultLockDone = false;
+  let vaultLockDone = $state(false);
 
   // Stable session ID for the BYO worker key storage
   const sessionId = crypto.randomUUID();
@@ -63,8 +68,8 @@
   // hinted vault. When true, a prominent "Unlock with passkey" button is
   // rendered above the passphrase field; the passphrase stays available
   // as a fallback (lost passkey, new device, etc.).
-  let passkeyUnlockAvailable = false;
-  let passkeyBusy = false;
+  let passkeyUnlockAvailable = $state(false);
+  let passkeyBusy = $state(false);
 
   onMount(async () => {
     if (!vaultIdHint || !isWebAuthnAvailable()) return;
@@ -205,7 +210,7 @@
     {#if passkeyUnlockAvailable}
       <button
         class="passkey-primary"
-        on:click={handlePasskeyUnlock}
+        onclick={handlePasskeyUnlock}
         disabled={passkeyBusy}
         aria-busy={passkeyBusy}
       >
@@ -222,14 +227,14 @@
     <div class="alt-divider" aria-hidden="true"><span>or</span></div>
 
     <div class="alt-actions">
-      <button class="alt-row" on:click={() => dispatch('link-device')}>
+      <button class="alt-row" onclick={() => dispatch('link-device')}>
         <span class="alt-icon" aria-hidden="true"><DeviceMobile size={18} weight="bold" /></span>
         <span class="alt-text">
           <span class="alt-title">Link this device</span>
           <span class="alt-sub">Scan a code from a device that already has your vault</span>
         </span>
       </button>
-      <button class="alt-row" on:click={() => dispatch('use-recovery')}>
+      <button class="alt-row" onclick={() => dispatch('use-recovery')}>
         <span class="alt-icon" aria-hidden="true"><Key size={18} weight="bold" /></span>
         <span class="alt-text">
           <span class="alt-title">Use recovery key</span>
@@ -238,7 +243,7 @@
       </button>
     </div>
 
-    <button class="btn btn-ghost back-btn" on:click={() => dispatch('cancel')}>
+    <button class="btn btn-ghost back-btn" onclick={() => dispatch('cancel')}>
       <ArrowLeft size={16} weight="bold" />
       <span>Back to providers</span>
     </button>
@@ -271,8 +276,8 @@
     </p>
     <p class="rollback-risk">Proceeding may overwrite newer changes on next save.</p>
     <div class="rollback-actions">
-      <button class="btn btn-secondary" on:click={abortRollback}>Abort — go back</button>
-      <button class="btn btn-danger proceed-btn" on:click={confirmRollback}>Proceed anyway</button>
+      <button class="btn btn-secondary" onclick={abortRollback}>Abort — go back</button>
+      <button class="btn btn-danger proceed-btn" onclick={confirmRollback}>Proceed anyway</button>
     </div>
   </div>
 </BottomSheet>
