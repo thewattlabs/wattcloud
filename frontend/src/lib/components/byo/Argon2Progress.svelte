@@ -2,11 +2,15 @@
   import Cloud from 'phosphor-svelte/lib/Cloud';
   import CloudCheck from 'phosphor-svelte/lib/CloudCheck';
 
-  export let done = false;
-  export let memoryMb = 128;
+  interface Props {
+    done?: boolean;
+    memoryMb?: number;
+  }
+
+  let { done = false, memoryMb = 128 }: Props = $props();
 
   // No fake timer — show honest indeterminate shimmer until done.
-  $: label = done ? 'Vault unlocked' : 'Unlocking vault…';
+  let label = $derived(done ? 'Vault unlocked' : 'Unlocking vault…');
 </script>
 
 <div

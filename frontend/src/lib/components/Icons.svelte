@@ -1,9 +1,19 @@
 <script lang="ts">
-  // Modern Flat Design Icon System
-  export let name: string;
-  export let size: number = 24;
-  export let color: string = 'currentColor';
-  export let strokeWidth: number = 2;
+  
+  interface Props {
+    // Modern Flat Design Icon System
+    name: string;
+    size?: number;
+    color?: string;
+    strokeWidth?: number;
+  }
+
+  let {
+    name,
+    size = 24,
+    color = 'currentColor',
+    strokeWidth = 2
+  }: Props = $props();
 
   const icons: Record<string, string> = {
     // Navigation
@@ -195,7 +205,7 @@
   // SECURITY: iconSvg is derived from hardcoded SVG paths in `icons` object.
   // The name prop is used as a key to lookup static content - NOT user input.
   // {@html} is safe here because content is controlled by the application.
-  $: iconSvg = icons[name] || '';
+  let iconSvg = $derived(icons[name] || '');
 </script>
 
 {#if iconSvg}

@@ -7,22 +7,26 @@
   import Trash from 'phosphor-svelte/lib/Trash';
   import { byoToast } from '../../byo/stores/byoToasts';
 
-  export let onBack: () => void;
+  interface Props {
+    onBack: () => void;
+  }
+
+  let { onBack }: Props = $props();
 
   const dataProvider = getContext<{ current: DataProvider }>('byo:dataProvider').current;
 
-  let entries: TrashEntry[] = [];
-  let loading = true;
+  let entries: TrashEntry[] = $state([]);
+  let loading = $state(true);
 
   // Confirm modal state
-  let confirmOpen = false;
-  let confirmTitle = '';
-  let confirmMessage = '';
-  let confirmAction: (() => Promise<void>) | null = null;
-  let confirmDanger = false;
+  let confirmOpen = $state(false);
+  let confirmTitle = $state('');
+  let confirmMessage = $state('');
+  let confirmAction: (() => Promise<void>) | null = $state(null);
+  let confirmDanger = $state(false);
 
   // Per-entry blob check state
-  let blobCheckPending = new Set<number>();
+  let blobCheckPending = $state(new Set<number>());
 
   onMount(() => {
     loadTrash();
@@ -161,12 +165,12 @@
 
 <div class="byo-trash">
   <div class="trash-header">
-    <button class="back-btn" on:click={onBack} aria-label="Back">
+    <button class="back-btn" onclick={onBack} aria-label="Back">
       <Icon name="arrowLeft" size={20} />
     </button>
     <h2 class="trash-title">Trash</h2>
     {#if entries.length > 0}
-      <button class="empty-btn" on:click={handleEmptyTrash}>
+      <button class="empty-btn" onclick={handleEmptyTrash}>
         Empty Trash
       </button>
     {/if}
@@ -204,7 +208,7 @@
               {#if entry.blob_available === null || entry.blob_available === undefined}
                 <button
                   class="check-blob-btn"
-                  on:click={() => checkBlob(entry)}
+                  onclick={() => checkBlob(entry)}
                   disabled={blobCheckPending.has(entry.id)}
                 >
                   {blobCheckPending.has(entry.id) ? 'Checking…' : 'Check availability'}
@@ -220,7 +224,7 @@
           <div class="entry-actions">
             <button
               class="action-btn restore-btn"
-              on:click={() => handleRestore(entry)}
+              onclick={() => handleRestore(entry)}
               title="Restore"
             >
               <Icon name="refresh" size={16} />
@@ -228,7 +232,7 @@
             </button>
             <button
               class="action-btn delete-btn"
-              on:click={() => confirmDelete(entry)}
+              onclick={() => confirmDelete(entry)}
               title="Delete permanently"
             >
               <Icon name="trash" size={16} />
@@ -246,8 +250,8 @@
   message={confirmMessage}
   confirmText={confirmDanger ? 'Delete' : 'Confirm'}
   confirmClass={confirmDanger ? 'btn-danger' : 'btn-primary'}
-  on:confirm={handleConfirm}
-  on:cancel={() => { confirmOpen = false; confirmAction = null; }}
+  onConfirm={handleConfirm}
+  onCancel={() => { confirmOpen = false; confirmAction = null; }}
 />
 
 <style>

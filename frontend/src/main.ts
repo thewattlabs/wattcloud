@@ -14,6 +14,7 @@ import InviteEntry from './lib/components/byo/InviteEntry.svelte';
 import ShareRecipient from './lib/components/share/ShareRecipient.svelte';
 import { prewarmDownloadServiceWorker, sweepOPFSPending } from './lib/byo/streamToDisk';
 import { fetchMe, fetchRelayInfo, hasEnrolledHint } from './lib/byo/accessControl';
+import { mount } from "svelte";
 
 function showError(element: HTMLElement, message: string): void {
   const errorDiv = document.createElement('div');
@@ -43,7 +44,7 @@ async function boot(): Promise<void> {
     // flow only. initRuntimeConfig is skipped because the recipient never
     // speaks to a provider OAuth endpoint.
     if (window.location.pathname.startsWith('/s/')) {
-      new ShareRecipient({ target: appElement });
+      mount(ShareRecipient, { target: appElement });
       void prewarmDownloadServiceWorker();
       // Safety net for tabs that closed mid-download while writing to
       // OPFS. Leftover entries lie outside our per-flow cleanup, so
@@ -69,16 +70,16 @@ async function boot(): Promise<void> {
       const [info, me] = await Promise.all([fetchRelayInfo(), fetchMe()]);
       if (info.mode === 'restricted') {
         if (!info.bootstrapped) {
-          new BootstrapClaim({ target: appElement });
+          mount(BootstrapClaim, { target: appElement });
           gated = true;
         } else if (!me.device) {
           // Expired variant: this browser was enrolled once before. Show the
           // session-expired explanation so the user understands what happened,
           // not just "enter an invite."
-          new InviteEntry({
-            target: appElement,
-            props: { expired: hasEnrolledHint() },
-          });
+          mount(InviteEntry, {
+                        target: appElement,
+                        props: { expired: hasEnrolledHint() },
+                      });
           gated = true;
         }
       }
@@ -87,7 +88,7 @@ async function boot(): Promise<void> {
     }
     if (gated) return;
 
-    new ByoApp({ target: appElement });
+    mount(ByoApp, { target: appElement });
     void prewarmDownloadServiceWorker();
     void sweepOPFSPending();
   } catch (e) {

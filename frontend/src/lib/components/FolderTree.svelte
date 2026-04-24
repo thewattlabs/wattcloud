@@ -1,4 +1,4 @@
-<script lang="ts" context="module">
+<script lang="ts" module>
   import type { Folder } from '../stores/files';
 
   export interface TreeFolder extends Folder {
@@ -7,7 +7,7 @@
 </script>
 
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import FolderTree from './FolderTree.svelte';
   import FolderSimple from 'phosphor-svelte/lib/FolderSimple';
   import CaretDown from 'phosphor-svelte/lib/CaretDown';
   import CaretRight from 'phosphor-svelte/lib/CaretRight';
@@ -18,33 +18,55 @@
   import FileText from 'phosphor-svelte/lib/FileText';
   import ConfirmModal from './ConfirmModal.svelte';
 
-  /** Flat list of all folders (used only at level 0; ignored at deeper levels) */
-  export let folders: Folder[] = [];
-  export let selected: number | null = 1;
+  
 
-  /** Internal: pre-built tree nodes passed to recursive children */
-  export let _treeNodes: TreeFolder[] | null = null;
-  export let level = 0;
+  
 
-  // BYO mode: handles encryption and persistence.
-  export let onRename: ((folderId: number, plaintextName: string) => Promise<void>) | null = null;
-  // BYO mode: handles deletion and store update.
-  export let onDelete: ((folderId: number) => Promise<void>) | null = null;
+  
+  
 
-  // Managed mode: inject API + store-update operations to avoid static managed imports.
-  export let managedRenameFolder: ((folderId: number, name: string) => Promise<void>) | null = null;
-  export let managedDeletePreview: ((folderId: number) => Promise<{ subfolder_count: number; file_count: number } | null>) | null = null;
-  export let managedDeleteFolder: ((folderId: number) => Promise<void>) | null = null;
+  
+  interface Props {
+    /** Flat list of all folders (used only at level 0; ignored at deeper levels) */
+    folders?: Folder[];
+    selected?: number | null;
+    /** Internal: pre-built tree nodes passed to recursive children */
+    _treeNodes?: TreeFolder[] | null;
+    level?: number;
+    // BYO mode: handles encryption and persistence.
+    onRename?: ((folderId: number, plaintextName: string) => Promise<void>) | null;
+    // BYO mode: handles deletion and store update.
+    onDelete?: ((folderId: number) => Promise<void>) | null;
+    // Managed mode: inject API + store-update operations to avoid static managed imports.
+    managedRenameFolder?: ((folderId: number, name: string) => Promise<void>) | null;
+    managedDeletePreview?: ((folderId: number) => Promise<{ subfolder_count: number; file_count: number } | null>) | null;
+    managedDeleteFolder?: ((folderId: number) => Promise<void>) | null;
+  onSelect?: (...args: any[]) => void;
+  onMoveFile?: (...args: any[]) => void;
+  onMoveFolder?: (...args: any[]) => void;
+  }
 
-  const dispatch = createEventDispatcher();
-
-  let expanded = new Set<number>();
-  let renamingFolderId: number | null = null;
-  let renameValue = '';
-  let showDeleteModal = false;
-  let deletingFolder: { id: number; name: string } | null = null;
-  let deletePreview: { subfolder_count: number; file_count: number } | null = null;
-  let deleteLoading = false;
+  let {
+    folders = [],
+    selected = 1,
+    _treeNodes = null,
+    level = 0,
+    onRename = null,
+    onDelete = null,
+    managedRenameFolder = null,
+    managedDeletePreview = null,
+    managedDeleteFolder = null,
+    onSelect,
+    onMoveFile,
+    onMoveFolder
+  }: Props = $props();
+let expanded = $state(new Set<number>());
+  let renamingFolderId: number | null = $state(null);
+  let renameValue = $state('');
+  let showDeleteModal = $state(false);
+  let deletingFolder: { id: number; name: string } | null = $state(null);
+  let deletePreview: { subfolder_count: number; file_count: number } | null = $state(null);
+  let deleteLoading = $state(false);
 
   function buildTree(flatFolders: Folder[]): TreeFolder[] {
     const map = new Map<number, TreeFolder>();
@@ -66,9 +88,9 @@
   }
 
   // At level 0, build tree from flat folders. At deeper levels, use pre-built nodes.
-  $: displayNodes = _treeNodes ? _treeNodes : buildTree(folders);
+  let displayNodes = $derived(_treeNodes ? _treeNodes : buildTree(folders));
 
-  function selectFolder(id: number) { dispatch('select', id); }
+  function selectFolder(id: number) { onSelect?.(id); }
 
   function toggleExpand(id: number, event: Event) {
     event.stopPropagation();
@@ -161,14 +183,14 @@
   function cancelDelete() { closeDeleteModal(); }
   export function closeDeleteModal() { showDeleteModal = false; deletingFolder = null; deletePreview = null; deleteLoading = false; }
 
-  let dragOverFolder: number | null = null;
+  let dragOverFolder: number | null = $state(null);
   function handleDragStart(event: DragEvent, folder: TreeFolder) { if (event.dataTransfer) { event.dataTransfer.setData('application/json', JSON.stringify({ type: 'folder', id: folder.id })); event.dataTransfer.effectAllowed = 'move'; } }
   function handleDragOver(event: DragEvent, folderId: number) { event.preventDefault(); event.stopPropagation(); if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'; dragOverFolder = folderId; }
   function handleDragLeave(event: DragEvent) { event.stopPropagation(); dragOverFolder = null; }
   function handleDrop(event: DragEvent, folderId: number) {
     event.preventDefault(); event.stopPropagation(); dragOverFolder = null;
     const data = event.dataTransfer?.getData('application/json');
-    if (data) { try { const parsed = JSON.parse(data); if (parsed.type === 'file') { dispatch('moveFile', { fileId: parsed.id, folderId }); } else if (parsed.type === 'folder' && parsed.id !== folderId) { dispatch('moveFolder', { folderId: parsed.id, parentId: folderId }); } } catch (e) { console.error('Failed to parse drag data:', e); } }
+    if (data) { try { const parsed = JSON.parse(data); if (parsed.type === 'file') { onMoveFile?.({ fileId: parsed.id, folderId }); } else if (parsed.type === 'folder' && parsed.id !== folderId) { onMoveFolder?.({ folderId: parsed.id, parentId: folderId }); } } catch (e) { console.error('Failed to parse drag data:', e); } }
   }
 </script>
 
@@ -182,35 +204,35 @@
         class:active={folder.id === selected}
         class:drag-over={folder.id === dragOverFolder}
         draggable={renamingFolderId !== folder.id}
-        on:dragstart={(e) => handleDragStart(e, folder)}
-        on:dragover={(e) => handleDragOver(e, folder.id)}
-        on:dragleave={handleDragLeave}
-        on:drop={(e) => handleDrop(e, folder.id)}
+        ondragstart={(e) => handleDragStart(e, folder)}
+        ondragover={(e) => handleDragOver(e, folder.id)}
+        ondragleave={handleDragLeave}
+        ondrop={(e) => handleDrop(e, folder.id)}
       >
         {#if renamingFolderId === folder.id}
           <div class="rename-row">
-            <!-- svelte-ignore a11y-autofocus -->
+            <!-- svelte-ignore a11y_autofocus -->
             <input
               type="text"
               bind:value={renameValue}
-              on:keydown={(e) => handleRenameKeydown(e, folder.id)}
-              on:blur={() => submitRename(folder.id)}
+              onkeydown={(e) => handleRenameKeydown(e, folder.id)}
+              onblur={() => submitRename(folder.id)}
               autofocus
             />
-            <button class="icon-btn confirm" on:click={(e) => submitRename(folder.id, e)} aria-label="Confirm rename">
+            <button class="icon-btn confirm" onclick={(e) => submitRename(folder.id, e)} aria-label="Confirm rename">
               <Check size={16} weight="bold" />
             </button>
-            <button class="icon-btn cancel" on:click={(e) => cancelRename(e)} aria-label="Cancel rename">
+            <button class="icon-btn cancel" onclick={(e) => cancelRename(e)} aria-label="Cancel rename">
               <X size={16} weight="bold" />
             </button>
           </div>
         {:else}
-          <div class="folder-row" on:click={() => selectFolder(folder.id)} on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), selectFolder(folder.id))} role="button" tabindex="0">
+          <div class="folder-row" onclick={() => selectFolder(folder.id)} onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), selectFolder(folder.id))} role="button" tabindex="0">
             {#if folder.children.length > 0}
               <button
                 class="icon-btn expand"
                 type="button"
-                on:click|stopPropagation={(e) => toggleExpand(folder.id, e)}
+                onclick={(e) => { e.stopPropagation(); toggleExpand(folder.id, e); }}
                 aria-label={expanded.has(folder.id) ? 'Collapse' : 'Expand'}
               >
                 {#if expanded.has(folder.id)}
@@ -231,26 +253,26 @@
             <span class="folder-name">{folder.decrypted_name || folder.name}</span>
 
             <div class="actions">
-              <button class="icon-btn action-rename" type="button" on:click|stopPropagation={(e) => startRename(folder, e)} aria-label="Rename" title="Rename">
+              <button class="icon-btn action-rename" type="button" onclick={(e) => { e.stopPropagation(); startRename(folder, e); }} aria-label="Rename" title="Rename">
                 <PencilSimple size={20} />
               </button>
-              <button class="icon-btn action-delete" type="button" on:click|stopPropagation={(e) => deleteFolder(folder, e)} aria-label="Delete" title="Delete">
+              <button class="icon-btn action-delete" type="button" onclick={(e) => { e.stopPropagation(); deleteFolder(folder, e); }} aria-label="Delete" title="Delete">
                 <Trash size={20} weight="bold" />
               </button>
             </div>
           </div>
 
           {#if folder.children.length > 0 && expanded.has(folder.id)}
-            <svelte:self
+            <FolderTree
               folders={[]}
               _treeNodes={folder.children}
               {selected}
               level={level + 1}
               {onRename}
               {onDelete}
-              on:select
-              on:moveFile
-              on:moveFolder
+              
+              
+              
             />
           {/if}
         {/if}
@@ -265,8 +287,8 @@
       confirmText="Delete"
       confirmClass="btn-danger"
       loading={deleteLoading}
-      on:confirm={confirmDelete}
-      on:cancel={cancelDelete}
+      onConfirm={confirmDelete}
+      onCancel={cancelDelete}
     >
       {#if deletingFolder}
         <p class="warning-text">Are you sure you want to delete <strong>{deletingFolder.name}</strong>?</p>

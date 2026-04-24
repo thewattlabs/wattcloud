@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, createEventDispatcher, getContext } from 'svelte';
+  import { onMount, getContext } from 'svelte';
   import type { DataProvider } from '../../byo/DataProvider';
   type DpHolder = { current: DataProvider | null };
   const dpHolder = getContext<DpHolder>('byo:dataProvider');
@@ -53,23 +53,26 @@
   import ConfirmModal from '../ConfirmModal.svelte';
   import ImageSquare from 'phosphor-svelte/lib/ImageSquare';
 
-  export let loadFileData: ((fileId: number) => Promise<Blob>) | null = null;
-  export let sortDir: 'asc' | 'desc' = 'desc';
-  /** Selection plumbing — shared with ByoDashboard's byoSelectedFiles store. */
-  export let selectionContext: {
-    isSelectionMode: boolean;
-    selectedFiles: Set<number>;
-    toggle: (id: number) => void;
-    selectAll: (ids: number[]) => void;
-    clear: () => void;
-  } | null = null;
+  
+  interface Props {
+    loadFileData?: ((fileId: number) => Promise<Blob>) | null;
+    sortDir?: 'asc' | 'desc';
+    /** Selection plumbing — shared with ByoDashboard's byoSelectedFiles store. */
+    selectionContext?: {
+      isSelectionMode: boolean;
+      selectedFiles: Set<number>;
+      toggle: (id: number) => void;
+      selectAll: (ids: number[]) => void;
+      clear: () => void;
+    } | null;
+    onShareCollection?: (...args: any[]) => void;
+    onUpload?: (...args: any[]) => void;
+  }
 
-  const dispatch = createEventDispatcher<{ upload: void; shareCollection: { collectionId: number } }>();
-
-  $: showSelectionMode = selectionContext?.isSelectionMode ?? false;
-  $: activeSelectedFiles = selectionContext?.selectedFiles ?? new Set<number>();
-
-  function toggleSelection(fileId: number) {
+  let { loadFileData = null, sortDir = $bindable('desc'), selectionContext = null,
+  onShareCollection,
+  onUpload }: Props = $props();
+function toggleSelection(fileId: number) {
     selectionContext?.toggle(fileId);
   }
 
@@ -89,15 +92,14 @@
   }
 
   // ── Collections state ────────────────────────────────────────────────────
-  let newCollectionName = '';
-  let showNewCollectionInput = false;
-  let creatingCollection = false;
-  let renamingCollectionId: number | null = null;
-  let renameCollectionValue = '';
-  let confirmDeleteCollectionId: number | null = null;
-  let deletingCollection = false;
+  let newCollectionName = $state('');
+  let showNewCollectionInput = $state(false);
+  let creatingCollection = $state(false);
+  let renamingCollectionId: number | null = $state(null);
+  let renameCollectionValue = $state('');
+  let confirmDeleteCollectionId: number | null = $state(null);
+  let deletingCollection = $state(false);
 
-  $: activeCollection = $byoCollections.find((c) => c.id === $byoSelectedCollectionId) ?? null;
 
   async function handleCreateCollection() {
     const name = newCollectionName.trim();
@@ -172,8 +174,8 @@
   }
 
   // ── Folder picker (timeline source) ──────────────────────────────────────
-  let folderOptions: FolderEntry[] = [];
-  let folderPickerOpen = false;
+  let folderOptions: FolderEntry[] = $state([]);
+  let folderPickerOpen = $state(false);
 
   async function refreshFolderOptions() {
     const dp = dpHolder?.current;
@@ -195,41 +197,23 @@
     await loadByoPhotoTimeline();
   }
 
-  $: currentFolderLabel = (() => {
-    const v = $byoPhotoFolderFilter;
-    if (v === undefined) return 'All photos';
-    if (v === null) return 'Vault root';
-    return folderOptions.find((f) => f.id === v)?.decrypted_name ?? 'Folder';
-  })();
 
   // ── Date-range filter ───────────────────────────────────────────────────
   // Session-scoped (no persistence) — narrows the visible timeline to a
   // single year or year+month. null,null = All dates.
-  let dateFilterYear: number | null = null;
-  let dateFilterMonth: number | null = null;
-  let dateFilterOpen = false;
+  let dateFilterYear: number | null = $state(null);
+  let dateFilterMonth: number | null = $state(null);
+  let dateFilterOpen = $state(false);
 
-  $: availableYears = (() => {
-    const years = new Set<number>();
-    for (const g of $byoPhotoTimeline) years.add(g.year);
-    return Array.from(years).sort((a, b) => b - a);
-  })();
 
-  $: availableMonthsForYear = dateFilterYear == null
-    ? []
-    : (() => {
-        const months = new Set<number>();
-        for (const g of $byoPhotoTimeline) if (g.year === dateFilterYear) months.add(g.month);
-        return Array.from(months).sort((a, b) => b - a);
-      })();
 
   // Location filter — either:
   //   - `locationOnly` (any GPS), or
   //   - `locationPlace` (GPS inside a selected place bbox).
   // Selecting a place implies locationOnly = true.
-  let locationOnly = false;
-  let locationPlace: PlaceBounds | null = null;
-  let placeSheetOpen = false;
+  let locationOnly = $state(false);
+  let locationPlace: PlaceBounds | null = $state(null);
+  let placeSheetOpen = $state(false);
 
   function fileHasLocation(f: { metadata?: string }): boolean {
     const e = parseExif(f.metadata);
@@ -254,7 +238,7 @@
   // This downloads those files, re-extracts EXIF, and writes the metadata
   // back to the vault. Blocking until done — a busy toast keeps the user
   // informed.
-  let reextracting = false;
+  let reextracting = $state(false);
   async function handleReextractExif() {
     if (reextracting) return;
     reextracting = true;
@@ -278,30 +262,7 @@
     }
   }
 
-  // Overwrite displayTimeline declaration above? Simpler: compute a
-  // date-filtered view that the template uses instead.
-  $: filteredTimeline = (() => {
-    let list = displayTimeline;
-    if (dateFilterYear != null) list = list.filter((g) => g.year === dateFilterYear);
-    if (dateFilterMonth != null) list = list.filter((g) => g.month === dateFilterMonth);
-    if (locationPlace) {
-      const p = locationPlace;
-      list = list
-        .map((g) => ({ ...g, files: g.files.filter((f) => fileInPlace(f, p)) }))
-        .filter((g) => g.files.length > 0);
-    } else if (locationOnly) {
-      list = list
-        .map((g) => ({ ...g, files: g.files.filter(fileHasLocation) }))
-        .filter((g) => g.files.length > 0);
-    }
-    return list;
-  })();
 
-  $: dateFilterLabel = (() => {
-    if (dateFilterYear == null) return 'All dates';
-    if (dateFilterMonth == null) return String(dateFilterYear);
-    return `${MONTH_SHORT[dateFilterMonth - 1]} ${dateFilterYear}`;
-  })();
 
   function pickDate(year: number | null, month: number | null) {
     dateFilterYear = year;
@@ -315,18 +276,11 @@
                       'July', 'August', 'September', 'October', 'November', 'December'];
 
   type TabId = 'timeline' | 'collections';
-  let activeTab: TabId = 'timeline';
+  let activeTab: TabId = $state('timeline');
 
-  let previewFile: FileEntry | null = null;
-  let previewOpen = false;
-  $: previewFileAny = previewFile as unknown as any;
+  let previewFile: FileEntry | null = $state(null);
+  let previewOpen = $state(false);
 
-  // Store sorts groups newest-first; when sortDir is 'asc' we reverse so
-  // oldest days appear at the top. Reversing a copy keeps the original
-  // store untouched (other consumers might rely on its default order).
-  $: displayTimeline = sortDir === 'asc'
-    ? [...$byoPhotoTimeline].reverse()
-    : $byoPhotoTimeline;
 
   function dayKey(g: { year: number; month: number; day: number }) {
     return `${g.year}-${g.month}-${g.day}`;
@@ -356,10 +310,6 @@
     previewOpen = true;
   }
 
-  /** Flat, view-order list of files shown in the lightbox — used by prev/next. */
-  $: previewSiblings = activeCollection
-    ? $byoCollectionFiles
-    : displayTimeline.flatMap((g) => g.files);
 
   function previewNavigate(delta: number) {
     if (!previewFile) return;
@@ -370,21 +320,76 @@
     previewFile = previewSiblings[next] as any;
   }
 
-  $: previewHasPrev = previewFile
-    ? previewSiblings.findIndex((f) => f.id === previewFile!.id) > 0
-    : false;
-  $: previewHasNext = previewFile
-    ? (() => {
-        const i = previewSiblings.findIndex((f) => f.id === previewFile!.id);
-        return i >= 0 && i < previewSiblings.length - 1;
-      })()
-    : false;
 
   async function _loadPreviewBlob(fileId: number): Promise<Blob> {
     if (loadFileData) return loadFileData(fileId);
     throw new Error('No loadFileData provided');
   }
 
+  let showSelectionMode = $derived(selectionContext?.isSelectionMode ?? false);
+  let activeSelectedFiles = $derived(selectionContext?.selectedFiles ?? new Set<number>());
+  let activeCollection = $derived($byoCollections.find((c) => c.id === $byoSelectedCollectionId) ?? null);
+  let currentFolderLabel = $derived((() => {
+    const v = $byoPhotoFolderFilter;
+    if (v === undefined) return 'All photos';
+    if (v === null) return 'Vault root';
+    return folderOptions.find((f) => f.id === v)?.decrypted_name ?? 'Folder';
+  })());
+  let availableYears = $derived((() => {
+    const years = new Set<number>();
+    for (const g of $byoPhotoTimeline) years.add(g.year);
+    return Array.from(years).sort((a, b) => b - a);
+  })());
+  let availableMonthsForYear = $derived(dateFilterYear == null
+    ? []
+    : (() => {
+        const months = new Set<number>();
+        for (const g of $byoPhotoTimeline) if (g.year === dateFilterYear) months.add(g.month);
+        return Array.from(months).sort((a, b) => b - a);
+      })());
+  // Store sorts groups newest-first; when sortDir is 'asc' we reverse so
+  // oldest days appear at the top. Reversing a copy keeps the original
+  // store untouched (other consumers might rely on its default order).
+  let displayTimeline = $derived(sortDir === 'asc'
+    ? [...$byoPhotoTimeline].reverse()
+    : $byoPhotoTimeline);
+  // Overwrite displayTimeline declaration above? Simpler: compute a
+  // date-filtered view that the template uses instead.
+  let filteredTimeline = $derived((() => {
+    let list = displayTimeline;
+    if (dateFilterYear != null) list = list.filter((g) => g.year === dateFilterYear);
+    if (dateFilterMonth != null) list = list.filter((g) => g.month === dateFilterMonth);
+    if (locationPlace) {
+      const p = locationPlace;
+      list = list
+        .map((g) => ({ ...g, files: g.files.filter((f) => fileInPlace(f, p)) }))
+        .filter((g) => g.files.length > 0);
+    } else if (locationOnly) {
+      list = list
+        .map((g) => ({ ...g, files: g.files.filter(fileHasLocation) }))
+        .filter((g) => g.files.length > 0);
+    }
+    return list;
+  })());
+  let dateFilterLabel = $derived((() => {
+    if (dateFilterYear == null) return 'All dates';
+    if (dateFilterMonth == null) return String(dateFilterYear);
+    return `${MONTH_SHORT[dateFilterMonth - 1]} ${dateFilterYear}`;
+  })());
+  let previewFileAny = $derived(previewFile as unknown as any);
+  /** Flat, view-order list of files shown in the lightbox — used by prev/next. */
+  let previewSiblings = $derived(activeCollection
+    ? $byoCollectionFiles
+    : displayTimeline.flatMap((g) => g.files));
+  let previewHasPrev = $derived(previewFile
+    ? previewSiblings.findIndex((f) => f.id === previewFile!.id) > 0
+    : false);
+  let previewHasNext = $derived(previewFile
+    ? (() => {
+        const i = previewSiblings.findIndex((f) => f.id === previewFile!.id);
+        return i >= 0 && i < previewSiblings.length - 1;
+      })()
+    : false);
 </script>
 
 <div class="photo-timeline">
@@ -396,7 +401,7 @@
         class:active={activeTab === 'timeline'}
         role="tab"
         aria-selected={activeTab === 'timeline'}
-        on:click={() => { activeTab = 'timeline'; closeCollection(); }}
+        onclick={() => { activeTab = 'timeline'; closeCollection(); }}
         title="Timeline"
       >
         <Images size={16} weight="regular" />
@@ -407,7 +412,7 @@
         class:active={activeTab === 'collections'}
         role="tab"
         aria-selected={activeTab === 'collections'}
-        on:click={() => { activeTab = 'collections'; if ($byoCollections.length === 0) loadByoCollections(); }}
+        onclick={() => { activeTab = 'collections'; if ($byoCollections.length === 0) loadByoCollections(); }}
         title="Collections"
       >
         <Stack size={16} weight="regular" />
@@ -426,7 +431,7 @@
             <button
               class="filter-chip"
               class:has-filter={$byoPhotoFolderFilter !== undefined}
-              on:click={() => { folderPickerOpen = !folderPickerOpen; if (folderPickerOpen) refreshFolderOptions(); }}
+              onclick={() => { folderPickerOpen = !folderPickerOpen; if (folderPickerOpen) refreshFolderOptions(); }}
               aria-haspopup="listbox"
               aria-expanded={folderPickerOpen}
               title={currentFolderLabel}
@@ -440,12 +445,12 @@
                 <button
                   class="folder-picker-item"
                   class:selected={$byoPhotoFolderFilter === undefined}
-                  on:click={() => pickFolder(undefined)}
+                  onclick={() => pickFolder(undefined)}
                 >All photos</button>
                 <button
                   class="folder-picker-item"
                   class:selected={$byoPhotoFolderFilter === null}
-                  on:click={() => pickFolder(null)}
+                  onclick={() => pickFolder(null)}
                 >Vault root</button>
                 {#if folderOptions.length > 0}
                   <div class="folder-picker-divider"></div>
@@ -453,7 +458,7 @@
                     <button
                       class="folder-picker-item"
                       class:selected={$byoPhotoFolderFilter === f.id}
-                      on:click={() => pickFolder(f.id)}
+                      onclick={() => pickFolder(f.id)}
                     >{f.decrypted_name}</button>
                   {/each}
                 {/if}
@@ -466,7 +471,7 @@
               <button
                 class="filter-chip"
                 class:has-filter={dateFilterYear != null}
-                on:click={() => (dateFilterOpen = !dateFilterOpen)}
+                onclick={() => (dateFilterOpen = !dateFilterOpen)}
                 aria-haspopup="listbox"
                 aria-expanded={dateFilterOpen}
                 title={dateFilterLabel}
@@ -480,14 +485,14 @@
                   <button
                     class="folder-picker-item"
                     class:selected={dateFilterYear == null}
-                    on:click={() => pickDate(null, null)}
+                    onclick={() => pickDate(null, null)}
                   >All dates</button>
                   <div class="folder-picker-divider"></div>
                   {#each availableYears as y (y)}
                     <button
                       class="folder-picker-item"
                       class:selected={dateFilterYear === y && dateFilterMonth == null}
-                      on:click={() => pickDate(y, null)}
+                      onclick={() => pickDate(y, null)}
                     >{y}</button>
                   {/each}
                   {#if availableMonthsForYear.length > 0}
@@ -496,7 +501,7 @@
                       <button
                         class="folder-picker-item sub"
                         class:selected={dateFilterYear != null && dateFilterMonth === m}
-                        on:click={() => pickDate(dateFilterYear, m)}
+                        onclick={() => pickDate(dateFilterYear, m)}
                       >{MONTH_SHORT[m - 1]} {dateFilterYear}</button>
                     {/each}
                   {/if}
@@ -509,7 +514,7 @@
             <button
               class="filter-chip"
               class:has-filter={!!locationPlace || locationOnly}
-              on:click={() => (placeSheetOpen = !placeSheetOpen)}
+              onclick={() => (placeSheetOpen = !placeSheetOpen)}
               title={locationPlace ? locationPlace.display : (locationOnly ? 'Any location' : 'Filter by location')}
             >
               <MapPin size={14} />
@@ -523,23 +528,23 @@
                 <button
                   class="folder-picker-item"
                   class:selected={!locationPlace && !locationOnly}
-                  on:click={() => { locationPlace = null; locationOnly = false; placeSheetOpen = false; }}
+                  onclick={() => { locationPlace = null; locationOnly = false; placeSheetOpen = false; }}
                 >Any location</button>
                 <button
                   class="folder-picker-item"
                   class:selected={!locationPlace && locationOnly}
-                  on:click={() => { locationPlace = null; locationOnly = true; placeSheetOpen = false; }}
+                  onclick={() => { locationPlace = null; locationOnly = true; placeSheetOpen = false; }}
                 >Located only</button>
                 <div class="folder-picker-divider"></div>
                 <PlaceSearch
                   selected={locationPlace}
-                  on:select={handlePlaceSelect}
-                  on:clear={handlePlaceClear}
+                  onSelect={handlePlaceSelect}
+                  onClear={handlePlaceClear}
                 />
                 <div class="folder-picker-divider"></div>
                 <button
                   class="folder-picker-item"
-                  on:click={handleReextractExif}
+                  onclick={handleReextractExif}
                   disabled={reextracting}
                   title="Re-scan EXIF for photos uploaded before GPS extraction was widened."
                 >{reextracting ? 'Scanning…' : 'Re-scan missing GPS'}</button>
@@ -549,7 +554,7 @@
 
           <button
             class="filter-direction"
-            on:click={() => (sortDir = sortDir === 'asc' ? 'desc' : 'asc')}
+            onclick={() => (sortDir = sortDir === 'asc' ? 'desc' : 'asc')}
             aria-label={sortDir === 'desc' ? 'Sorted newest first — click for oldest first' : 'Sorted oldest first — click for newest first'}
             title={sortDir === 'desc' ? 'Newest first' : 'Oldest first'}
           >
@@ -560,25 +565,25 @@
         <!-- Collections index: primary "new collection" action lives here so
              it's part of the same header bar as the toggle. -->
         {#if showNewCollectionInput}
-          <!-- svelte-ignore a11y-autofocus -->
+          <!-- svelte-ignore a11y_autofocus -->
           <input
             type="text"
             class="input collection-name-input"
             bind:value={newCollectionName}
-            on:keydown={(e) => {
+            onkeydown={(e) => {
               if (e.key === 'Enter') { e.preventDefault(); handleCreateCollection(); }
               else if (e.key === 'Escape') { showNewCollectionInput = false; newCollectionName = ''; }
             }}
-            on:blur={() => { if (!newCollectionName.trim()) showNewCollectionInput = false; }}
+            onblur={() => { if (!newCollectionName.trim()) showNewCollectionInput = false; }}
             placeholder="Collection name"
             disabled={creatingCollection}
             autofocus
           />
-          <button class="btn btn-primary btn-sm" on:click={handleCreateCollection} disabled={creatingCollection || !newCollectionName.trim()}>
+          <button class="btn btn-primary btn-sm" onclick={handleCreateCollection} disabled={creatingCollection || !newCollectionName.trim()}>
             <Check size={16} weight="bold" />
           </button>
         {:else}
-          <button class="btn btn-primary btn-sm" on:click={() => { showNewCollectionInput = true; }}>
+          <button class="btn btn-primary btn-sm" onclick={() => { showNewCollectionInput = true; }}>
             <Plus size={16} weight="bold" />
             New
           </button>
@@ -593,7 +598,7 @@
            block; share sits at the far right. No divider — the page's
            background + whitespace provides the separation. -->
       <div class="collection-detail-header">
-        <button class="icon-btn" on:click={closeCollection} aria-label="Back to collections" title="Back to collections">
+        <button class="icon-btn" onclick={closeCollection} aria-label="Back to collections" title="Back to collections">
           <CaretLeft size={20} weight="regular" />
         </button>
         <div class="collection-detail-meta">
@@ -603,7 +608,7 @@
         {#if $byoCollectionFiles.length > 0 && activeCollection}
           <button
             class="icon-btn"
-            on:click={() => { if (activeCollection) dispatch('shareCollection', { collectionId: activeCollection.id }); }}
+            onclick={() => { if (activeCollection) onShareCollection?.({ collectionId: activeCollection.id }); }}
             aria-label="Share collection"
             title="Share collection"
           >
@@ -626,8 +631,8 @@
               class:item-selected={activeSelectedFiles.has(file.id)}
               role="button"
               tabindex="0"
-              on:click={(e) => handleTileClick(e, file)}
-              on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), handleTileClick(e, file))}
+              onclick={(e) => handleTileClick(e, file)}
+              onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), handleTileClick(e, file))}
               use:lazyThumbnail={file}
             >
               {#if $byoThumbnailCache.has(file.id)}
@@ -637,7 +642,7 @@
               {/if}
               <button
                 class="tile-action-btn cover"
-                on:click={(e) => { e.stopPropagation(); handleSetCollectionCover(file.id); }}
+                onclick={(e) => { e.stopPropagation(); handleSetCollectionCover(file.id); }}
                 class:active={activeCollection && activeCollection.cover_file_id === file.id}
                 aria-label={activeCollection && activeCollection.cover_file_id === file.id ? 'Cover photo' : 'Set as cover'}
                 title={activeCollection && activeCollection.cover_file_id === file.id ? 'Cover photo' : 'Set as cover'}
@@ -646,7 +651,7 @@
               </button>
               <button
                 class="tile-action-btn trash"
-                on:click={(e) => { e.stopPropagation(); handleRemoveFromCollection(file.id); }}
+                onclick={(e) => { e.stopPropagation(); handleRemoveFromCollection(file.id); }}
                 aria-label="Remove from collection"
                 title="Remove from collection"
               >
@@ -673,13 +678,13 @@
             {#each $byoCollections as c (c.id)}
               {#if renamingCollectionId === c.id}
                 <div class="collection-card renaming">
-                  <!-- svelte-ignore a11y-autofocus -->
+                  <!-- svelte-ignore a11y_autofocus -->
                   <input
                     type="text"
                     class="input"
                     bind:value={renameCollectionValue}
-                    on:keydown={handleRenameKeydown}
-                    on:blur={submitRenameCollection}
+                    onkeydown={handleRenameKeydown}
+                    onblur={submitRenameCollection}
                     autofocus
                   />
                 </div>
@@ -688,8 +693,8 @@
                   class="collection-card"
                   role="button"
                   tabindex="0"
-                  on:click={() => openCollection(c.id)}
-                  on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), openCollection(c.id))}
+                  onclick={() => openCollection(c.id)}
+                  onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), openCollection(c.id))}
                 >
                   <div class="collection-cover">
                     {#if c.cover_file_id && $byoThumbnailCache.has(c.cover_file_id)}
@@ -705,25 +710,25 @@
                   <div class="collection-actions">
                     <button
                       class="icon-btn-sm"
-                      on:click={(e) => { e.stopPropagation(); moveByoCollection(c.id, -1); }}
+                      onclick={(e) => { e.stopPropagation(); moveByoCollection(c.id, -1); }}
                       aria-label="Move up"
                       title="Move up"
                     ><ArrowUp size={14} weight="regular" /></button>
                     <button
                       class="icon-btn-sm"
-                      on:click={(e) => { e.stopPropagation(); moveByoCollection(c.id, 1); }}
+                      onclick={(e) => { e.stopPropagation(); moveByoCollection(c.id, 1); }}
                       aria-label="Move down"
                       title="Move down"
                     ><ArrowDown size={14} weight="regular" /></button>
                     <button
                       class="icon-btn-sm"
-                      on:click={(e) => { e.stopPropagation(); startRenameCollection(c); }}
+                      onclick={(e) => { e.stopPropagation(); startRenameCollection(c); }}
                       aria-label="Rename collection"
                       title="Rename"
                     ><Pencil size={14} weight="regular" /></button>
                     <button
                       class="icon-btn-sm danger"
-                      on:click={(e) => { e.stopPropagation(); confirmDeleteCollectionId = c.id; }}
+                      onclick={(e) => { e.stopPropagation(); confirmDeleteCollectionId = c.id; }}
                       aria-label="Delete collection"
                       title="Delete"
                     ><Trash size={14} weight="regular" /></button>
@@ -747,7 +752,7 @@
       <ImageSquare size={56} weight="light" color="var(--text-disabled, #616161)" />
       <p class="empty-heading">No memories yet</p>
       <p class="empty-sub">Photos you upload will appear here.</p>
-      <button class="btn btn-primary" on:click={() => dispatch('upload')}>
+      <button class="btn btn-primary" onclick={() => onUpload?.()}>
         <UploadSimple size={20} />
         Upload
       </button>
@@ -767,8 +772,8 @@
               class:item-selected={activeSelectedFiles.has(file.id)}
               role="button"
               tabindex="0"
-              on:click={(e) => handleTileClick(e, file)}
-              on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), handleTileClick(e, file))}
+              onclick={(e) => handleTileClick(e, file)}
+              onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), handleTileClick(e, file))}
               use:lazyThumbnail={file}
             >
               {#if $byoThumbnailCache.has(file.id)}
@@ -781,7 +786,7 @@
               <button
                 class="tile-action-btn"
                 class:checked={showSelectionMode && activeSelectedFiles.has(file.id)}
-                on:click={(e) => handleMenuClick(e, file)}
+                onclick={(e) => handleMenuClick(e, file)}
                 aria-label={showSelectionMode && activeSelectedFiles.has(file.id) ? 'Deselect photo' : 'Select photo'}
               >
                 {#if showSelectionMode && activeSelectedFiles.has(file.id)}
@@ -805,8 +810,8 @@
     message="The collection will be removed. Photos inside it remain in the timeline and are not deleted."
     confirmText={deletingCollection ? 'Deleting…' : 'Delete'}
     loading={deletingCollection}
-    on:confirm={confirmDeleteCollection}
-    on:cancel={() => { confirmDeleteCollectionId = null; }}
+    onConfirm={confirmDeleteCollection}
+    onCancel={() => { confirmDeleteCollectionId = null; }}
   />
 {/if}
 
@@ -822,7 +827,7 @@
   />
 {/if}
 
-<script lang="ts" context="module">
+<script lang="ts" module>
   function lazyThumbnail(node: HTMLElement, file: import('../../byo/DataProvider').FileEntry) {
     const observer = new IntersectionObserver(
       (entries) => {

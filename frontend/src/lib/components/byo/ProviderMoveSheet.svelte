@@ -2,7 +2,6 @@
   /**
    * ProviderMoveSheet — bottom sheet for cross-provider file move.
    */
-  import { createEventDispatcher } from 'svelte';
   import { slide, fade } from 'svelte/transition';
   import type { ProviderMeta } from '../../byo/stores/vaultStore';
   import ArrowSquareOut from 'phosphor-svelte/lib/ArrowSquareOut';
@@ -10,30 +9,44 @@
 
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  export let open = false;
-  export let fileCount = 0;
-  export let currentProviderId = '';
-  export let providers: ProviderMeta[] = [];
-  export let progress: { done: number; total: number } | null = null;
-  export let fileErrors: { fileId: number; fileName: string; error: string }[] = [];
-  export let succeededCount: number | null = null;
-
-  const dispatch = createEventDispatcher<{
-    confirm: { destProviderId: string };
-    retry: { fileIds: number[] };
-    skipErrors: { fileId: number };
-    close: void;
-  }>();
-
-  let selectedProviderId: string | null = null;
-  let confirmed = false;
-
-  $: otherProviders = providers.filter(p => p.providerId !== currentProviderId);
-
-  $: if (!open) {
-    selectedProviderId = null;
-    confirmed = false;
+  interface Props {
+    open?: boolean;
+    fileCount?: number;
+    currentProviderId?: string;
+    providers?: ProviderMeta[];
+    progress?: { done: number; total: number } | null;
+    fileErrors?: { fileId: number; fileName: string; error: string }[];
+    succeededCount?: number | null;
+  onConfirm?: (...args: any[]) => void;
+  onClose?: (...args: any[]) => void;
+  onRetry?: (...args: any[]) => void;
+  onSkipErrors?: (...args: any[]) => void;
   }
+
+  let {
+    open = false,
+    fileCount = 0,
+    currentProviderId = '',
+    providers = [],
+    progress = null,
+    fileErrors = [],
+    succeededCount = null,
+    onConfirm,
+    onClose,
+    onRetry,
+    onSkipErrors
+  }: Props = $props();
+let selectedProviderId: string | null = $state(null);
+  let confirmed = $state(false);
+
+  let otherProviders = $derived(providers.filter(p => p.providerId !== currentProviderId));
+
+  $effect(() => {
+    if (!open) {
+      selectedProviderId = null;
+      confirmed = false;
+    }
+  });
 
   function selectProvider(p: ProviderMeta) {
     if (p.status === 'offline' || p.status === 'error' || p.status === 'unauthorized') return;
@@ -43,7 +56,7 @@
   function handleConfirm() {
     if (!selectedProviderId) return;
     confirmed = true;
-    dispatch('confirm', { destProviderId: selectedProviderId });
+    onConfirm?.({ destProviderId: selectedProviderId });
   }
 
   function providerIcon(type: string): string {
@@ -53,11 +66,11 @@
     return icons[type] ?? '?';
   }
 
-  $: inProgress = progress !== null;
-  $: progressPct = progress ? Math.round((progress.done / Math.max(progress.total, 1)) * 100) : 0;
-  $: isSuccess = succeededCount !== null && fileErrors.length === 0;
-  $: hasErrors = fileErrors.length > 0;
-  $: showResult = succeededCount !== null;
+  let inProgress = $derived(progress !== null);
+  let progressPct = $derived(progress ? Math.round((progress.done / Math.max(progress.total, 1)) * 100) : 0);
+  let isSuccess = $derived(succeededCount !== null && fileErrors.length === 0);
+  let hasErrors = $derived(fileErrors.length > 0);
+  let showResult = $derived(succeededCount !== null);
 </script>
 
 {#if open}
@@ -66,13 +79,13 @@
     role="button"
     tabindex="-1"
     aria-label="Close"
-    on:click={() => !inProgress && dispatch('close')}
-    on:keydown={(e) => e.key === 'Escape' && !inProgress && dispatch('close')}
+    onclick={() => !inProgress && onClose?.()}
+    onkeydown={(e) => e.key === 'Escape' && !inProgress && onClose?.()}
     transition:fade={{ duration: reducedMotion ? 0 : 150 }}
-  />
+></div>
 
   <div class="sheet" role="dialog" aria-modal="true" aria-label="Move to provider" transition:slide={{ duration: reducedMotion ? 0 : 220, axis: 'y' }}>
-    <div class="sheet-handle" aria-hidden="true" />
+    <div class="sheet-handle" aria-hidden="true"></div>
 
     {#if inProgress}
       <div class="sheet-section">
@@ -100,7 +113,7 @@
         <p class="success-label">Integrity verified · {succeededCount} file{succeededCount !== 1 ? 's' : ''}</p>
       </div>
       <div class="sheet-actions">
-        <button class="btn btn-primary" on:click={() => dispatch('close')}>Done</button>
+        <button class="btn btn-primary" onclick={() => onClose?.()}>Done</button>
       </div>
 
     {:else if showResult && hasErrors}
@@ -125,16 +138,16 @@
               <span class="error-msg">{e.error}</span>
             </div>
             <div class="error-actions">
-              <button class="btn-sm btn-sm-primary" on:click={() => dispatch('retry', { fileIds: [e.fileId] })}>Retry</button>
-              <button class="btn-sm btn-sm-ghost" on:click={() => dispatch('skipErrors', { fileId: e.fileId })}>Skip</button>
+              <button class="btn-sm btn-sm-primary" onclick={() => onRetry?.({ fileIds: [e.fileId] })}>Retry</button>
+              <button class="btn-sm btn-sm-ghost" onclick={() => onSkipErrors?.({ fileId: e.fileId })}>Skip</button>
             </div>
           </div>
         {/each}
       </div>
 
       <div class="sheet-actions">
-        <button class="btn btn-ghost" on:click={() => dispatch('close')}>Close</button>
-        <button class="btn btn-primary" on:click={() => dispatch('retry', { fileIds: fileErrors.map(e => e.fileId) })}>
+        <button class="btn btn-ghost" onclick={() => onClose?.()}>Close</button>
+        <button class="btn btn-primary" onclick={() => onRetry?.({ fileIds: fileErrors.map(e => e.fileId) })}>
           Retry all
         </button>
       </div>
@@ -164,7 +177,7 @@
             role="option"
             aria-selected={p.providerId === selectedProviderId}
             title={isOffline ? `${p.displayName} is offline` : p.displayName}
-            on:click={() => selectProvider(p)}
+            onclick={() => selectProvider(p)}
           >
             <span class="prow-icon" aria-hidden="true">{providerIcon(p.type)}</span>
             <span class="prow-name">{p.displayName}</span>
@@ -183,11 +196,11 @@
       </div>
 
       <div class="sheet-actions">
-        <button class="btn btn-ghost" on:click={() => dispatch('close')}>Cancel</button>
+        <button class="btn btn-ghost" onclick={() => onClose?.()}>Cancel</button>
         <button
           class="btn btn-primary"
           disabled={!selectedProviderId}
-          on:click={handleConfirm}
+          onclick={handleConfirm}
         >
           <ArrowSquareOut size={16} />
           Move here

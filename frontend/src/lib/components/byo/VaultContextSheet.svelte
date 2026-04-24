@@ -9,7 +9,6 @@
    *     + body cache + WAL for this vault. Does NOT touch the remote vault
    *     manifest. The user can re-add this vault later via the same provider.
    */
-  import { createEventDispatcher } from 'svelte';
   import BottomSheet from '../BottomSheet.svelte';
   import type { PersistedVaultSummary } from '../../byo/ProviderConfigStore';
   import { renameVaultLabel, deleteVaultProviderConfigs } from '../../byo/ProviderConfigStore';
@@ -19,27 +18,33 @@
   import PencilSimple from 'phosphor-svelte/lib/PencilSimple';
   import Trash from 'phosphor-svelte/lib/Trash';
 
-  export let open = false;
-  export let vault: PersistedVaultSummary | null = null;
-
-  const dispatch = createEventDispatcher<{
-    close: void;
-    open: { vault_id: string };
-    forgotten: { vault_id: string };
-    renamed: { vault_id: string };
-  }>();
-
-  type SheetMode = 'menu' | 'rename' | 'confirm-forget';
-  let mode: SheetMode = 'menu';
-  let newLabel = '';
-  let busy = false;
-  let err = '';
-
-  $: if (!open) {
-    mode = 'menu';
-    newLabel = vault?.vault_label ?? '';
-    err = '';
+  interface Props {
+    open?: boolean;
+    vault?: PersistedVaultSummary | null;
+  onRenamed?: (...args: any[]) => void;
+  onClose?: (...args: any[]) => void;
+  onForgotten?: (...args: any[]) => void;
+  onOpen?: (...args: any[]) => void;
   }
+
+  let { open = false, vault = null,
+  onRenamed,
+  onClose,
+  onForgotten,
+  onOpen }: Props = $props();
+type SheetMode = 'menu' | 'rename' | 'confirm-forget';
+  let mode: SheetMode = $state('menu');
+  let newLabel = $state('');
+  let busy = $state(false);
+  let err = $state('');
+
+  $effect(() => {
+    if (!open) {
+      mode = 'menu';
+      newLabel = vault?.vault_label ?? '';
+      err = '';
+    }
+  });
 
   async function doRename() {
     if (!vault) return;
@@ -49,8 +54,8 @@
     err = '';
     try {
       await renameVaultLabel(vault.vault_id, trimmed);
-      dispatch('renamed', { vault_id: vault.vault_id });
-      dispatch('close');
+      onRenamed?.({ vault_id: vault.vault_id });
+      onClose?.();
     } catch (e: any) {
       err = e?.message ?? 'Rename failed';
     } finally {
@@ -72,8 +77,8 @@
       await deleteVaultProviderConfigs(vault.vault_id);
       await deleteDeviceCryptoKey(vault.vault_id).catch(() => {});
       await deleteDeviceRecord(vault.vault_id).catch(() => {});
-      dispatch('forgotten', { vault_id: vault.vault_id });
-      dispatch('close');
+      onForgotten?.({ vault_id: vault.vault_id });
+      onClose?.();
     } catch (e: any) {
       err = e?.message ?? 'Forget failed';
     } finally {
@@ -86,14 +91,14 @@
   open={open && vault !== null}
   title={vault?.vault_label ?? ''}
   subtitle={vault ? `${vault.primary.type.toUpperCase()} · ${vault.primary.display_name}` : ''}
-  on:close={() => dispatch('close')}
+  onClose={() => onClose?.()}
 >
   {#if vault}
     {#if mode === 'menu'}
       <div class="rows">
         <button
           class="row"
-          on:click={() => { dispatch('open', { vault_id: vault.vault_id }); dispatch('close'); }}
+          onclick={() => { onOpen?.({ vault_id: vault.vault_id }); onClose?.(); }}
         >
           <span class="row-icon"><ArrowRight size={18} weight="bold" /></span>
           <span class="row-text">
@@ -101,14 +106,14 @@
             <span class="row-sub">Unlock and open this vault</span>
           </span>
         </button>
-        <button class="row" on:click={() => { mode = 'rename'; newLabel = vault.vault_label; }}>
+        <button class="row" onclick={() => { mode = 'rename'; newLabel = vault.vault_label; }}>
           <span class="row-icon"><PencilSimple size={18} weight="bold" /></span>
           <span class="row-text">
             <span class="row-title">Rename</span>
             <span class="row-sub">Local label only — other devices keep the original</span>
           </span>
         </button>
-        <button class="row danger" on:click={() => { mode = 'confirm-forget'; }}>
+        <button class="row danger" onclick={() => { mode = 'confirm-forget'; }}>
           <span class="row-icon"><Trash size={18} weight="bold" /></span>
           <span class="row-text">
             <span class="row-title">Forget on this device</span>
@@ -130,8 +135,8 @@
         />
         {#if err}<p class="input-error-msg">{err}</p>{/if}
         <div class="btn-row">
-          <button class="btn btn-secondary" on:click={() => (mode = 'menu')} disabled={busy}>Cancel</button>
-          <button class="btn btn-primary" on:click={doRename} disabled={busy || !newLabel.trim()}>Save</button>
+          <button class="btn btn-secondary" onclick={() => (mode = 'menu')} disabled={busy}>Cancel</button>
+          <button class="btn btn-primary" onclick={doRename} disabled={busy || !newLabel.trim()}>Save</button>
         </div>
       </div>
     {:else if mode === 'confirm-forget'}
@@ -143,8 +148,8 @@
         </p>
         {#if err}<p class="input-error-msg">{err}</p>{/if}
         <div class="btn-row">
-          <button class="btn btn-secondary" on:click={() => (mode = 'menu')} disabled={busy}>Cancel</button>
-          <button class="btn btn-danger" on:click={doForget} disabled={busy}>
+          <button class="btn btn-secondary" onclick={() => (mode = 'menu')} disabled={busy}>Cancel</button>
+          <button class="btn btn-danger" onclick={doForget} disabled={busy}>
             {busy ? 'Forgetting…' : 'Forget'}
           </button>
         </div>

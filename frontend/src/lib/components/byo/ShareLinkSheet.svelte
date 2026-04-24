@@ -1,4 +1,5 @@
 <script lang="ts">
+
   /**
    * ShareLinkSheet — one-flow share creator.
    *
@@ -20,8 +21,6 @@
    * open the same sheet with a "source" prop; the shape of the sheet is
    * identical, only the underlying dataProvider method changes.
    */
-
-  import { createEventDispatcher } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
   import { getContext } from 'svelte';
@@ -36,10 +35,7 @@
   import CaretUp from 'phosphor-svelte/lib/CaretUp';
   import QrCode from 'phosphor-svelte/lib/QrCode';
   import QrDisplay from './QrDisplay.svelte';
-
-  const dispatch = createEventDispatcher<{ close: void }>();
-
-  /**
+/**
    * One of four mutually exclusive sources:
    *   - { kind: 'file', file }              — single-blob share
    *   - { kind: 'folder', folder }          — folder bundle (all descendant files)
@@ -55,31 +51,16 @@
     | { kind: 'collection'; collection: CollectionEntry }
     | { kind: 'files'; files: FileEntry[] };
 
-  export let source: ShareSource;
+  interface Props {
+    source: ShareSource;
+  onClose?: (...args: any[]) => void;
+  }
+
+  let { source,
+  onClose }: Props = $props();
 
   const dataProvider = getContext<{ current: DataProvider }>('byo:dataProvider').current;
 
-  $: sourceName = source.kind === 'file'
-    ? source.file.decrypted_name
-    : source.kind === 'folder'
-      ? source.folder.decrypted_name
-      : source.kind === 'collection'
-        ? source.collection.decrypted_name
-        : `${source.files.length} files`;
-  $: sourceLabelTitle = source.kind === 'file'
-    ? `Share '${sourceName}'`
-    : source.kind === 'folder'
-      ? `Share folder '${sourceName}'`
-      : source.kind === 'collection'
-        ? `Share collection '${sourceName}'`
-        : `Share ${sourceName}`;
-  $: bundleHint = source.kind === 'file'
-    ? ''
-    : source.kind === 'folder'
-      ? 'Every file in this folder (and its subfolders) will be uploaded to the relay.'
-      : source.kind === 'collection'
-        ? 'Every photo in this collection will be uploaded to the relay.'
-        : 'The selected files will be uploaded to the relay and delivered as one zip archive.';
 
   type Ttl = 3600 | 86400 | 604800 | 2592000;
   const ttlOptions: Array<{ label: string; value: Ttl }> = [
@@ -89,31 +70,21 @@
     { label: '30 days', value: 2592000 },
   ];
 
-  let passwordOn = false;
-  let password = '';
-  let confirmPassword = '';
-  let ttlChoice: Ttl = 86400;
+  let passwordOn = $state(false);
+  let password = $state('');
+  let confirmPassword = $state('');
+  let ttlChoice: Ttl = $state(86400);
 
-  let generating = false;
-  let generatedFragment = '';
-  let generatedEntry: ShareEntry | null = null;
-  let progressDone = 0;
-  let progressTotal = 0;
-  let copyToast = false;
-  let error = '';
-  let showExplainer = false;
-  let showQr = false;
+  let generating = $state(false);
+  let generatedFragment = $state('');
+  let generatedEntry: ShareEntry | null = $state(null);
+  let progressDone = $state(0);
+  let progressTotal = $state(0);
+  let copyToast = $state(false);
+  let error = $state('');
+  let showExplainer = $state(false);
+  let showQr = $state(false);
 
-  // Password strength meter (only shown when password toggle is on).
-  $: strength = passwordStrength(password);
-  $: strengthLabel = ['', 'Weak', 'Fair', 'Good', 'Strong'][strength];
-  $: strengthColor = [
-    '',
-    'var(--danger)',
-    'var(--accent-warm, #E0A320)',
-    'var(--accent)',
-    'var(--accent)',
-  ][strength];
 
   function passwordStrength(p: string): 0 | 1 | 2 | 3 | 4 {
     if (!p) return 0;
@@ -237,25 +208,56 @@
   }
 
   function close() {
-    dispatch('close');
+    onClose?.();
   }
+  let sourceName = $derived(source.kind === 'file'
+    ? source.file.decrypted_name
+    : source.kind === 'folder'
+      ? source.folder.decrypted_name
+      : source.kind === 'collection'
+        ? source.collection.decrypted_name
+        : `${source.files.length} files`);
+  let sourceLabelTitle = $derived(source.kind === 'file'
+    ? `Share '${sourceName}'`
+    : source.kind === 'folder'
+      ? `Share folder '${sourceName}'`
+      : source.kind === 'collection'
+        ? `Share collection '${sourceName}'`
+        : `Share ${sourceName}`);
+  let bundleHint = $derived(source.kind === 'file'
+    ? ''
+    : source.kind === 'folder'
+      ? 'Every file in this folder (and its subfolders) will be uploaded to the relay.'
+      : source.kind === 'collection'
+        ? 'Every photo in this collection will be uploaded to the relay.'
+        : 'The selected files will be uploaded to the relay and delivered as one zip archive.');
+  // Password strength meter (only shown when password toggle is on).
+  let strength = $derived(passwordStrength(password));
+  let strengthLabel = $derived(['', 'Weak', 'Fair', 'Good', 'Strong'][strength]);
+  let strengthColor = $derived([
+    '',
+    'var(--danger)',
+    'var(--accent-warm, #E0A320)',
+    'var(--accent)',
+    'var(--accent)',
+  ][strength]);
 </script>
 
-<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
   class="overlay"
   role="dialog"
   aria-modal="true"
   aria-label="Share"
-  on:click|self={close}
-  on:keydown={(e) => {
+  onclick={(e) => { if (e.target === e.currentTarget) close(); }}
+  onkeydown={(e) => {
     if (e.key === 'Escape') close();
   }}
   tabindex="-1"
   transition:fade={{ duration: 200 }}
 >
   <div class="sheet" transition:fly={{ y: 80, duration: 300, easing: quintOut }}>
-    <div class="drag-handle" aria-hidden="true" />
+    <div class="drag-handle" aria-hidden="true"></div>
 
     <div class="sheet-header">
       <div>
@@ -267,7 +269,7 @@
           {#if bundleHint}<br />{bundleHint}{/if}
         </p>
       </div>
-      <button class="close-btn" on:click={close} aria-label="Close">
+      <button class="close-btn" onclick={close} aria-label="Close">
         <X size={20} />
       </button>
     </div>
@@ -287,7 +289,7 @@
                 type="button"
                 class="ttl-chip"
                 class:active={ttlChoice === opt.value}
-                on:click={() => (ttlChoice = opt.value)}
+                onclick={() => (ttlChoice = opt.value)}
                 aria-pressed={ttlChoice === opt.value}
               >
                 {opt.label}
@@ -331,7 +333,7 @@
                   <div
                     class="strength-segment"
                     style={`background: ${n <= strength ? strengthColor : 'var(--border)'}`}
-                  />
+></div>
                 {/each}
                 <span class="strength-label" aria-live="polite" style={`color: ${strengthColor}`}
                   >{strengthLabel}</span
@@ -369,12 +371,12 @@
 
       <button
         class="btn-primary"
-        on:click={generate}
+        onclick={generate}
         disabled={generating}
         aria-busy={generating}
       >
         {#if generating}
-          <span class="spinner-sm" aria-hidden="true" />
+          <span class="spinner-sm" aria-hidden="true"></span>
           {#if progressTotal > 0}
             Uploading {progressDone} / {progressTotal}…
           {:else}
@@ -396,14 +398,14 @@
           />
           <button
             class="icon-btn"
-            on:click={() => (showQr = !showQr)}
+            onclick={() => (showQr = !showQr)}
             aria-label={showQr ? 'Hide QR code' : 'Show QR code'}
             aria-expanded={showQr}
             title={showQr ? 'Hide QR' : 'Show QR'}
           >
             <QrCode size={18} />
           </button>
-          <button class="icon-btn" on:click={copyLink} aria-label="Copy link" title="Copy link">
+          <button class="icon-btn" onclick={copyLink} aria-label="Copy link" title="Copy link">
             <Copy size={18} />
           </button>
         </div>
@@ -420,13 +422,13 @@
         {/if}
 
         {#if passwordOn}
-          <button class="btn-secondary" on:click={copyPasswordText} style="margin-top: var(--sp-sm)">
+          <button class="btn-secondary" onclick={copyPasswordText} style="margin-top: var(--sp-sm)">
             <Copy size={16} aria-hidden="true" />
             Copy password
           </button>
         {/if}
 
-        <button class="btn-ghost btn-danger-text" on:click={revoke} style="margin-top: var(--sp-sm)">
+        <button class="btn-ghost btn-danger-text" onclick={revoke} style="margin-top: var(--sp-sm)">
           Revoke link
         </button>
       </div>
@@ -435,7 +437,7 @@
     <div class="explainer">
       <button
         class="explainer-toggle"
-        on:click={() => (showExplainer = !showExplainer)}
+        onclick={() => (showExplainer = !showExplainer)}
         aria-expanded={showExplainer}
       >
         <span>How does this work?</span>

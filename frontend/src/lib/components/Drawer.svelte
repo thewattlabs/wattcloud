@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import FolderSimple from 'phosphor-svelte/lib/FolderSimple';
   import Image from 'phosphor-svelte/lib/Image';
@@ -10,24 +9,7 @@
   import SignOut from 'phosphor-svelte/lib/SignOut';
   import LinkIcon from 'phosphor-svelte/lib/Link';
   import CloudBadge from './CloudBadge.svelte';
-
-  export let open: boolean = false;
-  export let currentView: string = 'files';
-  export let isAdmin: boolean = false;
-  export let userName: string = '';
-  export let storageUsedBytes: number = 0;
-  export let storageQuotaBytes: number = 0;
-  /** Shares hosted on the relay for this vault. `null` hides the row. */
-  export let shareCount: number | null = null;
-  export let shareBytes: number | null = null;
-  /** Free bytes on the relay's share filesystem. `null` hides the headroom line. */
-  export let relayHeadroomFreeBytes: number | null = null;
-
-  export let onClose: (() => void) | undefined = undefined;
-
-  const dispatch = createEventDispatcher();
-
-  type NavId = 'files' | 'photos' | 'favorites' | 'settings';
+type NavId = 'files' | 'photos' | 'favorites' | 'settings';
 
   const navLinks: { id: NavId; label: string; icon: any }[] = [
     { id: 'files', label: 'Files', icon: FolderSimple },
@@ -37,32 +19,32 @@
   ];
 
   function handleNav(id: NavId) {
-    dispatch('navigate', { view: id });
+    onNavigate?.({ view: id });
     close();
   }
 
   function handleAdmin() {
-    dispatch('admin');
+    onAdmin?.();
     close();
   }
 
   function handleLogout() {
-    dispatch('logout');
+    onLogout?.();
     close();
   }
 
   function handleLockVault() {
-    dispatch('lock-vault');
+    onLockVault?.();
     close();
   }
 
   function handleSharesClick() {
-    dispatch('shares-click');
+    onSharesClick?.();
     close();
   }
 
   function close() {
-    dispatch('close');
+    onClose?.();
     if (onClose) onClose();
   }
 
@@ -82,30 +64,71 @@
     return `${value.toFixed(value < 10 ? 1 : 0)} ${units[i]}`;
   }
 
-  export let collapsed: boolean = false;
-  export let showLogout: boolean = true;
+  interface Props {
+    open?: boolean;
+    currentView?: string;
+    isAdmin?: boolean;
+    userName?: string;
+    storageUsedBytes?: number;
+    storageQuotaBytes?: number;
+    /** Shares hosted on the relay for this vault. `null` hides the row. */
+    shareCount?: number | null;
+    shareBytes?: number | null;
+    /** Free bytes on the relay's share filesystem. `null` hides the headroom line. */
+    relayHeadroomFreeBytes?: number | null;
+    onClose?: (() => void) | undefined;
+    collapsed?: boolean;
+    showLogout?: boolean;
+  onNavigate?: (...args: any[]) => void;
+  onAdmin?: (...args: any[]) => void;
+  onLogout?: (...args: any[]) => void;
+  onLockVault?: (...args: any[]) => void;
+  onSharesClick?: (...args: any[]) => void;
+  }
+
+  let {
+    open = false,
+    currentView = 'files',
+    isAdmin = false,
+    userName = '',
+    storageUsedBytes = 0,
+    storageQuotaBytes = 0,
+    shareCount = null,
+    shareBytes = null,
+    relayHeadroomFreeBytes = null,
+    onClose = undefined,
+    collapsed = $bindable(false),
+    showLogout = true,
+    onNavigate,
+    onAdmin,
+    onLogout,
+    onLockVault,
+    onSharesClick
+  }: Props = $props();
 
   export function toggleCollapse() {
     collapsed = !collapsed;
   }
 
-  $: if (typeof document !== 'undefined') {
-    document.documentElement.style.setProperty(
-      '--drawer-current-width',
-      collapsed ? 'var(--drawer-collapsed-width)' : 'var(--drawer-width)'
-    );
-  }
+  $effect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty(
+        '--drawer-current-width',
+        collapsed ? 'var(--drawer-collapsed-width)' : 'var(--drawer-width)'
+      );
+    }
+  });
 
-  $: storagePercent = storageQuotaBytes > 0
+  let storagePercent = $derived(storageQuotaBytes > 0
     ? Math.min(100, (storageUsedBytes / storageQuotaBytes) * 100)
-    : 0;
-  $: storageBarColor = storagePercent >= 95 ? 'var(--danger, #D64545)'
+    : 0);
+  let storageBarColor = $derived(storagePercent >= 95 ? 'var(--danger, #D64545)'
     : storagePercent >= 80 ? 'var(--accent-warm, #E0A320)'
-    : 'var(--accent, #2EB860)';
-  $: userInitial = userName ? userName.charAt(0).toUpperCase() : '?';
+    : 'var(--accent, #2EB860)');
+  let userInitial = $derived(userName ? userName.charAt(0).toUpperCase() : '?');
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 <!-- Desktop: always-visible sidebar -->
 <aside
@@ -135,11 +158,10 @@
         <button
           class="drawer-link"
           class:active={currentView === link.id}
-          on:click={() => handleNav(link.id)}
+          onclick={() => handleNav(link.id)}
           title={collapsed ? link.label : ''}
         >
-          <svelte:component
-            this={link.icon}
+          <link.icon
             size={20}
             weight={currentView === link.id ? 'fill' : 'regular'}
           />
@@ -151,7 +173,7 @@
     <!-- Admin link -->
     {#if isAdmin}
       <div class="drawer-section">
-        <button class="drawer-link" on:click={handleAdmin} title={collapsed ? 'Admin Settings' : ''}>
+        <button class="drawer-link" onclick={handleAdmin} title={collapsed ? 'Admin Settings' : ''}>
           <Shield size={20} weight="regular" />
           {#if !collapsed}Admin Settings{/if}
         </button>
@@ -183,7 +205,7 @@
     <!-- Shares (desktop) — tappable, opens Settings → Active shares. -->
     {#if !collapsed && shareCount !== null}
       <div class="drawer-section">
-        <button class="drawer-shares" on:click={handleSharesClick} title="Manage active shares">
+        <button class="drawer-shares" onclick={handleSharesClick} title="Manage active shares">
           <span class="drawer-shares-icon" aria-hidden="true"><LinkIcon size={16} weight="regular" /></span>
           <span class="drawer-shares-body">
             <span class="drawer-storage-title">Active shares</span>
@@ -200,12 +222,12 @@
 
     <!-- Bottom links -->
     <div class="drawer-section drawer-bottom-links">
-      <button class="drawer-link" on:click={handleLockVault} title={collapsed ? 'Lock Vault' : ''}>
+      <button class="drawer-link" onclick={handleLockVault} title={collapsed ? 'Lock Vault' : ''}>
         <Lock size={20} weight="regular" />
         {#if !collapsed}Lock Vault{/if}
       </button>
       {#if showLogout}
-        <button class="drawer-link danger" on:click={handleLogout} title={collapsed ? 'Log out' : ''}>
+        <button class="drawer-link danger" onclick={handleLogout} title={collapsed ? 'Log out' : ''}>
           <SignOut size={20} weight="regular" />
           {#if !collapsed}Log out{/if}
         </button>
@@ -218,8 +240,8 @@
 {#if open}
   <div
     class="drawer-overlay-mobile"
-    on:click={handleOverlayClick}
-    on:keydown={handleKeydown}
+    onclick={handleOverlayClick}
+    onkeydown={handleKeydown}
     role="button"
     tabindex="-1"
     aria-label="Close drawer"
@@ -253,10 +275,9 @@
           <button
             class="drawer-link"
             class:active={currentView === link.id}
-            on:click={() => handleNav(link.id)}
+            onclick={() => handleNav(link.id)}
           >
-            <svelte:component
-              this={link.icon}
+            <link.icon
               size={20}
               weight={currentView === link.id ? 'fill' : 'regular'}
             />
@@ -268,7 +289,7 @@
       <!-- Admin link -->
       {#if isAdmin}
         <div class="drawer-section">
-          <button class="drawer-link" on:click={handleAdmin}>
+          <button class="drawer-link" onclick={handleAdmin}>
             <Shield size={20} weight="regular" />
             Admin Settings
           </button>
@@ -296,7 +317,7 @@
       <!-- Shares (mobile) -->
       {#if shareCount !== null}
         <div class="drawer-section">
-          <button class="drawer-shares" on:click={handleSharesClick} title="Manage active shares">
+          <button class="drawer-shares" onclick={handleSharesClick} title="Manage active shares">
             <span class="drawer-shares-icon" aria-hidden="true"><LinkIcon size={16} weight="regular" /></span>
             <span class="drawer-shares-body">
               <span class="drawer-storage-title">Active shares</span>
@@ -313,12 +334,12 @@
 
       <!-- Bottom links -->
       <div class="drawer-section drawer-bottom-links">
-        <button class="drawer-link" on:click={handleLockVault}>
+        <button class="drawer-link" onclick={handleLockVault}>
           <Lock size={20} weight="regular" />
           Lock Vault
         </button>
         {#if showLogout}
-          <button class="drawer-link danger" on:click={handleLogout}>
+          <button class="drawer-link danger" onclick={handleLogout}>
             <SignOut size={20} weight="regular" />
             Log out
           </button>

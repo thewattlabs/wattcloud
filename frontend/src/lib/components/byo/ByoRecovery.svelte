@@ -9,7 +9,7 @@
    * - New passphrase cleared from component state immediately after worker call
    * - All slots (device + old passphrase) cleared before new keys are written
    */
-  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
   import type { StorageProvider } from '@wattcloud/sdk';
   import * as byoWorker from '@wattcloud/sdk';
   import { bytesToBase64, base64ToBytes } from '../../byo/VaultLifecycle';
@@ -22,33 +22,35 @@
   import Argon2Progress from './Argon2Progress.svelte';
   import PasswordInput from '../common/PasswordInput.svelte';
 
-  export let provider: StorageProvider;
+  interface Props {
+    provider: StorageProvider;
+  onCancel?: (...args: any[]) => void;
+  onComplete?: (...args: any[]) => void;
+  }
 
-  const dispatch = createEventDispatcher<{
-    complete: void;
-    cancel: void;
-  }>();
-
-  const STEPS = ['Recovery Key', 'New Passphrase', 'Re-keying', 'New Recovery Key'];
+  let { provider,
+  onCancel,
+  onComplete }: Props = $props();
+const STEPS = ['Recovery Key', 'New Passphrase', 'Re-keying', 'New Recovery Key'];
   type RecoveryStep = 'enter-key' | 'verifying' | 'new-passphrase' | 'rekeying' | 'new-recovery-key' | 'error';
 
-  let step: RecoveryStep = 'enter-key';
-  let recoveryInput = '';
-  let error = '';
-  let argon2Done = false;
-  let newRecoveryKeyB64 = '';
+  let step: RecoveryStep = $state('enter-key');
+  let recoveryInput = $state('');
+  let error = $state('');
+  let argon2Done = $state(false);
+  let newRecoveryKeyB64 = $state('');
   let vaultIdB64 = '';
 
-  $: stepIndex = {
+  let stepIndex = $derived({
     'enter-key': 0,
     'verifying': 0,
     'new-passphrase': 1,
     'rekeying': 2,
     'new-recovery-key': 3,
     'error': 0,
-  }[step] ?? 0;
+  }[step] ?? 0);
 
-  $: completedSteps = Array.from({ length: stepIndex }, (_, i) => i);
+  let completedSteps = $derived(Array.from({ length: stepIndex }, (_, i) => i));
 
   async function verifyRecoveryKey() {
     const trimmed = recoveryInput.trim();
@@ -264,17 +266,17 @@
           disabled={step === 'verifying'}
           showLabel="Show recovery key"
           hideLabel="Hide recovery key"
-          on:keydown={(e) => e.key === 'Enter' && verifyRecoveryKey()}
+          onkeydown={(e) => e.key === 'Enter' && verifyRecoveryKey()}
         />
       </div>
       <button
         class="btn btn-primary"
-        on:click={verifyRecoveryKey}
+        onclick={verifyRecoveryKey}
         disabled={step === 'verifying' || !recoveryInput.trim()}
       >
         {step === 'verifying' ? 'Verifying…' : 'Continue'}
       </button>
-      <button class="btn btn-secondary" on:click={() => dispatch('cancel')}>Cancel</button>
+      <button class="btn btn-secondary" onclick={() => onCancel?.()}>Cancel</button>
     </div>
 
   {:else if step === 'new-passphrase'}
@@ -283,7 +285,7 @@
       <p class="step-sub">
         Choose a strong new passphrase. Your old passphrase will no longer work.
       </p>
-      <ByoPassphraseInput mode="create" submitLabel="Re-key Vault" on:submit={handleNewPassphrase} />
+      <ByoPassphraseInput mode="create" submitLabel="Re-key Vault" onSubmit={handleNewPassphrase} />
     </div>
 
   {:else if step === 'rekeying'}
@@ -312,17 +314,17 @@
       <RecoveryKeyDisplay
         recoveryKey={newRecoveryKeyB64}
         embedded
-        onConfirmed={() => dispatch('complete')}
+        onConfirmed={() => onComplete?.()}
       />
     </div>
 
   {:else if step === 'error'}
     <div class="step-content">
       <p class="error-msg" role="alert">{error}</p>
-      <button class="btn btn-secondary" on:click={() => { error = ''; step = 'enter-key'; }}>
+      <button class="btn btn-secondary" onclick={() => { error = ''; step = 'enter-key'; }}>
         Try again
       </button>
-      <button class="btn btn-ghost" on:click={() => dispatch('cancel')}>Cancel</button>
+      <button class="btn btn-ghost" onclick={() => onCancel?.()}>Cancel</button>
     </div>
   {/if}
 </div>

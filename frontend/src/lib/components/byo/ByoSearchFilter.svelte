@@ -21,9 +21,15 @@
   import FileZip from 'phosphor-svelte/lib/FileZip';
   import FileCode from 'phosphor-svelte/lib/FileCode';
 
-  export let onResultsChange: ((results: FileEntry[]) => void) | null = null;
+  interface Props {
+    onResultsChange?: ((results: FileEntry[]) => void) | null;
+  }
 
-  $: if (onResultsChange) onResultsChange($byoSearchResults);
+  let { onResultsChange = null }: Props = $props();
+
+  $effect(() => {
+    if (onResultsChange) onResultsChange($byoSearchResults);
+  });
 
   const FILE_TYPE_OPTIONS: Array<{ value: string; label: string; Icon: any }> = [
     { value: '', label: 'All types', Icon: Files },
@@ -35,7 +41,7 @@
     { value: 'code', label: 'Code', Icon: FileCode },
   ];
 
-  let showFilters = false;
+  let showFilters = $state(false);
 </script>
 
 <div class="search-filter">
@@ -46,12 +52,12 @@
         type="text"
         placeholder="Search files…"
         value={$byoSearchQuery}
-        on:input={(e) => setByoSearchQuery(e.currentTarget.value)}
+        oninput={(e) => setByoSearchQuery(e.currentTarget.value)}
         class="search-input"
         aria-label="Search files"
       />
       {#if $byoSearchQuery}
-        <button class="clear-btn" on:click={clearByoSearch} aria-label="Clear search">
+        <button class="clear-btn" onclick={clearByoSearch} aria-label="Clear search">
           <X size={16} />
         </button>
       {/if}
@@ -60,7 +66,7 @@
     <button
       class="filter-btn"
       class:active={$hasByoActiveFilters}
-      on:click={() => showFilters = !showFilters}
+      onclick={() => showFilters = !showFilters}
       aria-label="Toggle filters"
     >
       <Funnel size={18} />
@@ -74,10 +80,10 @@
           <button
             class="chip"
             class:active={($byoSearchFilters.fileType ?? '') === opt.value}
-            on:click={() => setByoFileTypeFilter(opt.value || null)}
+            onclick={() => setByoFileTypeFilter(opt.value || null)}
             title={opt.label}
           >
-            <svelte:component this={opt.Icon} size={14} />
+            <opt.Icon size={14} />
             <span class="chip-label">{opt.label}</span>
           </button>
         {/each}

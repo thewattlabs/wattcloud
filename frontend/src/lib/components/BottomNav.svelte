@@ -1,18 +1,20 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   export type ViewType = 'files' | 'photos' | 'favorites' | 'settings';
 </script>
 
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import FolderSimple from 'phosphor-svelte/lib/FolderSimple';
   import Image from 'phosphor-svelte/lib/Image';
   import Star from 'phosphor-svelte/lib/Star';
   import GearSix from 'phosphor-svelte/lib/GearSix';
-  export let activeView: ViewType = 'files';
+  interface Props {
+    activeView?: ViewType;
+  onNavigate?: (...args: any[]) => void;
+  }
 
-  const dispatch = createEventDispatcher();
-
-  const navItems: { id: ViewType; label: string; icon: any }[] = [
+  let { activeView = 'files',
+  onNavigate }: Props = $props();
+const navItems: { id: ViewType; label: string; icon: any }[] = [
     { id: 'files', label: 'Files', icon: FolderSimple },
     { id: 'photos', label: 'Photos', icon: Image },
     { id: 'favorites', label: 'Favorites', icon: Star },
@@ -20,7 +22,7 @@
   ];
 
   function handleNavClick(id: ViewType) {
-    dispatch('navigate', { view: id });
+    onNavigate?.({ view: id });
   }
 </script>
 
@@ -29,12 +31,11 @@
     <button
       class="nav-item"
       class:active={activeView === item.id}
-      on:click={() => handleNavClick(item.id)}
+      onclick={() => handleNavClick(item.id)}
       aria-label={item.label}
       aria-current={activeView === item.id ? 'page' : undefined}
     >
-      <svelte:component
-        this={item.icon}
+      <item.icon
         size={24}
         weight={activeView === item.id ? 'fill' : 'regular'}
         color={activeView === item.id ? 'var(--accent)' : 'var(--text-secondary)'}

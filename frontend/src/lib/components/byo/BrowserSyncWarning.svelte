@@ -1,7 +1,11 @@
 <script lang="ts">
-  export let onAcknowledged: () => void;
+  interface Props {
+    onAcknowledged: () => void;
+  }
 
-  let acknowledged = false;
+  let { onAcknowledged }: Props = $props();
+
+  let acknowledged = $state(false);
 </script>
 
 <div class="sync-warning">
@@ -34,7 +38,7 @@
   <button
     class="btn btn-primary"
     disabled={!acknowledged}
-    on:click={onAcknowledged}
+    onclick={onAcknowledged}
   >
     Got it
   </button>

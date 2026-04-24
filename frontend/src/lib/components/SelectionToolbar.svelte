@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import { fade, fly } from 'svelte/transition';
 
   // Phosphor icons (v2.x imports)
@@ -15,29 +14,80 @@
   import Info from 'phosphor-svelte/lib/Info';
   import Stack from 'phosphor-svelte/lib/Stack';
 
-  export let selectedCount = 0;
-  export let canMove = true;
-  export let canCopy = true;
-  export let canDelete = true;
-  export let canRename = false;
-  export let canFavorite = true;
-  export let canDownload = true;
-  export let canDetails = false;
-  /** Show share link button — only active when exactly one file is selected. */
-  export let canShare = false;
-  /** Show "Add to collection" button (Photos view). */
-  export let canAddToCollection = false;
-  /** 'none' = none are favorites, 'all' = all are favorites, 'mixed' = some are */
-  export let favoriteState: 'none' | 'all' | 'mixed' = 'none';
+  
+  
+  
+  interface Props {
+    selectedCount?: number;
+    canMove?: boolean;
+    canCopy?: boolean;
+    canDelete?: boolean;
+    canRename?: boolean;
+    canFavorite?: boolean;
+    canDownload?: boolean;
+    canDetails?: boolean;
+    /** Show share link button — only active when exactly one file is selected. */
+    canShare?: boolean;
+    /** Show "Add to collection" button (Photos view). */
+    canAddToCollection?: boolean;
+    /** 'none' = none are favorites, 'all' = all are favorites, 'mixed' = some are */
+    favoriteState?: 'none' | 'all' | 'mixed';
+    onClear?: () => void;
+    onDetails?: () => void;
+    onShare?: () => void;
+    onRename?: () => void;
+    onDownload?: () => void;
+    onMove?: () => void;
+    onCopy?: () => void;
+    onFavorite?: () => void;
+    onUnfavorite?: () => void;
+    onDelete?: () => void;
+    onAddToCollection?: () => void;
+  }
 
-  const dispatch = createEventDispatcher();
-  let showSheet = false;
-  let favBurstActive = false;
+  let {
+    selectedCount = 0,
+    canMove = true,
+    canCopy = true,
+    canDelete = true,
+    canRename = false,
+    canFavorite = true,
+    canDownload = true,
+    canDetails = false,
+    canShare = false,
+    canAddToCollection = false,
+    favoriteState = 'none',
+    onClear,
+    onDetails,
+    onShare,
+    onRename,
+    onDownload,
+    onMove,
+    onCopy,
+    onFavorite,
+    onUnfavorite,
+    onDelete,
+    onAddToCollection
+  }: Props = $props();
+let showSheet = $state(false);
+  let favBurstActive = $state(false);
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function emit(event: string) {
     showSheet = false;
-    dispatch(event);
+    switch (event) {
+      case 'clear':           onClear?.(); break;
+      case 'details':         onDetails?.(); break;
+      case 'share':           onShare?.(); break;
+      case 'rename':          onRename?.(); break;
+      case 'download':        onDownload?.(); break;
+      case 'move':            onMove?.(); break;
+      case 'copy':            onCopy?.(); break;
+      case 'favorite':        onFavorite?.(); break;
+      case 'unfavorite':      onUnfavorite?.(); break;
+      case 'delete':          onDelete?.(); break;
+      case 'addToCollection': onAddToCollection?.(); break;
+    }
   }
 
   function handleFavorite() {
@@ -48,20 +98,20 @@
     emit(favoriteEvent);
   }
 
-  $: singleSelection = selectedCount === 1;
-  $: favoriteLabel = favoriteState === 'all' ? 'Remove from Favorites' : favoriteState === 'mixed' ? 'Toggle Favorites' : 'Add to Favorites';
-  $: favoriteEvent = favoriteState === 'all' ? 'unfavorite' : 'favorite';
+  let singleSelection = $derived(selectedCount === 1);
+  let favoriteLabel = $derived(favoriteState === 'all' ? 'Remove from Favorites' : favoriteState === 'mixed' ? 'Toggle Favorites' : 'Add to Favorites');
+  let favoriteEvent = $derived(favoriteState === 'all' ? 'unfavorite' : 'favorite');
 
   function handleSheetKeydown(e: KeyboardEvent) {
     if (showSheet && e.key === 'Escape') showSheet = false;
   }
 </script>
 
-<svelte:window on:keydown={handleSheetKeydown} />
+<svelte:window onkeydown={handleSheetKeydown} />
 
 <!-- Desktop: top bar (DESIGN.md 15) -->
 <div class="selection-top-bar top-bar top-bar-selection desktop-bar" role="toolbar" aria-label="Selection actions">
-  <button class="btn-icon" on:click={() => emit('clear')} aria-label="Exit selection">
+  <button class="btn-icon" onclick={() => emit('clear')} aria-label="Exit selection">
     <X size={20} />
   </button>
 
@@ -69,41 +119,41 @@
 
   <div class="selection-actions">
     {#if canDetails && singleSelection}
-      <button class="btn-icon" on:click={() => emit('details')} aria-label="Details" title="Details">
+      <button class="btn-icon" onclick={() => emit('details')} aria-label="Details" title="Details">
         <Info size={20} />
       </button>
     {/if}
     {#if canShare && singleSelection}
-      <button class="btn-icon" on:click={() => emit('share')} aria-label="Share link" title="Share link">
+      <button class="btn-icon" onclick={() => emit('share')} aria-label="Share link" title="Share link">
         <ShareNetwork size={20} />
       </button>
     {/if}
     {#if canRename && singleSelection}
-      <button class="btn-icon" on:click={() => emit('rename')} aria-label="Rename" title="Rename">
+      <button class="btn-icon" onclick={() => emit('rename')} aria-label="Rename" title="Rename">
         <PencilSimple size={20} />
       </button>
     {/if}
     {#if canDownload}
-      <button class="btn-icon" on:click={() => emit('download')} aria-label="Download" title="Download">
+      <button class="btn-icon" onclick={() => emit('download')} aria-label="Download" title="Download">
         <DownloadSimple size={20} />
       </button>
     {/if}
     {#if canMove}
-      <button class="btn-icon" on:click={() => emit('move')} aria-label="Move" title="Move">
+      <button class="btn-icon" onclick={() => emit('move')} aria-label="Move" title="Move">
         <ArrowRight size={20} />
       </button>
     {/if}
     {#if canAddToCollection}
-      <button class="btn-icon" on:click={() => emit('addToCollection')} aria-label="Add to collection" title="Add to collection">
+      <button class="btn-icon" onclick={() => emit('addToCollection')} aria-label="Add to collection" title="Add to collection">
         <Stack size={20} />
       </button>
     {/if}
     {#if canDelete}
-      <button class="btn-icon action-danger" on:click={() => emit('delete')} aria-label="Delete" title="Delete">
+      <button class="btn-icon action-danger" onclick={() => emit('delete')} aria-label="Delete" title="Delete">
         <Trash size={20} />
       </button>
     {/if}
-    <button class="btn-icon" on:click={() => showSheet = true} aria-label="More actions" title="More">
+    <button class="btn-icon" onclick={() => showSheet = true} aria-label="More actions" title="More">
       <DotsThreeVertical size={20} />
     </button>
   </div>
@@ -111,34 +161,34 @@
 
 <!-- Mobile: top bar + bottom action toolbar (DESIGN.md 15) -->
 <div class="selection-top-bar top-bar top-bar-selection mobile-top" role="toolbar" aria-label="Selection mode">
-  <button class="btn-icon" on:click={() => emit('clear')} aria-label="Exit selection">
+  <button class="btn-icon" onclick={() => emit('clear')} aria-label="Exit selection">
     <X size={20} />
   </button>
   <span class="selection-title">{selectedCount} selected</span>
   <div class="selection-spacer"></div>
-  <button class="btn-icon" on:click={() => showSheet = true} aria-label="More actions" title="More">
+  <button class="btn-icon" onclick={() => showSheet = true} aria-label="More actions" title="More">
     <DotsThreeVertical size={20} />
   </button>
 </div>
 
 <div class="mobile-action-bar" role="toolbar" aria-label="Selection actions">
   {#if canDownload}
-    <button class="btn-icon" on:click={() => emit('download')} aria-label="Download" title="Download">
+    <button class="btn-icon" onclick={() => emit('download')} aria-label="Download" title="Download">
       <DownloadSimple size={20} />
     </button>
   {/if}
   {#if canMove}
-    <button class="btn-icon" on:click={() => emit('move')} aria-label="Move" title="Move">
+    <button class="btn-icon" onclick={() => emit('move')} aria-label="Move" title="Move">
       <ArrowRight size={20} />
     </button>
   {/if}
   {#if canAddToCollection}
-    <button class="btn-icon" on:click={() => emit('addToCollection')} aria-label="Add to collection" title="Add to collection">
+    <button class="btn-icon" onclick={() => emit('addToCollection')} aria-label="Add to collection" title="Add to collection">
       <Stack size={20} />
     </button>
   {/if}
   {#if canFavorite}
-    <button class="btn-icon" on:click={handleFavorite} aria-label={favoriteLabel} title={favoriteLabel}>
+    <button class="btn-icon" onclick={handleFavorite} aria-label={favoriteLabel} title={favoriteLabel}>
       <span class="star-wrap" class:bursting={favBurstActive}>
         <Star size={20} weight={favoriteState === 'all' ? 'fill' : 'regular'} />
         {#if favBurstActive}
@@ -150,25 +200,26 @@
     </button>
   {/if}
   {#if canDelete}
-    <button class="btn-icon action-danger" on:click={() => emit('delete')} aria-label="Delete" title="Delete">
+    <button class="btn-icon action-danger" onclick={() => emit('delete')} aria-label="Delete" title="Delete">
       <Trash size={20} />
     </button>
   {/if}
-  <button class="btn-icon" on:click={() => showSheet = true} aria-label="More actions" title="More">
+  <button class="btn-icon" onclick={() => showSheet = true} aria-label="More actions" title="More">
     <DotsThreeVertical size={20} />
   </button>
 </div>
 
 <!-- Bottom sheet overlay for more actions -->
 {#if showSheet}
-  <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-  <div class="sheet-overlay" on:click={() => showSheet = false} role="presentation" transition:fade={{ duration: 150 }}>
-    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <div class="sheet-overlay" onclick={() => showSheet = false} role="presentation" transition:fade={{ duration: 150 }}>
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
       class="sheet"
-      on:click|stopPropagation
-      on:keydown|stopPropagation
+      onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => e.stopPropagation()}
       role="dialog"
+      tabindex="-1"
       transition:fly={{ y: 200, duration: 300 }}
     >
       <div class="sheet-handle"></div>
@@ -176,37 +227,37 @@
 
       <div class="sheet-action-list">
         {#if canDetails && singleSelection}
-          <button class="sheet-option" on:click={() => emit('details')}>
+          <button class="sheet-option" onclick={() => emit('details')}>
             <span class="sheet-option-icon"><Info size={20} /></span>
             <span>Details</span>
           </button>
         {/if}
         {#if canShare && singleSelection}
-          <button class="sheet-option" on:click={() => emit('share')}>
+          <button class="sheet-option" onclick={() => emit('share')}>
             <span class="sheet-option-icon"><ShareNetwork size={20} /></span>
             <span>Share link</span>
           </button>
         {/if}
         {#if canRename && singleSelection}
-          <button class="sheet-option" on:click={() => emit('rename')}>
+          <button class="sheet-option" onclick={() => emit('rename')}>
             <span class="sheet-option-icon"><PencilSimple size={20} /></span>
             <span>Rename</span>
           </button>
         {/if}
         {#if canMove}
-          <button class="sheet-option" on:click={() => emit('move')}>
+          <button class="sheet-option" onclick={() => emit('move')}>
             <span class="sheet-option-icon"><ArrowRight size={20} /></span>
             <span>Move</span>
           </button>
         {/if}
         {#if canCopy}
-          <button class="sheet-option" on:click={() => emit('copy')}>
+          <button class="sheet-option" onclick={() => emit('copy')}>
             <span class="sheet-option-icon"><Copy size={20} /></span>
             <span>Copy</span>
           </button>
         {/if}
         {#if canFavorite}
-          <button class="sheet-option" on:click={handleFavorite}>
+          <button class="sheet-option" onclick={handleFavorite}>
             <span class="sheet-option-icon star">
               <span class="star-wrap" class:bursting={favBurstActive}>
                 <Star size={20} weight={favoriteState === 'all' ? 'fill' : 'regular'} />
@@ -221,13 +272,13 @@
           </button>
         {/if}
         {#if canDownload}
-          <button class="sheet-option" on:click={() => emit('download')}>
+          <button class="sheet-option" onclick={() => emit('download')}>
             <span class="sheet-option-icon"><DownloadSimple size={20} /></span>
             <span>Download</span>
           </button>
         {/if}
         {#if canDelete}
-          <button class="sheet-option danger" on:click={() => emit('delete')}>
+          <button class="sheet-option danger" onclick={() => emit('delete')}>
             <span class="sheet-option-icon"><Trash size={20} /></span>
             <span>Delete</span>
           </button>

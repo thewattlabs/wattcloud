@@ -1,19 +1,22 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
-
-  /**
+  interface Props {
+    /**
    * Full-screen overlay shown during key rotation (compromise response).
    * Prevents navigation until complete or errored.
    * Caller drives progress via updateProgress() / complete() / setError().
    */
-  export let totalFiles: number;
+    totalFiles: number;
+  onComplete?: (...args: any[]) => void;
+  onError?: (...args: any[]) => void;
+  }
 
-  const dispatch = createEventDispatcher<{ complete: void; error: string }>();
-
-  let filesProcessed = 0;
-  let currentFileName = '';
-  let error = '';
-  let done = false;
+  let { totalFiles,
+  onComplete,
+  onError }: Props = $props();
+let filesProcessed = $state(0);
+  let currentFileName = $state('');
+  let error = $state('');
+  let done = $state(false);
 
   export function updateProgress(processed: number, fileName: string) {
     filesProcessed = processed;
@@ -23,15 +26,15 @@
   export function complete() {
     filesProcessed = totalFiles;
     done = true;
-    dispatch('complete');
+    onComplete?.();
   }
 
   export function setError(msg: string) {
     error = msg;
-    dispatch('error', msg);
+    onError?.(msg);
   }
 
-  $: progressPct = totalFiles > 0 ? Math.round((filesProcessed / totalFiles) * 100) : 0;
+  let progressPct = $derived(totalFiles > 0 ? Math.round((filesProcessed / totalFiles) * 100) : 0);
 
   // Block navigation during rotation
   function handleBeforeUnload(e: BeforeUnloadEvent) {
@@ -41,7 +44,7 @@
   }
 </script>
 
-<svelte:window on:beforeunload={handleBeforeUnload} />
+<svelte:window onbeforeunload={handleBeforeUnload} />
 
 <div class="rotation-overlay" role="alertdialog" aria-modal="true" aria-label="Key rotation in progress">
   <div class="rotation-card">
@@ -100,7 +103,7 @@
     {/if}
 
     {#if done || error}
-      <button class="btn btn-primary" on:click={() => dispatch(done ? 'complete' : 'error', error || '')}>
+      <button class="btn btn-primary" onclick={() => done ? onComplete?.() : onError?.(error || '')}>
         {done ? 'Done' : 'Dismiss'}
       </button>
     {/if}

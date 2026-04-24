@@ -1,30 +1,36 @@
 <script lang="ts">
-  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import jsQR from 'jsqr';
   import Warning from 'phosphor-svelte/lib/Warning';
 
-  const dispatch = createEventDispatcher<{ scanned: string; error: string }>();
+  interface Props {
+    onError?: (message: string) => void;
+    onScanned?: (payload: string) => void;
+  }
 
-  let video: HTMLVideoElement;
-  let canvas: HTMLCanvasElement;
+  let { onError, onScanned }: Props = $props();
+
+  let video = $state<HTMLVideoElement | undefined>(undefined);
+  let canvas = $state<HTMLCanvasElement | undefined>(undefined);
   let ctx: CanvasRenderingContext2D | null = null;
   let stream: MediaStream | null = null;
   let animFrame: number | null = null;
-  let permissionDenied = false;
-  let starting = true;
-  let showRetryBanner = false;
-  let showManualEntry = false;
-  let manualCode = '';
-  let manualError = '';
+  let permissionDenied = $state(false);
+  let starting = $state(true);
+  let showRetryBanner = $state(false);
+  let showManualEntry = $state(false);
+  let manualCode = $state('');
+  let manualError = $state('');
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Torch support
-  let torchSupported = false;
-  let torchOn = false;
+  let torchSupported = $state(false);
+  let torchOn = $state(false);
   let videoTrack: MediaStreamTrack | null = null;
 
   onMount(async () => {
     try {
+      if (!video || !canvas) return;
       stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' },
       });
@@ -50,7 +56,7 @@
         permissionDenied = true;
         showManualEntry = true;
       } else {
-        dispatch('error', e.message || 'Camera error');
+        onError?.(e.message || 'Camera error');
       }
     }
   });
@@ -64,7 +70,7 @@
   }
 
   function scanLoop() {
-    if (!ctx || !video || video.readyState !== video.HAVE_ENOUGH_DATA) {
+    if (!ctx || !video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
       animFrame = requestAnimationFrame(scanLoop);
       return;
     }
@@ -80,7 +86,7 @@
 
     if (code) {
       stopAll();
-      dispatch('scanned', code.data);
+      onScanned?.(code.data);
       return;
     }
 
@@ -101,7 +107,7 @@
     const trimmed = manualCode.trim();
     if (!trimmed) { manualError = 'Enter a code or URL to continue.'; return; }
     stopAll();
-    dispatch('scanned', trimmed);
+    onScanned?.(trimmed);
   }
 </script>
 
@@ -137,7 +143,7 @@
       <button
         class="torch-btn"
         class:torch-on={torchOn}
-        on:click={toggleTorch}
+        onclick={toggleTorch}
         aria-label={torchOn ? 'Turn torch off' : 'Turn torch on'}
         title={torchOn ? 'Torch: on' : 'Torch: off'}
       >
@@ -151,7 +157,7 @@
     {#if showRetryBanner}
       <div class="retry-banner">
         <span>Having trouble scanning?</span>
-        <button type="button" class="retry-link" on:click={() => showManualEntry = true}>Enter code manually</button>
+        <button type="button" class="retry-link" onclick={() => showManualEntry = true}>Enter code manually</button>
       </div>
     {/if}
   {/if}
@@ -170,12 +176,12 @@
       spellcheck={false}
       placeholder="Paste code or URL here"
       bind:value={manualCode}
-      on:keydown={(e) => e.key === 'Enter' && submitManual()}
+      onkeydown={(e) => e.key === 'Enter' && submitManual()}
     />
     {#if manualError}
       <p class="input-error-msg" role="alert">{manualError}</p>
     {/if}
-    <button class="btn btn-primary manual-submit" on:click={submitManual}>Continue</button>
+    <button class="btn btn-primary manual-submit" onclick={submitManual}>Continue</button>
   </div>
 {/if}
 

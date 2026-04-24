@@ -1,45 +1,53 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import Plus from 'phosphor-svelte/lib/Plus';
   import UploadSimple from 'phosphor-svelte/lib/UploadSimple';
   import FolderPlus from 'phosphor-svelte/lib/FolderPlus';
   import FolderSimple from 'phosphor-svelte/lib/FolderSimple';
 
-  export let showMenu: boolean = false;
-  export let disabled: boolean = false;
+  interface Props {
+    showMenu?: boolean;
+    disabled?: boolean;
+  onToggle?: (...args: any[]) => void;
+  onUpload?: (...args: any[]) => void;
+  onUploadFolder?: (...args: any[]) => void;
+  onNewFolder?: (...args: any[]) => void;
+  }
 
-  const dispatch = createEventDispatcher();
-
-  function toggle() {
+  let { showMenu = false, disabled = false,
+  onToggle,
+  onUpload,
+  onUploadFolder,
+  onNewFolder }: Props = $props();
+function toggle() {
     if (disabled) return;
-    dispatch('toggle');
+    onToggle?.();
   }
 
   function handleUpload() {
-    dispatch('upload');
+    onUpload?.();
   }
 
   function handleUploadFolder() {
-    dispatch('uploadFolder');
+    onUploadFolder?.();
   }
 
   function handleNewFolder() {
-    dispatch('newFolder');
+    onNewFolder?.();
   }
 
   function handleBackdropClick() {
     if (showMenu) {
-      dispatch('toggle');
+      onToggle?.();
     }
   }
 </script>
 
 {#if showMenu}
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div
     class="fab-backdrop"
-    on:click={handleBackdropClick}
+    onclick={handleBackdropClick}
     role="button"
     tabindex="-1"
     transition:fade={{ duration: 150 }}
@@ -48,7 +56,7 @@
   <div class="fab-speed-dial">
     <button
       class="fab-speed-item"
-      on:click={handleNewFolder}
+      onclick={handleNewFolder}
       {disabled}
       transition:fly={{ y: 16, duration: 200, delay: 100 }}
     >
@@ -58,7 +66,7 @@
 
     <button
       class="fab-speed-item"
-      on:click={handleUploadFolder}
+      onclick={handleUploadFolder}
       {disabled}
       transition:fly={{ y: 16, duration: 200, delay: 50 }}
     >
@@ -68,7 +76,7 @@
 
     <button
       class="fab-speed-item"
-      on:click={handleUpload}
+      onclick={handleUpload}
       {disabled}
       transition:fly={{ y: 16, duration: 200, delay: 0 }}
     >
@@ -83,7 +91,7 @@
   class:active={showMenu}
   class:fab-disabled={disabled}
   {disabled}
-  on:click={toggle}
+  onclick={toggle}
   aria-label={showMenu ? 'Close menu' : 'Add new'}
 >
   <span class="fab-icon" class:rotated={showMenu}>

@@ -1,4 +1,5 @@
 <script lang="ts">
+
   /**
    * SftpReauthSheet — re-collect SFTP credentials for a legacy vault.
    *
@@ -12,34 +13,41 @@
    * Host/port/basePath come from the stored config and are surfaced
    * read-only for confirmation.
    */
-  import { createEventDispatcher } from 'svelte';
   import type { ProviderConfig } from '@wattcloud/sdk';
   import PasswordInput from '../common/PasswordInput.svelte';
   import Lock from 'phosphor-svelte/lib/Lock';
 
-  export let config: ProviderConfig;
-  export let vaultLabel: string = '';
-  export let busy: boolean = false;
-  export let error: string = '';
+  interface Props {
+    config: ProviderConfig;
+    vaultLabel?: string;
+    busy?: boolean;
+    error?: string;
+  onSubmit?: (...args: any[]) => void;
+  onCancel?: (...args: any[]) => void;
+  }
 
-  const dispatch = createEventDispatcher<{
-    submit: { username: string; password: string; privateKey: string; passphrase: string };
-    cancel: void;
-  }>();
+  let {
+    config,
+    vaultLabel = '',
+    busy = false,
+    error = '',
+    onSubmit,
+    onCancel
+  }: Props = $props();
+// svelte-ignore state_referenced_locally
+  let username = $state(config.sftpUsername ?? '');
+  let password = $state('');
+  let privateKey = $state('');
+  let passphrase = $state('');
 
-  let username = config.sftpUsername ?? '';
-  let password = '';
-  let privateKey = '';
-  let passphrase = '';
-
-  $: host = config.sftpHost ?? '';
-  $: port = config.sftpPort ?? 22;
-  $: basePath = config.sftpBasePath ?? '';
-  $: canSubmit = username.trim().length > 0 && (password.length > 0 || privateKey.length > 0) && !busy;
+  let host = $derived(config.sftpHost ?? '');
+  let port = $derived(config.sftpPort ?? 22);
+  let basePath = $derived(config.sftpBasePath ?? '');
+  let canSubmit = $derived(username.trim().length > 0 && (password.length > 0 || privateKey.length > 0) && !busy);
 
   function handleSubmit() {
     if (!canSubmit) return;
-    dispatch('submit', { username: username.trim(), password, privateKey, passphrase });
+    onSubmit?.({ username: username.trim(), password, privateKey, passphrase });
   }
 </script>
 
@@ -72,7 +80,7 @@
     {/if}
   </dl>
 
-  <form class="form" on:submit|preventDefault={handleSubmit}>
+  <form class="form" onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
     <label class="field">
       <span class="label-text">Username</span>
       <input
@@ -84,7 +92,7 @@
       />
     </label>
 
-    <!-- svelte-ignore a11y-label-has-associated-control -->
+    <!-- svelte-ignore a11y_label_has_associated_control -->
     <label class="field">
       <span class="label-text">Password</span>
       <PasswordInput
@@ -110,7 +118,7 @@
     </label>
 
     {#if privateKey}
-      <!-- svelte-ignore a11y-label-has-associated-control -->
+      <!-- svelte-ignore a11y_label_has_associated_control -->
       <label class="field">
         <span class="label-text">Key passphrase <span class="field-optional">(optional)</span></span>
         <PasswordInput
@@ -127,7 +135,7 @@
     {/if}
 
     <div class="actions">
-      <button type="button" class="btn btn-ghost" on:click={() => dispatch('cancel')} disabled={busy}>
+      <button type="button" class="btn btn-ghost" onclick={() => onCancel?.()} disabled={busy}>
         Cancel
       </button>
       <button type="submit" class="btn btn-primary" disabled={!canSubmit}>

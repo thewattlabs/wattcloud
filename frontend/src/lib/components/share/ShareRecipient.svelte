@@ -83,45 +83,38 @@
 
   let shareId = '';
   let variant: Variant = 'public';
-  let fragmentParams: URLSearchParams = new URLSearchParams();
-  let loadingMeta = true;
-  let meta: ShareMeta | null = null;
-  let metaError = '';
-  let needPassword = false;
-  let password = '';
-  let unwrapInProgress = false;
-  let unwrapError = '';
+  let fragmentParams: URLSearchParams = $state(new URLSearchParams());
+  let loadingMeta = $state(true);
+  let meta = $state<ShareMeta | null>(null);
+  let metaError = $state('');
+  let needPassword = $state(false);
+  let password = $state('');
+  let unwrapInProgress = $state(false);
+  let unwrapError = $state('');
   let contentKeyB64: string | null = null; // decoded once variant A, or post-unwrap for A+
-  let bundleEntries: ManifestEntry[] | null = null;
-  let bundleError = '';
-  let downloadError = '';
-  let downloading = new Map<string, number>(); // blob_id → bytes written so far
+  let bundleEntries: ManifestEntry[] | null = $state(null);
+  let bundleError = $state('');
+  let downloadError = $state('');
+  let downloading = $state(new Map<string, number>()); // blob_id → bytes written so far
   /** Bundle-share zip download state — separate from per-file tracking
    *  because a bundle is a single stream, not a list of actions. */
-  let bundleDownloading = false;
-  let bundleBytesWritten = 0;
+  let bundleDownloading = $state(false);
+  let bundleBytesWritten = $state(0);
 
   /** iOS two-phase state. `iosSavePending` means we're currently
    *  buffering the decrypted plaintext; `iosSaveHandle` is set once the
    *  buffer is ready and holds the File + save() callback. The Save
    *  button binds to handle.save so the user's tap re-enters a fresh
    *  user-gesture window for navigator.share. */
-  let iosSavePending = false;
-  let iosSaveHandle: IOSSaveHandle | null = null;
-  let iosSaveError = '';
+  let iosSavePending = $state(false);
+  let iosSaveHandle: IOSSaveHandle | null = $state(null);
+  let iosSaveError = $state('');
 
-  /** Plaintext size — used for iOS warning/block decisions. */
-  $: totalBytes = meta?.total_bytes ?? 0;
 
   /** iOS path + block/warn decision, resolved async after meta loads.
    *  Null until the probe completes — the UI gates on `iosDecision !== null`
    *  so we don't flash a banner state before the OPFS quota is known. */
-  let iosDecision: IOSPathDecision | null = null;
-  $: if (iosDevice && meta !== null) {
-    void refreshIosDecision(totalBytes);
-  }
-  $: iosBlocked = iosDecision?.block === true;
-  $: iosWarn = iosDecision?.warn === true;
+  let iosDecision = $state<IOSPathDecision | null>(null);
 
   async function refreshIosDecision(bytes: number) {
     try {
@@ -137,11 +130,6 @@
     }
   }
 
-  /** Landing-page display name. Pulled from the fragment's `n=` field
-   *  (fragment is client-only, never transmitted to the relay), so both
-   *  single-file and bundle shares can show a real title. Falls back to
-   *  a generic placeholder in the template when absent. */
-  $: displayName = fragmentParams.get('n') || '';
 
   // Header buffer size = V7_HEADER_MIN. Hardcoded here to avoid importing
   // the Rust constant; must stay in sync with sdk-core.
@@ -697,6 +685,20 @@
     return `expires in ${mins}m`;
   }
 
+  /** Plaintext size — used for iOS warning/block decisions. */
+  let totalBytes = $derived(meta?.total_bytes ?? 0);
+  $effect(() => {
+    if (iosDevice && meta !== null) {
+      void refreshIosDecision(totalBytes);
+    }
+  });
+  let iosBlocked = $derived(iosDecision?.block === true);
+  let iosWarn = $derived(iosDecision?.warn === true);
+  /** Landing-page display name. Pulled from the fragment's `n=` field
+   *  (fragment is client-only, never transmitted to the relay), so both
+   *  single-file and bundle shares can show a real title. Falls back to
+   *  a generic placeholder in the template when absent. */
+  let displayName = $derived(fragmentParams.get('n') || '');
 </script>
 
 <main class="share-page">
@@ -732,7 +734,7 @@
         type="password"
         autocomplete="current-password"
         bind:value={password}
-        on:keydown={(e) => {
+        onkeydown={(e) => {
           if (e.key === 'Enter') submitPassword();
         }}
         disabled={unwrapInProgress}
@@ -743,7 +745,7 @@
         type="button"
         class="btn primary"
         disabled={unwrapInProgress || !password}
-        on:click={submitPassword}
+        onclick={submitPassword}
       >
         {unwrapInProgress ? 'Unlocking…' : 'Unlock'}
       </button>
@@ -778,14 +780,14 @@
           </p>
         </div>
         {#if iosSaveHandle}
-          <button type="button" class="btn primary" on:click={onIOSSaveTap}>
+          <button type="button" class="btn primary" onclick={onIOSSaveTap}>
             Save file
           </button>
         {:else}
           <button
             type="button"
             class="btn primary"
-            on:click={downloadFileShare}
+            onclick={downloadFileShare}
             disabled={iosBlocked || iosSavePending}
           >
             {iosSavePending ? 'Decrypting…' : 'Download'}
@@ -827,14 +829,14 @@
           </p>
         </div>
         {#if iosSaveHandle}
-          <button type="button" class="btn primary" on:click={onIOSSaveTap}>
+          <button type="button" class="btn primary" onclick={onIOSSaveTap}>
             Save archive
           </button>
         {:else}
           <button
             type="button"
             class="btn primary"
-            on:click={downloadBundleAsZip}
+            onclick={downloadBundleAsZip}
             disabled={!bundleEntries || bundleDownloading || iosBlocked}
           >
             {bundleDownloading ? (iosDevice ? 'Decrypting…' : 'Downloading…') : 'Download'}

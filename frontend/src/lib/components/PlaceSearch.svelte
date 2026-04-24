@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { createEventDispatcher, tick, onMount } from 'svelte';
+
+  import { tick, onMount } from 'svelte';
   import { fly } from 'svelte/transition';
   import { searchIn, type PlaceBounds, type PlaceType } from '../data/placeBounds';
   import { placesStore, loadPlaces } from '../stores/placeBounds';
@@ -8,21 +9,26 @@
   import X from 'phosphor-svelte/lib/X';
   import FolderSimple from 'phosphor-svelte/lib/FolderSimple';
 
-  export let placeholder = 'Search country, city, region...';
-  export let selected: PlaceBounds | null = null;
+  interface Props {
+    placeholder?: string;
+    selected?: PlaceBounds | null;
+  onSelect?: (...args: any[]) => void;
+  onClear?: (...args: any[]) => void;
+  }
 
-  const dispatch = createEventDispatcher<{ select: PlaceBounds; clear: void }>();
-
-  let query = '';
-  let results: PlaceBounds[] = [];
-  let activeIndex = -1;
-  let inputEl: HTMLInputElement;
-  let listEl: HTMLUListElement;
-  let open = false;
+  let { placeholder = 'Search country, city, region...', selected = $bindable(null),
+  onSelect,
+  onClear }: Props = $props();
+let query = $state('');
+  let results: PlaceBounds[] = $state([]);
+  let activeIndex = $state(-1);
+  let inputEl = $state<HTMLInputElement | undefined>(undefined);
+  let listEl = $state<HTMLUListElement | undefined>(undefined);
+  let open = $state(false);
 
   onMount(() => { loadPlaces(); });
 
-  $: {
+  $effect(() => {
     if (query.trim().length >= 1) {
       results = searchIn($placesStore, query, 8);
       open = results.length > 0;
@@ -31,10 +37,10 @@
       results = [];
       open = false;
     }
-  }
+  });
 
-  function select(place: PlaceBounds) { selected = place; query = ''; open = false; dispatch('select', place); }
-  function clearSelection() { selected = null; query = ''; open = false; dispatch('clear'); tick().then(() => inputEl?.focus()); }
+  function select(place: PlaceBounds) { selected = place; query = ''; open = false; onSelect?.(place); }
+  function clearSelection() { selected = null; query = ''; open = false; onClear?.(); tick().then(() => inputEl?.focus()); }
   function handleKeydown(e: KeyboardEvent) {
     if (!open) return;
     if (e.key === 'ArrowDown') { e.preventDefault(); activeIndex = Math.min(activeIndex + 1, results.length - 1); scrollActiveIntoView(); }
@@ -57,21 +63,21 @@
       {/if}
       <span class="pill-name">{selected.display}</span>
       <span class="pill-badge pill-badge-{selected.type}">{typeBadgeLabel(selected.type)}</span>
-      <button class="pill-clear" on:click={clearSelection} aria-label="Clear location filter"><X size={14} /></button>
+      <button class="pill-clear" onclick={clearSelection} aria-label="Clear location filter"><X size={14} /></button>
     </div>
   {:else}
     <div class="input-wrap" class:open>
       <span class="input-icon"><MagnifyingGlass size={16} /></span>
-      <input bind:this={inputEl} bind:value={query} {placeholder} type="text" autocomplete="off" spellcheck="false" on:keydown={handleKeydown} on:blur={handleBlur} aria-label="Search place" aria-autocomplete="list" role="combobox" aria-expanded={open} aria-controls="place-search-listbox" />
+      <input bind:this={inputEl} bind:value={query} {placeholder} type="text" autocomplete="off" spellcheck="false" onkeydown={handleKeydown} onblur={handleBlur} aria-label="Search place" aria-autocomplete="list" role="combobox" aria-expanded={open} aria-controls="place-search-listbox" />
       {#if query}
-        <button class="input-clear" on:click={() => { query = ''; open = false; }} aria-label="Clear search"><X size={14} /></button>
+        <button class="input-clear" onclick={() => { query = ''; open = false; }} aria-label="Clear search"><X size={14} /></button>
       {/if}
     </div>
 
     {#if open}
       <ul bind:this={listEl} class="results-list" role="listbox" id="place-search-listbox" transition:fly={{ y: -6, duration: 140 }}>
         {#each results as place, i}
-          <li class="result-item" class:active={i === activeIndex} role="option" aria-selected={i === activeIndex} data-idx={i} on:mousedown|preventDefault={() => select(place)} on:mouseover={() => activeIndex = i} on:focus={() => activeIndex = i}>
+          <li class="result-item" class:active={i === activeIndex} role="option" aria-selected={i === activeIndex} data-idx={i} onmousedown={(e) => { e.preventDefault(); select(place); }} onmouseover={() => activeIndex = i} onfocus={() => activeIndex = i}>
             <span class="result-flag">
               {#if place.flag}{place.flag}{:else}<FolderSimple size={14} />{/if}
             </span>

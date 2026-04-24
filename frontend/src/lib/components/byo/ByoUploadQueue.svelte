@@ -1,4 +1,5 @@
 <script lang="ts">
+
   import { slide, fly, fade } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
   import {
@@ -12,24 +13,26 @@
   import { playSealThunk } from '../../byo/soundFx';
   import Icon from '../Icons.svelte';
 
-  let expanded = false;
+  let expanded = $state(false);
   const prevStatuses = new Map<string, string>();
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  $: if ($isByoUploading && !expanded) expanded = true;
-  $: items = $byoUploadQueue.items as ByoUploadItem[];
-  $: totalCount = items.length;
-  $: completedCount = $byoUploadCompletedCount;
-  $: errorCount = $byoUploadErrorCount;
-  $: inProgressCount = items.filter((i) => i.status === 'uploading' || i.status === 'encrypting' || i.phase === 'paused').length;
-  $: overallProgress = totalCount > 0
+  $effect(() => {
+    if ($isByoUploading && !expanded) expanded = true;
+  });
+  let items = $derived($byoUploadQueue.items as ByoUploadItem[]);
+  let totalCount = $derived(items.length);
+  let completedCount = $derived($byoUploadCompletedCount);
+  let errorCount = $derived($byoUploadErrorCount);
+  let inProgressCount = $derived(items.filter((i) => i.status === 'uploading' || i.status === 'encrypting' || i.phase === 'paused').length);
+  let overallProgress = $derived(totalCount > 0
     ? Math.round(items.reduce((s, i) => s + (i.status === 'completed' ? 100 : i.progress), 0) / totalCount)
-    : 0;
+    : 0);
 
   // Detect uploading → completed transitions and fire the completion
   // toast. Per-row hex-shield animation was removed (cloud motif pivot)
   // — the row's own row-level check icon + toast are enough feedback.
-  $: {
+  $effect(() => {
     const liveIds = new Set(items.map((i) => i.id));
     for (const item of items) {
       const prev = prevStatuses.get(item.id);
@@ -49,7 +52,7 @@
     for (const id of prevStatuses.keys()) {
       if (!liveIds.has(id)) prevStatuses.delete(id);
     }
-  }
+  });
 
   function statusIcon(item: ByoUploadItem): string {
     if (item.status === 'completed') return 'check';
@@ -95,7 +98,13 @@
 {#if items.length > 0}
   <div class="upload-queue" transition:slide={{ duration: reducedMotion ? 0 : 200 }}>
     <!-- Header / toggle -->
-    <button class="queue-header" on:click={() => expanded = !expanded}>
+    <div
+      class="queue-header"
+      role="button"
+      tabindex="0"
+      onclick={() => expanded = !expanded}
+      onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); expanded = !expanded; } }}
+    >
       <Icon name="upload" size={16} />
       <span class="queue-label">
         {#if inProgressCount > 0}
@@ -109,11 +118,11 @@
       {#if inProgressCount > 0}
         <span class="queue-progress">{overallProgress}%</span>
       {/if}
-      <button class="clear-btn" on:click|stopPropagation={() => byoUploadQueue.clearCompleted()}>
+      <button class="clear-btn" onclick={(e) => { e.stopPropagation(); byoUploadQueue.clearCompleted(); }}>
         Clear done
       </button>
       <Icon name={expanded ? 'chevronUp' : 'chevronDown'} size={16} />
-    </button>
+    </div>
 
     {#if expanded}
       <div class="queue-items" transition:slide={{ duration: reducedMotion ? 0 : 200 }}>
@@ -153,7 +162,7 @@
                   </div>
                   <button
                     class="action-btn"
-                    on:click|stopPropagation={() => byoUploadQueue.pauseUpload(item.id)}
+                    onclick={(e) => { e.stopPropagation(); byoUploadQueue.pauseUpload(item.id); }}
                     aria-label="Pause upload"
                     title="Pause"
                   >
@@ -163,7 +172,7 @@
                   <!-- Resume button -->
                   <button
                     class="action-btn action-btn--resume"
-                    on:click|stopPropagation={() => byoUploadQueue.resumeUpload(item.id)}
+                    onclick={(e) => { e.stopPropagation(); byoUploadQueue.resumeUpload(item.id); }}
                     aria-label="Resume upload"
                     title="Resume"
                   >
@@ -173,7 +182,7 @@
               {:else if item.status === 'error'}
                 <button
                   class="action-btn action-btn--retry"
-                  on:click|stopPropagation={() => byoUploadQueue.retryUpload(item.id)}
+                  onclick={(e) => { e.stopPropagation(); byoUploadQueue.retryUpload(item.id); }}
                   aria-label="Retry upload"
                   title="Retry"
                 >
@@ -182,7 +191,7 @@
               {:else}
                 <Icon name={statusIcon(item)} size={16} />
               {/if}
-              <button class="remove-btn" on:click={() => byoUploadQueue.removeItem(item.id)} aria-label="Remove">
+              <button class="remove-btn" onclick={() => byoUploadQueue.removeItem(item.id)} aria-label="Remove">
                 <Icon name="close" size={14} />
               </button>
             </div>

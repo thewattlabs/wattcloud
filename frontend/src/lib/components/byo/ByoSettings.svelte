@@ -30,20 +30,31 @@
   import { byoSoundEnabled, setByoSoundEnabled, playSealThunk } from '../../byo/soundFx';
   import { byoToast } from '../../byo/stores/byoToasts';
 
-  export let onEnrollDevice: () => void;
-  export let onUseRecovery: (() => void) | undefined = undefined;
-  /**
+  
+
+  
+  interface Props {
+    onEnrollDevice: () => void;
+    onUseRecovery?: (() => void) | undefined;
+    /**
    * When true (arrived here from the "Enable credential protection" offer),
    * auto-expand the Credential Protection row so the user sees the Enable
    * button without a second tap. Not true-autostart — launching
    * `navigator.credentials.create()` requires a fresh user gesture from
    * inside the settings screen, so we still surface the button.
    */
-  export let openCredProtection: boolean = false;
-
-  /** When the user taps the drawer's "Active shares" row, the parent sets
+    openCredProtection?: boolean;
+    /** When the user taps the drawer's "Active shares" row, the parent sets
    *  this so the Sharing section expands on mount and scrolls into view. */
-  export let openShares: boolean = false;
+    openShares?: boolean;
+  }
+
+  let {
+    onEnrollDevice,
+    onUseRecovery = undefined,
+    openCredProtection = false,
+    openShares = false
+  }: Props = $props();
 
   const dataProvider = getContext<{ current: DataProvider }>('byo:dataProvider').current;
   const storageProvider = getContext<{ current: StorageProvider }>('byo:storageProvider').current;
@@ -67,56 +78,56 @@
     device_name: string;
     enrolled_at: string;
   }
-  let enrolledDevices: EnrolledDevice[] = [];
-  let currentDeviceId = '';
-  let devicesLoading = true;
+  let enrolledDevices: EnrolledDevice[] = $state([]);
+  let currentDeviceId = $state('');
+  let devicesLoading = $state(true);
 
   // Passphrase section
-  let passphraseExpanded = false;
-  let passphraseStep: 'input' | 'changing' | 'done' = 'input';
-  let argonDone = false;
-  let passphraseError = '';
+  let passphraseExpanded = $state(false);
+  let passphraseStep: 'input' | 'changing' | 'done' = $state('input');
+  let argonDone = $state(false);
+  let passphraseError = $state('');
 
   // Sharing section
-  let sharesExpanded = false;
-  let credProtectionExpanded = false;
-  let accessControlExpanded = false;
+  let sharesExpanded = $state(false);
+  let credProtectionExpanded = $state(false);
+  let accessControlExpanded = $state(false);
 
   // Guard the credential-protection block: all three props must resolve to
   // non-null before the child component renders (otherwise its migration
   // calls would operate on a closed/missing vault session).
-  $: credProtectionSessionId = getVaultSessionId();
-  $: credProtectionVaultId = getVaultId();
-  $: credProtectionProvider = storageProvider;
-  $: credProtectionReady =
-    credProtectionSessionId !== null &&
+  let credProtectionSessionId = $derived(getVaultSessionId());
+  let credProtectionVaultId = $derived(getVaultId());
+  let credProtectionProvider = $derived(storageProvider);
+  let credProtectionReady =
+    $derived(credProtectionSessionId !== null &&
     credProtectionVaultId !== '' &&
-    credProtectionProvider !== null;
+    credProtectionProvider !== null);
 
   // Browser-sync warning toggle
-  let syncWarningAck = typeof localStorage !== 'undefined'
+  let syncWarningAck = $state(typeof localStorage !== 'undefined'
     ? localStorage.getItem('sc-byo-sync-warning-ack') === '1'
-    : false;
+    : false);
 
   // Provider context sheet
-  let contextProvider: ProviderMeta | null = null;
-  let showAddProvider = false;
+  let contextProvider: ProviderMeta | null = $state(null);
+  let showAddProvider = $state(false);
 
   // About
-  let storageUsage: StorageUsage | null = null;
-  let fileCount = 0;
-  let vaultVersion = '';
-  let vaultId = '';
-  let aboutLoading = true;
-  let downloadingBackup = false;
-  let backupError = '';
+  let storageUsage: StorageUsage | null = $state(null);
+  let fileCount = $state(0);
+  let vaultVersion = $state('');
+  let vaultId = $state('');
+  let aboutLoading = $state(true);
+  let downloadingBackup = $state(false);
+  let backupError = $state('');
 
   // Confirm modal
-  let confirmOpen = false;
-  let confirmTitle = '';
-  let confirmMessage = '';
-  let confirmAction: (() => Promise<void>) | null = null;
-  let confirmDanger = false;
+  let confirmOpen = $state(false);
+  let confirmTitle = $state('');
+  let confirmMessage = $state('');
+  let confirmAction: (() => Promise<void>) | null = $state(null);
+  let confirmDanger = $state(false);
 
   function showGlobalError(msg: string) {
     byoToast.show(msg, { icon: 'danger' });
@@ -428,7 +439,7 @@
     <div class="settings-group">
       <h3 class="group-title">Devices</h3>
       <div class="group-body">
-        <button class="settings-row" on:click={onEnrollDevice}>
+        <button class="settings-row" onclick={onEnrollDevice}>
           <span class="row-icon"><Icon name="plus" size={16} /></span>
           <span class="row-label">Enroll New Device</span>
           <span class="row-chevron"><Icon name="chevronRight" size={14} /></span>
@@ -453,7 +464,7 @@
               {#if device.device_id !== currentDeviceId}
                 <button
                   class="revoke-btn"
-                  on:click={() => confirmRevokeDevice(device)}
+                  onclick={() => confirmRevokeDevice(device)}
                   aria-label="Revoke {device.device_name}"
                 >Revoke</button>
               {/if}
@@ -470,7 +481,7 @@
         {#each $vaultStore.providers as p (p.providerId)}
           <button
             class="settings-row"
-            on:click={() => contextProvider = p}
+            onclick={() => contextProvider = p}
             aria-label="Manage {p.displayName}"
             title={statusTooltip(p)}
           >
@@ -494,7 +505,7 @@
         {#if $vaultStore.providers.length === 0}
           <p class="group-empty">No providers connected.</p>
         {/if}
-        <button class="settings-row" on:click={() => showAddProvider = true}>
+        <button class="settings-row" onclick={() => showAddProvider = true}>
           <span class="row-icon"><Icon name="plus" size={16} /></span>
           <span class="row-label">Add another provider</span>
           <span class="row-chevron"><Icon name="chevronRight" size={14} /></span>
@@ -508,7 +519,7 @@
       <div class="group-body">
         <button
           class="settings-row"
-          on:click={() => sharesExpanded = !sharesExpanded}
+          onclick={() => sharesExpanded = !sharesExpanded}
           aria-expanded={sharesExpanded}
         >
           <span class="row-icon"><Icon name="share" size={16} /></span>
@@ -530,7 +541,7 @@
         <!-- Change Passphrase -->
         <button
           class="settings-row"
-          on:click={() => { passphraseExpanded = !passphraseExpanded; passphraseStep = 'input'; passphraseError = ''; }}
+          onclick={() => { passphraseExpanded = !passphraseExpanded; passphraseStep = 'input'; passphraseError = ''; }}
           aria-expanded={passphraseExpanded}
         >
           <span class="row-icon"><Icon name="lock" size={16} /></span>
@@ -544,7 +555,7 @@
                 <div class="inline-error">{passphraseError}</div>
               {/if}
               <p class="row-desc">Enter a new passphrase. All enrolled devices will continue to work.</p>
-              <ByoPassphraseInput mode="change" on:submit={handlePassphraseSubmit} />
+              <ByoPassphraseInput mode="change" onSubmit={handlePassphraseSubmit} />
             {:else if passphraseStep === 'changing'}
               <Argon2Progress done={argonDone} />
               {#if argonDone}<p class="status-msg">Updating vault…</p>{/if}
@@ -556,14 +567,14 @@
                   <p class="success-desc">Your vault is now protected by the new passphrase.</p>
                 </div>
               </div>
-              <button class="primary-btn" on:click={() => passphraseStep = 'input'}>Change Again</button>
+              <button class="primary-btn" onclick={() => passphraseStep = 'input'}>Change Again</button>
             {/if}
           </div>
         {/if}
 
         <!-- Rotate Recovery Key -->
         {#if onUseRecovery}
-          <button class="settings-row" on:click={onUseRecovery}>
+          <button class="settings-row" onclick={onUseRecovery}>
             <span class="row-icon"><Icon name="key" size={16} /></span>
             <span class="row-label">Rotate Recovery Key</span>
             <span class="row-chevron"><Icon name="chevronRight" size={14} /></span>
@@ -579,7 +590,7 @@
         <!-- Credential Protection (WebAuthn gate) -->
         <button
           class="settings-row"
-          on:click={() => (credProtectionExpanded = !credProtectionExpanded)}
+          onclick={() => (credProtectionExpanded = !credProtectionExpanded)}
           aria-expanded={credProtectionExpanded}
         >
           <span class="row-icon"><Icon name="shield" size={16} /></span>
@@ -604,7 +615,7 @@
         <!-- Access Control (restricted enrollment gate) -->
         <button
           class="settings-row"
-          on:click={() => (accessControlExpanded = !accessControlExpanded)}
+          onclick={() => (accessControlExpanded = !accessControlExpanded)}
           aria-expanded={accessControlExpanded}
         >
           <span class="row-icon"><Icon name="shield" size={16} /></span>
@@ -629,7 +640,8 @@
             class:active={syncWarningAck}
             role="switch"
             aria-checked={syncWarningAck}
-            on:click={toggleSyncWarning}
+            aria-label="Browser sync warning"
+            onclick={toggleSyncWarning}
           >
             <span class="toggle-knob"></span>
           </button>
@@ -647,7 +659,8 @@
             class:active={$byoSoundEnabled}
             role="switch"
             aria-checked={$byoSoundEnabled}
-            on:click={toggleSounds}
+            aria-label="Vault sounds"
+            onclick={toggleSounds}
           >
             <span class="toggle-knob"></span>
           </button>
@@ -691,7 +704,7 @@
         <div class="about-actions">
           <button
             class="primary-btn"
-            on:click={handleDownloadBackup}
+            onclick={handleDownloadBackup}
             disabled={downloadingBackup}
           >
             <Icon name="download" size={14} />
@@ -718,15 +731,15 @@
   <ProviderContextSheet
     provider={contextProvider}
     isOnlyProvider={$vaultStore.providers.length <= 1}
-    on:close={() => contextProvider = null}
-    on:change={() => { contextProvider = null; }}
+    onClose={() => contextProvider = null}
+    onChange={() => { contextProvider = null; }}
   />
 {/if}
 
 {#if showAddProvider}
   <AddProviderSheet
-    on:added={() => showAddProvider = false}
-    on:close={() => showAddProvider = false}
+    onAdded={() => showAddProvider = false}
+    onClose={() => showAddProvider = false}
   />
 {/if}
 
@@ -736,8 +749,8 @@
   message={confirmMessage}
   confirmText={confirmDanger ? 'Revoke' : 'Confirm'}
   confirmClass={confirmDanger ? 'btn-danger' : 'btn-primary'}
-  on:confirm={handleConfirm}
-  on:cancel={() => { confirmOpen = false; confirmAction = null; }}
+  onConfirm={handleConfirm}
+  onCancel={() => { confirmOpen = false; confirmAction = null; }}
 />
 
 <style>

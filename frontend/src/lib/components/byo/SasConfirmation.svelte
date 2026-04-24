@@ -1,10 +1,15 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import CloudBadge from '../CloudBadge.svelte';
 
-  export let sasCode: string;
+  interface Props {
+    sasCode: string;
+  onMismatch?: (...args: any[]) => void;
+  onConfirm?: (...args: any[]) => void;
+  }
 
-  const dispatch = createEventDispatcher<{ confirm: void; mismatch: void }>();
+  let { sasCode,
+  onMismatch,
+  onConfirm }: Props = $props();
 </script>
 
 <div class="sas-wrap">
@@ -23,10 +28,10 @@
   </p>
 
   <div class="actions">
-    <button class="btn btn-secondary danger-btn" on:click={() => dispatch('mismatch')}>
+    <button class="btn btn-secondary danger-btn" onclick={() => onMismatch?.()}>
       No — abort
     </button>
-    <button class="btn btn-primary" on:click={() => dispatch('confirm')}>
+    <button class="btn btn-primary" onclick={() => onConfirm?.()}>
       Yes, they match
     </button>
   </div>

@@ -1,28 +1,20 @@
 <script lang="ts">
+
 	import { fade } from 'svelte/transition';
 	import { triggerDownload } from '../utils';
 	import Icon from './Icons.svelte';
 	import type { FileRecord } from '../stores/files';
 	import { parseExif, type PhotoExif } from '../byo/ExifExtractor';
 
-	export let file: FileRecord | null = null;
-	export let isOpen: boolean = false;
-	export let onClose: () => void;
 
 	// BYO dual-mode: when provided, replaces downloadAndDecryptFile(file.id).
-	// Called with file.id; must return a Blob of the decrypted file content.
-	export let loadFileData: ((fileId: number) => Promise<Blob>) | null = null;
+	
 
-	let previewUrl: string | null = null;
-	let isLoading: boolean = false;
-	let error: string | null = null;
-	let fileType: 'image' | 'pdf' | 'other' = 'other';
+	let previewUrl: string | null = $state(null);
+	let isLoading: boolean = $state(false);
+	let error: string | null = $state(null);
+	let fileType: 'image' | 'pdf' | 'other' = $state('other');
 
-	$: {
-		if (file && isOpen) {
-			loadPreview();
-		}
-	}
 
 	function getFileType(filename: string): 'image' | 'pdf' | 'other' {
 		const ext = filename.split('.').pop()?.toLowerCase() || '';
@@ -90,20 +82,30 @@
 	}
 
 	// Optional prev/next navigation (Photos lightbox). When set, ArrowLeft /
-	// ArrowRight flip through siblings and chevron arrows appear on hover.
-	export let onPrev: (() => void) | null = null;
-	export let onNext: (() => void) | null = null;
+	
+	interface Props {
+		file?: FileRecord | null;
+		isOpen?: boolean;
+		onClose: () => void;
+		// Called with file.id; must return a Blob of the decrypted file content.
+		loadFileData?: ((fileId: number) => Promise<Blob>) | null;
+		// ArrowRight flip through siblings and chevron arrows appear on hover.
+		onPrev?: (() => void) | null;
+		onNext?: (() => void) | null;
+	}
+
+	let {
+		file = null,
+		isOpen = false,
+		onClose,
+		loadFileData = null,
+		onPrev = null,
+		onNext = null
+	}: Props = $props();
 
 	// Metadata side-panel toggle — opened by the info button or 'I' key.
-	let showInfo = false;
-	$: mimeLabel = (file as unknown as { mime_type?: string })?.mime_type || '—';
+	let showInfo = $state(false);
 
-	// EXIF-derived camera info, parsed lazily from the `metadata` column on
-	// BYO FileEntry records. Missing fields render as '—' (or the row is
-	// omitted entirely when the whole group is absent).
-	$: exif = parseExif((file as unknown as { metadata?: string })?.metadata) as PhotoExif;
-	$: hasCamera = !!(exif.make || exif.model || exif.iso || exif.fNumber || exif.exposureTime || exif.focalLength);
-	$: hasLocation = typeof exif.lat === 'number' && typeof exif.lon === 'number';
 
 	function formatExposure(s: number | undefined): string {
 		if (s == null) return '—';
@@ -151,13 +153,14 @@
 	let swiping = false;
 
 	// Image transform state
-	let zoomScale = 1;
-	let zoomTx = 0;
-	let zoomTy = 0;
+	let zoomScale = $state(1);
+	let zoomTx = $state(0);
+	let zoomTy = $state(0);
 
 	// Gesture state
 	let pinchStartDist = 0;
 	let pinchStartScale = 1;
+	let _pinchStartCenter: { x: number; y: number } = { x: 0, y: 0 };
 	let panStart = { x: 0, y: 0, tx: 0, ty: 0 };
 	let lastTapTime = 0;
 	let lastTapX = 0;
@@ -174,9 +177,6 @@
 	function clampScale(s: number): number { return Math.max(MIN_SCALE, Math.min(MAX_SCALE, s)); }
 	function resetZoom() { zoomScale = 1; zoomTx = 0; zoomTy = 0; }
 
-	// Reset zoom whenever the active file changes so a previous-photo
-	// zoom doesn't carry over into the next one.
-	$: { void file; resetZoom(); }
 
 	function handleTouchStart(e: TouchEvent) {
 		if (e.touches.length === 2 && fileType === 'image') {
@@ -184,7 +184,7 @@
 			e.preventDefault();
 			pinchStartDist = touchDist(e.touches);
 			pinchStartScale = zoomScale;
-			pinchStartCenter = touchCenter(e.touches);
+			_pinchStartCenter = touchCenter(e.touches);
 			swiping = false;
 			return;
 		}
@@ -262,37 +262,52 @@
 		zoomScale = clampScale(zoomScale * factor);
 		if (zoomScale === 1) { zoomTx = 0; zoomTy = 0; }
 	}
+	$effect(() => {
+		if (file && isOpen) {
+			loadPreview();
+		}
+	});
+	let mimeLabel = $derived((file as unknown as { mime_type?: string })?.mime_type || '—');
+	// EXIF-derived camera info, parsed lazily from the `metadata` column on
+	// BYO FileEntry records. Missing fields render as '—' (or the row is
+	// omitted entirely when the whole group is absent).
+	let exif = $derived(parseExif((file as unknown as { metadata?: string })?.metadata) as PhotoExif);
+	let hasCamera = $derived(!!(exif.make || exif.model || exif.iso || exif.fNumber || exif.exposureTime || exif.focalLength));
+	let hasLocation = $derived(typeof exif.lat === 'number' && typeof exif.lon === 'number');
+	// Reset zoom whenever the active file changes so a previous-photo
+	// zoom doesn't carry over into the next one.
+	$effect(() => { void file; resetZoom(); });
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 {#if isOpen && file}
-	<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
+	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
 	<div
 		class="preview-overlay"
-		on:click={close}
-		on:touchstart={handleTouchStart}
-		on:touchmove={handleTouchMove}
-		on:touchend={handleTouchEnd}
-		on:wheel={handleWheel}
+		onclick={close}
+		ontouchstart={handleTouchStart}
+		ontouchmove={handleTouchMove}
+		ontouchend={handleTouchEnd}
+		onwheel={handleWheel}
 		role="presentation"
 		transition:fade={{ duration: 200 }}
 	>
-		<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-		<div class="preview-container" on:click|stopPropagation role="dialog">
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events -->
+		<div class="preview-container" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
 			<!-- Top bar: close left, filename center, actions right -->
 			<div class="preview-top-bar">
-				<button class="preview-btn" on:click={close} title="Close" aria-label="Close preview">
+				<button class="preview-btn" onclick={close} title="Close" aria-label="Close preview">
 					<Icon name="close" size={20} />
 				</button>
 				<div class="preview-filename">
 					<span>{file.decrypted_name || file.name}</span>
 				</div>
 				<div class="preview-actions">
-					<button class="preview-btn" class:active={showInfo} on:click={() => (showInfo = !showInfo)} title="Info (I)" aria-label="Toggle info panel">
+					<button class="preview-btn" class:active={showInfo} onclick={() => (showInfo = !showInfo)} title="Info (I)" aria-label="Toggle info panel">
 						<Icon name="info" size={20} />
 					</button>
-					<button class="preview-btn" on:click={download} title="Download" aria-label="Download file">
+					<button class="preview-btn" onclick={download} title="Download" aria-label="Download file">
 						<Icon name="download" size={20} />
 					</button>
 				</div>
@@ -300,12 +315,12 @@
 
 			<!-- Prev/Next chevrons (only when Photos lightbox wires them) -->
 			{#if onPrev}
-				<button class="preview-nav-btn prev" on:click={onPrev} title="Previous (←)" aria-label="Previous">
+				<button class="preview-nav-btn prev" onclick={onPrev} title="Previous (←)" aria-label="Previous">
 					<Icon name="arrowLeft" size={24} />
 				</button>
 			{/if}
 			{#if onNext}
-				<button class="preview-nav-btn next" on:click={onNext} title="Next (→)" aria-label="Next">
+				<button class="preview-nav-btn next" onclick={onNext} title="Next (→)" aria-label="Next">
 					<Icon name="arrowRight" size={24} />
 				</button>
 			{/if}
@@ -370,7 +385,7 @@
 							<Icon name="error" size={32} />
 						</div>
 						<p>{error}</p>
-						<button class="btn btn-secondary" on:click={download}>Download instead</button>
+						<button class="btn btn-secondary" onclick={download}>Download instead</button>
 					</div>
 				{:else if previewUrl}
 					{#if fileType === 'image'}
@@ -380,7 +395,7 @@
 							class="preview-image"
 							class:zoomed={zoomScale > 1}
 							style:transform="translate({zoomTx}px, {zoomTy}px) scale({zoomScale})"
-							on:dblclick={() => resetZoom()}
+							ondblclick={() => resetZoom()}
 							draggable="false"
 						/>
 					{:else if fileType === 'pdf'}
@@ -395,7 +410,7 @@
 								<Icon name="file" size={32} />
 							</div>
 							<p>Preview not available for this file type</p>
-							<button class="btn btn-primary" on:click={download}>Download</button>
+							<button class="btn btn-primary" onclick={download}>Download</button>
 						</div>
 					{/if}
 				{/if}

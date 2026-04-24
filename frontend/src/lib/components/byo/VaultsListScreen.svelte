@@ -7,7 +7,6 @@
    * from IDB) or connect a brand-new one (falls through to the existing
    * AddProviderSheet flow).
    */
-  import { createEventDispatcher } from 'svelte';
   import type { PersistedVaultSummary } from '../../byo/ProviderConfigStore';
   import Lock from 'phosphor-svelte/lib/Lock';
   import DotsThreeVertical from 'phosphor-svelte/lib/DotsThreeVertical';
@@ -24,16 +23,20 @@
   import type { ComponentType } from 'svelte';
   import type { ProviderType } from '@wattcloud/sdk';
 
-  export let vaults: PersistedVaultSummary[] = [];
+  interface Props {
+    vaults?: PersistedVaultSummary[];
+  onOpen?: (...args: any[]) => void;
+  onMenu?: (...args: any[]) => void;
+  onAddNew?: (...args: any[]) => void;
+  onLinkDevice?: (...args: any[]) => void;
+  }
 
-  const dispatch = createEventDispatcher<{
-    open: { vault_id: string };
-    menu: { vault_id: string };
-    addNew: void;
-    linkDevice: void;
-  }>();
-
-  const ICONS: Record<ProviderType, ComponentType> = {
+  let { vaults = [],
+  onOpen,
+  onMenu,
+  onAddNew,
+  onLinkDevice }: Props = $props();
+const ICONS: Record<ProviderType, ComponentType> = {
     gdrive: GoogleDriveLogo,
     dropbox: DropboxLogo,
     onedrive: Cloud,
@@ -69,14 +72,15 @@
 
   <div class="vault-list">
     {#each vaults as v (v.vault_id)}
+      {@const SvelteComponent = ICONS[v.primary.type] ?? Cloud}
       <div class="vault-card">
         <button
           class="vault-main"
-          on:click={() => dispatch('open', { vault_id: v.vault_id })}
+          onclick={() => onOpen?.({ vault_id: v.vault_id })}
           aria-label={`Open vault ${v.vault_label}`}
         >
           <span class="vault-icon" aria-hidden="true">
-            <svelte:component this={ICONS[v.primary.type] ?? Cloud} size={20} weight="regular" />
+            <SvelteComponent size={20} weight="regular" />
           </span>
           <span class="vault-body">
             <span class="vault-label">{v.vault_label || 'Untitled vault'}</span>
@@ -91,7 +95,7 @@
         </button>
         <button
           class="vault-menu"
-          on:click={() => dispatch('menu', { vault_id: v.vault_id })}
+          onclick={() => onMenu?.({ vault_id: v.vault_id })}
           aria-label={`More actions for ${v.vault_label}`}
         >
           <DotsThreeVertical size={20} weight="bold" />
@@ -102,7 +106,7 @@
 
   <div class="divider" aria-hidden="true"><span>or</span></div>
 
-  <button class="add-new" on:click={() => dispatch('addNew')}>
+  <button class="add-new" onclick={() => onAddNew?.()}>
     <span class="add-icon" aria-hidden="true"><Plus size={18} weight="bold" /></span>
     <span class="add-text">
       <span class="add-title">Connect a new vault</span>
@@ -110,7 +114,7 @@
     </span>
   </button>
 
-  <button class="link-device" on:click={() => dispatch('linkDevice')}>
+  <button class="link-device" onclick={() => onLinkDevice?.()}>
     <span class="link-icon" aria-hidden="true"><DeviceMobile size={18} weight="bold" /></span>
     <span class="link-text">
       <span class="link-title">Link from another device</span>

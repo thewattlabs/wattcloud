@@ -1,4 +1,5 @@
 <script lang="ts">
+
   /**
    * BootstrapClaim — first-run screen shown when `/relay/info` returns
    * `{mode: "restricted", bootstrapped: false}`. Consumes the 32-byte
@@ -25,13 +26,13 @@
     AccessControlError,
   } from '../../byo/accessControl';
 
-  let token = '';
-  let label = defaultDeviceLabel();
-  let busy = false;
-  let error = '';
-  let explainOpen = false;
+  let token = $state('');
+  let label = $state(defaultDeviceLabel());
+  let busy = $state(false);
+  let error = $state('');
+  let explainOpen = $state(false);
 
-  $: canSubmit = token.trim().length >= 16 && label.trim().length > 0 && !busy;
+  let canSubmit = $derived(token.trim().length >= 16 && label.trim().length > 0 && !busy);
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -87,7 +88,7 @@
     </div>
   </section>
 
-  <form on:submit|preventDefault={handleSubmit} class="form">
+  <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="form">
     <label class="field">
       <span class="field-label">Bootstrap token</span>
       <textarea
@@ -97,7 +98,7 @@
         spellcheck="false"
         autocomplete="off"
         autocapitalize="off"
-        autocorrect="off"
+        {...{ autocorrect: 'off' }}
         placeholder="Paste the 64-character token from your server"
         disabled={busy}
       ></textarea>
@@ -135,7 +136,7 @@
     <button
       type="button"
       class="explain-toggle"
-      on:click={() => (explainOpen = !explainOpen)}
+      onclick={() => (explainOpen = !explainOpen)}
       aria-expanded={explainOpen}
     >
       <Info size={16} weight="regular" />

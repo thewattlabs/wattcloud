@@ -8,18 +8,22 @@
   it — no bolt, no padlock, no check. The draw-on itself is the moment.
 -->
 <script lang="ts">
-  import { onMount, createEventDispatcher } from 'svelte';
+  import { onMount } from 'svelte';
 
-  const dispatch = createEventDispatcher<{ done: void }>();
+  interface Props {
+    onDone?: () => void;
+  }
+
+  let { onDone }: Props = $props();
 
   const SESSION_KEY = 'sc-byo-unlocked-within-5min';
   // pathLength=100 normalises the cloud path length; dasharray/dashoffset
   // animate 100→0 to draw it on screen regardless of its real length.
   const SHIELD_CIRCUMFERENCE = 100;
 
-  let visible = false;
-  let shieldProgress = 0;
-  let fading = false;
+  let visible = $state(false);
+  let shieldProgress = $state(0);
+  let fading = $state(false);
   let reducedMotion = false;
 
   onMount(() => {
@@ -27,7 +31,7 @@
 
     const alreadyUnlocked = sessionStorage.getItem(SESSION_KEY);
     if (alreadyUnlocked) {
-      dispatch('done');
+      onDone?.();
       return;
     }
 
@@ -36,7 +40,7 @@
 
     if (reducedMotion) {
       visible = true;
-      setTimeout(() => { fading = true; setTimeout(() => { visible = false; dispatch('done'); }, 200); }, 100);
+      setTimeout(() => { fading = true; setTimeout(() => { visible = false; onDone?.(); }, 200); }, 100);
       return;
     }
 
@@ -55,7 +59,7 @@
           fading = true;
           setTimeout(() => {
             visible = false;
-            dispatch('done');
+            onDone?.();
           }, 200);
         }, 300);
       }
@@ -67,7 +71,7 @@
     return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
   }
 
-  $: dashOffset = SHIELD_CIRCUMFERENCE * (1 - shieldProgress);
+  let dashOffset = $derived(SHIELD_CIRCUMFERENCE * (1 - shieldProgress));
 </script>
 
 {#if visible}

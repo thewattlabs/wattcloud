@@ -1,7 +1,9 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
 
-  /**
+  
+  interface Props {
+    /**
    * BYO passphrase input with entropy enforcement.
    *
    * Modes:
@@ -11,29 +13,37 @@
    * Security: passphrase is passed to the caller via `on:submit` as a string
    * and must be zeroized by the caller after use.
    */
-  export let mode: 'create' | 'unlock' | 'change' = 'create';
-  export let label = mode === 'unlock' ? 'Passphrase' : 'New passphrase';
-  export let submitLabel = mode === 'unlock' ? 'Unlock' : mode === 'change' ? 'Change Passphrase' : 'Continue';
-  export let disabled = false;
+    mode?: 'create' | 'unlock' | 'change';
+    label?: any;
+    submitLabel?: any;
+    disabled?: boolean;
+  onSubmit?: (...args: any[]) => void;
+  }
 
-  const dispatch = createEventDispatcher<{ submit: string }>();
-
-  const MIN_LENGTH = 16;
+  let {
+    mode = 'create',
+    label = mode === 'unlock' ? 'Passphrase' : 'New passphrase',
+    submitLabel = mode === 'unlock' ? 'Unlock' : mode === 'change' ? 'Change Passphrase' : 'Continue',
+    disabled = false,
+    onSubmit
+  }: Props = $props();
+const MIN_LENGTH = 16;
   const MIN_ENTROPY = 60;
 
-  let passphrase = '';
-  let confirm = '';
-  let showPass = false;
-  let showConfirm = false;
-  let error = '';
-  let entropyBits = 0;
+  let passphrase = $state('');
+  let confirm = $state('');
+  let showPass = $state(false);
+  let showConfirm = $state(false);
+  let error = $state('');
+  let entropyBits = $state(0);
+  let _entropyScore = $state(0);
   let entropyLoaded = false;
   let entropyLoading = false;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Lazy-load zxcvbn on first input to keep initial bundle small
   type ZxcvbnResult = { guessesLog10: number; score: 0 | 1 | 2 | 3 | 4 };
-  let zxcvbn: ((pw: string) => ZxcvbnResult) | null = null;
+  let zxcvbn: ((pw: string) => ZxcvbnResult) | null = $state(null);
 
   async function loadZxcvbn() {
     if (zxcvbn || entropyLoading) return;
@@ -60,11 +70,11 @@
   }
 
   function checkEntropy(pw: string) {
-    if (!zxcvbn || !pw) { entropyBits = 0; entropyScore = 0; return; }
+    if (!zxcvbn || !pw) { entropyBits = 0; _entropyScore = 0; return; }
     const result = zxcvbn(pw);
     // guessesLog10 in bits: log2(10^guessesLog10) = guessesLog10 * log2(10) ≈ * 3.322
     entropyBits = Math.round(result.guessesLog10 * 3.322);
-    entropyScore = result.score;
+    _entropyScore = result.score;
   }
 
   function onPassphraseInput() {
@@ -83,7 +93,9 @@
   });
 
   // Reactive entropy check when zxcvbn loads
-  $: if (zxcvbn && passphrase && mode !== 'unlock') checkEntropy(passphrase);
+  $effect(() => {
+    if (zxcvbn && passphrase && mode !== 'unlock') checkEntropy(passphrase);
+  });
 
   function validate(): string | null {
     if (passphrase.length < MIN_LENGTH) {
@@ -103,13 +115,13 @@
   function handleSubmit() {
     error = validate() || '';
     if (error) return;
-    dispatch('submit', passphrase);
+    onSubmit?.(passphrase);
     // Caller is responsible for zeroizing after use.
     // Clear local state immediately.
     passphrase = '';
     confirm = '';
     entropyBits = 0;
-    entropyScore = 0;
+    _entropyScore = 0;
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -124,10 +136,10 @@
     return 'var(--accent, #2EB860)';
   }
 
-  $: entropyPct = Math.min(100, Math.round((entropyBits / 100) * 100));
-  $: isStrong = mode === 'unlock' || entropyBits >= MIN_ENTROPY;
-  $: canSubmit = passphrase.length >= MIN_LENGTH && isStrong && !disabled &&
-    (mode === 'unlock' || passphrase === confirm);
+  let entropyPct = $derived(Math.min(100, Math.round((entropyBits / 100) * 100)));
+  let isStrong = $derived(mode === 'unlock' || entropyBits >= MIN_ENTROPY);
+  let canSubmit = $derived(passphrase.length >= MIN_LENGTH && isStrong && !disabled &&
+    (mode === 'unlock' || passphrase === confirm));
 </script>
 
 <div class="passphrase-input">
@@ -138,8 +150,8 @@
         id="byo-passphrase"
         type={showPass ? 'text' : 'password'}
         value={passphrase}
-        on:input={(e) => { passphrase = e.currentTarget.value; onPassphraseInput(); }}
-        on:keydown={handleKeydown}
+        oninput={(e) => { passphrase = e.currentTarget.value; onPassphraseInput(); }}
+        onkeydown={handleKeydown}
         placeholder="At least {MIN_LENGTH} characters"
         autocomplete={mode === 'unlock' ? 'current-password' : 'new-password'}
         {disabled}
@@ -149,7 +161,7 @@
       <button
         type="button"
         class="toggle-vis"
-        on:click={() => showPass = !showPass}
+        onclick={() => showPass = !showPass}
         aria-label={showPass ? 'Hide passphrase' : 'Show passphrase'}
         tabindex="-1"
       >
@@ -199,8 +211,8 @@
           id="byo-confirm"
           type={showConfirm ? 'text' : 'password'}
           value={confirm}
-          on:input={(e) => { confirm = e.currentTarget.value; }}
-          on:keydown={handleKeydown}
+          oninput={(e) => { confirm = e.currentTarget.value; }}
+          onkeydown={handleKeydown}
           placeholder="Re-enter passphrase"
           autocomplete="new-password"
           {disabled}
@@ -210,7 +222,7 @@
         <button
           type="button"
           class="toggle-vis"
-          on:click={() => showConfirm = !showConfirm}
+          onclick={() => showConfirm = !showConfirm}
           aria-label={showConfirm ? 'Hide passphrase' : 'Show passphrase'}
           tabindex="-1"
         >
@@ -237,7 +249,7 @@
 
   <button
     class="btn btn-primary submit-btn"
-    on:click={handleSubmit}
+    onclick={handleSubmit}
     disabled={!canSubmit}
   >
     {submitLabel}
