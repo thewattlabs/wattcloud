@@ -211,7 +211,6 @@
     class="icon"
     aria-hidden="true"
   >
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
     <!-- eslint-disable-next-line svelte/no-at-html-tags -->
     {@html iconSvg}
   </svg>

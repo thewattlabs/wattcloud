@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import type { FileRecord } from '../stores/files';
-  import { selectionMode, toggleFileSelection, selectedFiles, selectAllFiles, clearFileSelection } from '../stores/files';
+  import { selectionMode, toggleFileSelection, selectedFiles, clearFileSelection } from '../stores/files';
 
   // ── BYO dual-mode extension ──────────────────────────────────────────────
   // When provided, replaces the managed-mode selection stores.
@@ -50,7 +50,6 @@
 
   const dispatch = createEventDispatcher();
 
-  let isDragging = false;
   let draggedFileId: number | null = null;
   let showSelectionMode = false;
   let longPressTimer: ReturnType<typeof setTimeout> | null = null;
@@ -240,14 +239,6 @@
     else if (event.key === 'Escape') cancelFileRename();
   }
 
-  function download(file: FileRecord) {
-    dispatch('download', file);
-  }
-
-  function deleteFile(file: FileRecord) {
-    dispatch('delete', file);
-  }
-
   function isPreviewable(filename: string): boolean {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
     const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico'];
@@ -272,20 +263,6 @@
     event.stopPropagation();
     if (selectionContext) selectionContext.toggle(file.id);
     else toggleFileSelection(file.id);
-  }
-
-  function isSelected(fileId: number): boolean {
-    return activeSelectedFiles.has(fileId);
-  }
-
-  function selectAll() {
-    if (selectionContext) selectionContext.selectAll(files.map(f => f.id));
-    else selectAllFiles(files.map(f => f.id));
-  }
-
-  function clearSelection() {
-    if (selectionContext) selectionContext.clear();
-    else { clearFileSelection(); selectionMode.set(false); }
   }
 
   // Long-press detection
@@ -318,7 +295,6 @@
   }
 
   let touchFile: FileRecord | null = null;
-  let touchHandledSelection = false;
 
   function handleTouchEnd(event: TouchEvent) {
     if (longPressTimer) {
@@ -330,7 +306,6 @@
       event.preventDefault(); // Prevent subsequent click event
       if (selectionContext) selectionContext.toggle(touchFile.id);
       else toggleFileSelection(touchFile.id);
-      touchHandledSelection = true;
     }
     touchFile = null;
   }
@@ -398,7 +373,7 @@
     </div>
   {/if}
   <div class="file-list" role="list">
-    {#each files as file, i (file.id)}
+    {#each files as file (file.id)}
       <!-- svelte-ignore a11y-no-noninteractive-element-interactions a11y-no-noninteractive-tabindex -->
       <div
         class="list-item"
@@ -445,7 +420,6 @@
         </div>
 
         {#if renamingFileId === file.id}
-          <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
           <div class="rename-form" on:click|stopPropagation on:keydown|stopPropagation role="presentation">
             <!-- svelte-ignore a11y-autofocus -->
             <input
@@ -566,7 +540,6 @@
         </div>
 
         {#if renamingFileId === file.id}
-          <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
           <div class="grid-item-info" on:click|stopPropagation on:keydown|stopPropagation role="presentation">
             <!-- svelte-ignore a11y-autofocus -->
             <input

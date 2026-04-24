@@ -12,7 +12,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { StorageProvider, ProviderConfig } from '@wattcloud/sdk';
   import * as byoWorker from '@wattcloud/sdk';
-  import { bytesToBase64, base64ToBytes, MANIFEST_FILE, VAULT_BODY_PATH_PREFIX } from '../../byo/VaultLifecycle';
+  import { bytesToBase64, base64ToBytes, MANIFEST_FILE } from '../../byo/VaultLifecycle';
   import { generateDeviceCryptoKey, setDeviceRecord } from '../../byo/DeviceKeyStore';
   import { saveProviderConfig } from '../../byo/ProviderConfigStore';
   import { vaultStore } from '../../byo/stores/vaultStore';

@@ -7,12 +7,10 @@
    *
    * Gets DataProvider from Svelte context ('byo:dataProvider') set by ByoApp.
    */
-  import { onMount, onDestroy, getContext, tick } from 'svelte';
-  import { fly, fade, slide } from 'svelte/transition';
-  import { quintOut } from 'svelte/easing';
+  import { onMount, onDestroy, getContext } from 'svelte';
   import { get } from 'svelte/store';
   import type { DataProvider, FileEntry, FolderEntry, CollectionEntry } from '../../byo/DataProvider';
-  import { byoFiles, byoFolders, byoCurrentFolder, byoFilesLoading, byoSelectedFiles, byoSelectedFolders, byoSelectionMode, toggleByoFileSelection, toggleByoFolderSelection, clearByoSelection, resetByoFileStores } from '../../byo/stores/byoFileStore';
+  import { byoFolders, byoSelectedFiles, byoSelectedFolders, byoSelectionMode, toggleByoFileSelection, toggleByoFolderSelection, clearByoSelection, resetByoFileStores } from '../../byo/stores/byoFileStore';
   import { byoUploadQueue } from '../../byo/stores/byoUploadQueue';
   import { byoDownloadQueue } from '../../byo/stores/byoDownloadQueue';
   import { setByoSearchDataProvider, clearByoSearch, byoSearchQuery, byoSearchResults, hasByoActiveFilters, setByoSearchQuery, setByoFileTypeFilter } from '../../byo/stores/byoSearch';
@@ -23,22 +21,17 @@
     createByoCollection,
     addByoFilesToCollection,
   } from '../../byo/stores/byoCollections';
-  import { vaultStore, canOperate, isVaultDirty } from '../../byo/stores/vaultStore';
+  import { vaultStore, canOperate } from '../../byo/stores/vaultStore';
   import { storageUsage } from '../../stores/storageUsage';
   import type { ProviderMeta } from '../../byo/stores/vaultStore';
   import AddProviderSheet from './AddProviderSheet.svelte';
   import { OfflineDetector } from '../../byo/OfflineDetector';
   import { getProviders, getPrimaryProviderId } from '../../byo/VaultLifecycle';
-  import { TrashManager } from '../../byo/TrashManager';
-  import type { StorageProvider } from '@wattcloud/sdk';
   import House from 'phosphor-svelte/lib/House';
   import CaretRight from 'phosphor-svelte/lib/CaretRight';
   import Star from 'phosphor-svelte/lib/Star';
-  import Image from 'phosphor-svelte/lib/Image';
   import CloudSlash from 'phosphor-svelte/lib/CloudSlash';
   import Stack from 'phosphor-svelte/lib/Stack';
-  import ArrowDown from 'phosphor-svelte/lib/ArrowDown';
-  import ArrowUp from 'phosphor-svelte/lib/ArrowUp';
   import Rows from 'phosphor-svelte/lib/Rows';
   import SquaresFour from 'phosphor-svelte/lib/SquaresFour';
   import OfflineBanner from './OfflineBanner.svelte';
@@ -55,7 +48,6 @@
 
   // Reused managed components
   import DashboardHeader from '../DashboardHeader.svelte';
-  import BottomNav from '../BottomNav.svelte';
   import FAB from '../FAB.svelte';
   import SelectionToolbar from '../SelectionToolbar.svelte';
   import SortControl from '../SortControl.svelte';
@@ -67,7 +59,6 @@
   // Components with BYO callbacks
   import FileListSvelte from '../FileList.svelte';
   import FilePreview from '../FilePreview.svelte';
-  import MoveCopyDialog_ from '../MoveCopyDialog.svelte';
 
   import PullToRefresh from './PullToRefresh.svelte';
 
@@ -80,9 +71,6 @@
   import ByoFileDetails from './ByoFileDetails.svelte';
   import ProviderMoveSheet from './ProviderMoveSheet.svelte';
 
-  export let onLock: () => void;
-  export let onSettings: () => void;
-  export let onTrash: () => void;
   /** Bound by ByoApp so the shared Drawer can highlight the right link
       and navigation from Settings → Dashboard lands on the chosen tab. */
   export let view: 'files' | 'photos' | 'favorites' = 'files';
@@ -98,9 +86,6 @@
   }
 
   const dataProvider = getContext<{ current: DataProvider }>('byo:dataProvider').current;
-  const storageProvider = getContext<{ current: StorageProvider }>('byo:storageProvider').current;
-
-  type ViewType = 'files' | 'photos' | 'favorites';
 
   // iOS Safari can't stream Service Worker downloads (truncates at the
   // first buffered slice), so every owner download branches here into
@@ -246,7 +231,6 @@
 
   // Services
   let offlineDetector: OfflineDetector | null = null;
-  let trashManager: TrashManager | null = null;
 
   // ── Selection ripple (§29.3.4) ─────────────────────────────────────────
   // Record the last pointerdown inside .main-content so we can burst a ring
@@ -353,7 +337,6 @@
   // Sorting state for SortControl
   $: sortingState = { by: sortBy as SortByT, direction: (sortDir === 'asc' ? 'up' : 'down') as SortDirT };
   function onSortByChange(by: SortByT) { sortBy = by; }
-  function onSortDirChange(dir: SortDirT) { sortDir = dir === 'up' ? 'asc' : 'desc'; }
   function onToggleSortDir() { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
 
   // Typed aliases for template use (Svelte 4 / Acorn doesn't support `as` casts in templates)
@@ -525,20 +508,6 @@
     } finally {
       deleteLoading = false;
     }
-  }
-
-  async function handleToggleFavorite(type: 'file' | 'folder', id: number) {
-    const nowFav = await dataProvider.toggleFavorite(type, id);
-    if (type === 'file') {
-      const s = new Set(favoriteFileIds);
-      if (nowFav) s.add(id); else s.delete(id);
-      favoriteFileIds = s;
-    } else {
-      const s = new Set(favoriteFolderIds);
-      if (nowFav) s.add(id); else s.delete(id);
-      favoriteFolderIds = s;
-    }
-    await loadFavorites();
   }
 
   async function bulkToggleFavorite(makeFavorite: boolean) {
@@ -1168,14 +1137,6 @@
     return icons[type] ?? '?';
   }
 
-  // ── Nav items ──────────────────────────────────────────────────────────────
-
-  $: navItems = [
-    { id: 'files', label: 'Files', icon: 'folder', active: view === 'files' },
-    { id: 'photos', label: 'Photos', icon: 'image', active: view === 'photos' },
-    { id: 'favorites', label: 'Favorites', icon: 'star', active: view === 'favorites' },
-  ];
-
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   onMount(() => {
@@ -1243,10 +1204,6 @@
     if (e.dataTransfer?.files) handleFiles(e.dataTransfer.files);
   }
 
-  function handleNavigate(v: unknown): void {
-    if (v === 'settings') { onSettings(); }
-    else { view = v as ViewType; }
-  }
 </script>
 
 <div
@@ -1902,6 +1859,7 @@
         <section class="atc-section">
           <h4 class="atc-section-label">New collection</h4>
           <form class="atc-new" on:submit|preventDefault={handleCreateAndAddCollection}>
+            <!-- svelte-ignore a11y-autofocus -->
             <input
               type="text"
               class="input atc-new-input"

@@ -86,7 +86,6 @@
     </div>
 
     {#if isRenaming}
-      <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
       <div class="rename-form" on:click|stopPropagation on:keydown|stopPropagation role="presentation">
         <!-- svelte-ignore a11y-autofocus -->
         <input
@@ -160,7 +159,6 @@
     </div>
 
     {#if isRenaming}
-      <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
       <div class="grid-item-info" on:click|stopPropagation on:keydown|stopPropagation role="presentation">
         <!-- svelte-ignore a11y-autofocus -->
         <input

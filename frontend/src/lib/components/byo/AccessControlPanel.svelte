@@ -26,7 +26,6 @@
   import ArrowClockwise from 'phosphor-svelte/lib/ArrowClockwise';
   import Trash from 'phosphor-svelte/lib/Trash';
   import SignOut from 'phosphor-svelte/lib/SignOut';
-  import Icon from '../Icons.svelte';
   import ConfirmModal from '../ConfirmModal.svelte';
   import { byoToast } from '../../byo/stores/byoToasts';
   import {

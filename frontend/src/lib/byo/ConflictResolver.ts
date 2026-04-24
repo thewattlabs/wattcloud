@@ -25,7 +25,7 @@ import { bytesToBase64, base64ToBytes } from './base64';
 
 // BLOB columns per table — used to round-trip through JSON without data loss.
 // sql.js getAsObject() returns BLOB columns as Uint8Array; JSON.stringify drops them.
-const TABLE_BLOB_COLUMNS: Record<string, ReadonlySet<string>> = {
+const _TABLE_BLOB_COLUMNS: Record<string, ReadonlySet<string>> = {
   key_versions: new Set([
     'mlkem_public_key', 'mlkem_private_key_encrypted',
     'x25519_public_key', 'x25519_private_key_encrypted',

@@ -8,7 +8,6 @@
     getVaultSessionId,
     getVaultId,
     getProvider,
-    saveVault,
     markDirty,
     bytesToBase64,
     base64ToBytes,

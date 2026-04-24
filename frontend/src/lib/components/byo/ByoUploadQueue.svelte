@@ -13,7 +13,7 @@
   import Icon from '../Icons.svelte';
 
   let expanded = false;
-  let prevStatuses = new Map<string, string>();
+  const prevStatuses = new Map<string, string>();
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   $: if ($isByoUploading && !expanded) expanded = true;

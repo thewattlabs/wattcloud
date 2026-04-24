@@ -30,7 +30,6 @@ import {
 
 // ── Domain-separation constant ────────────────────────────────────────────
 
-const WAL_KEY_INFO = new TextEncoder().encode('SecureCloud BYO WAL v1');
 
 // ── Key derivation ─────────────────────────────────────────────────────────
 

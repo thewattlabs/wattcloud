@@ -158,7 +158,6 @@
 	// Gesture state
 	let pinchStartDist = 0;
 	let pinchStartScale = 1;
-	let pinchStartCenter = { x: 0, y: 0 };
 	let panStart = { x: 0, y: 0, tx: 0, ty: 0 };
 	let lastTapTime = 0;
 	let lastTapX = 0;
@@ -386,9 +385,9 @@
 						/>
 					{:else if fileType === 'pdf'}
 						<!-- Append docBaseUrl hint so Firefox's built-in pdf.js has a
-						     valid absolute base URL to resolve relative links
-						     against — avoids the "Invalid absolute docBaseUrl"
-						     warning it emits for raw blob: URLs. -->
+						valid absolute base URL to resolve relative links
+						against — avoids the "Invalid absolute docBaseUrl"
+						warning it emits for raw blob: URLs. -->
 						<iframe src={`${previewUrl}#docBaseUrl=${encodeURIComponent(window.location.origin + '/')}`} class="preview-pdf" title="PDF Preview"></iframe>
 					{:else}
 						<div class="preview-unsupported">

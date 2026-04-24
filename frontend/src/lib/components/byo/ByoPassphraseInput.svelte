@@ -26,7 +26,6 @@
   let showPass = false;
   let showConfirm = false;
   let error = '';
-  let entropyScore = 0;
   let entropyBits = 0;
   let entropyLoaded = false;
   let entropyLoading = false;

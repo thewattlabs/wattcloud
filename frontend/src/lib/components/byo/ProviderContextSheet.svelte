@@ -201,12 +201,14 @@
     {:else if sheet === 'sftp-reconnect'}
       <form class="inline-form" on:submit|preventDefault={handleSftpReconnect}>
         <p class="reconnect-hint">Enter credentials to reconnect <strong>{provider.displayName}</strong>.</p>
+        <!-- svelte-ignore a11y-label-has-associated-control -->
         <label class="field-label">Password
           <PasswordInput bind:value={sftpPass} autocomplete="current-password" showLabel="Show password" hideLabel="Hide password" />
         </label>
         <label class="field-label">Private key (PEM)
           <textarea class="field-input field-textarea" bind:value={sftpKey} rows="3" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea>
         </label>
+        <!-- svelte-ignore a11y-label-has-associated-control -->
         <label class="field-label">Key passphrase
           <PasswordInput bind:value={sftpPassphrase} autocomplete="off" showLabel="Show passphrase" hideLabel="Hide passphrase" />
         </label>

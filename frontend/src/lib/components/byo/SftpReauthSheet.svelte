@@ -84,6 +84,7 @@
       />
     </label>
 
+    <!-- svelte-ignore a11y-label-has-associated-control -->
     <label class="field">
       <span class="label-text">Password</span>
       <PasswordInput
@@ -109,6 +110,7 @@
     </label>
 
     {#if privateKey}
+      <!-- svelte-ignore a11y-label-has-associated-control -->
       <label class="field">
         <span class="label-text">Key passphrase <span class="field-optional">(optional)</span></span>
         <PasswordInput

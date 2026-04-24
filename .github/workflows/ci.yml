@@ -131,6 +131,12 @@ jobs:
           sed -e 's|@@DOMAIN@@|ci.example.com|g' \
               -e 's|@@ACME_EMAIL@@|ci@example.com|g' \
               packaging/Caddyfile.tmpl > /tmp/Caddyfile.rendered
+          # `caddy validate` initializes configured loggers rather than just
+          # parsing syntax, so the production log directory has to exist and
+          # be writable or validation exits non-zero. The directory gets
+          # permissioned correctly on a real VPS by deploy-vps.sh.
+          sudo mkdir -p /var/log/caddy
+          sudo chown "$(id -u)":"$(id -g)" /var/log/caddy
           caddy validate --config /tmp/Caddyfile.rendered --adapter caddyfile
 
       - name: Build byo-relay release binary

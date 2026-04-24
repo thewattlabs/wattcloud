@@ -1,7 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { Folder, FileRecord } from '../stores/files';
-  import { folders, selectedFiles, selectedFolders } from '../stores/files';
+  import { folders } from '../stores/files';
   import Icon from './Icons.svelte';
   import FolderTree from './FolderTree.svelte';
   import BottomSheet from './BottomSheet.svelte';

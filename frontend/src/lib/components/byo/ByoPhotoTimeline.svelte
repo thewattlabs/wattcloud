@@ -311,7 +311,7 @@
 
   const DAY_NAMES = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
   const MONTH_SHORT = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-  const MONTH_LONG = ['January', 'February', 'March', 'April', 'May', 'June',
+  const _MONTH_LONG = ['January', 'February', 'March', 'April', 'May', 'June',
                       'July', 'August', 'September', 'October', 'November', 'December'];
 
   type TabId = 'timeline' | 'collections';
@@ -337,7 +337,7 @@
     return `${DAY_NAMES[date.getDay()]}, ${MONTH_SHORT[month - 1]} ${day}, ${year}`;
   }
 
-  async function ensureThumbnail(file: FileEntry) {
+  async function _ensureThumbnail(file: FileEntry) {
     if (!$byoThumbnailCache.has(file.id)) {
       await loadByoThumbnail(file);
     }
@@ -380,7 +380,7 @@
       })()
     : false;
 
-  async function loadPreviewBlob(fileId: number): Promise<Blob> {
+  async function _loadPreviewBlob(fileId: number): Promise<Blob> {
     if (loadFileData) return loadFileData(fileId);
     throw new Error('No loadFileData provided');
   }
@@ -621,7 +621,6 @@
       {:else}
         <div class="photo-grid collection-grid">
           {#each $byoCollectionFiles as file (file.id)}
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
             <div
               class="photo-tile"
               class:item-selected={activeSelectedFiles.has(file.id)}
@@ -685,7 +684,6 @@
                   />
                 </div>
               {:else}
-                <!-- svelte-ignore a11y-click-events-have-key-events -->
                 <div
                   class="collection-card"
                   role="button"
@@ -764,7 +762,6 @@
         <h3 class="group-label">{formatDayHeader(group.year, group.month, group.day)}</h3>
         <div class="photo-grid">
           {#each group.files as file (file.id)}
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
             <div
               class="photo-tile"
               class:item-selected={activeSelectedFiles.has(file.id)}

@@ -19,7 +19,6 @@
     unlockVault,
     getVaultSessionId,
     getPrimaryProviderId,
-    MANIFEST_FILE,
     bytesToBase64,
     base64ToBytes,
   } from '../../byo/VaultLifecycle';

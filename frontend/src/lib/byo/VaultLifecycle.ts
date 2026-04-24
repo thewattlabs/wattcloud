@@ -17,7 +17,7 @@
  */
 
 import type { StorageProvider, ProviderConfig, ProviderType } from '@wattcloud/sdk';
-import { ConflictError, recordEvent, classifyErr, bucketLog2, SftpProvider, getShareRelayBandwidthAndReset } from '@wattcloud/sdk';
+import { recordEvent, classifyErr, bucketLog2, SftpProvider, getShareRelayBandwidthAndReset } from '@wattcloud/sdk';
 import * as byoWorker from '@wattcloud/sdk';
 import { runMigrations, providerDisplayName } from './VaultMigration';
 import type { ProviderMeta } from './stores/vaultStore';
@@ -28,9 +28,9 @@ import {
   getDirtyFlag,
   setDirtyFlag,
 } from './DeviceKeyStore';
-import { getWalMutations, getWalEntryGroups, replayWal, clearWal } from './IndexedDBWal';
+import { getWalEntryGroups, replayWal, clearWal } from './IndexedDBWal';
 import { VaultJournal } from './VaultJournal';
-import { ConflictResolver, loadSqlJs, queryRows } from './ConflictResolver';
+import { loadSqlJs, queryRows } from './ConflictResolver';
 import { vaultStore } from './stores/vaultStore';
 import {
   storeCachedBody,
@@ -95,13 +95,13 @@ let _walKeys: Map<string, CryptoKey> = new Map();
 let _journals: Map<string, VaultJournal> = new Map();
 
 /** Which providers have unsaved mutations in the master DB. */
-let _dirtyProviders: Set<string> = new Set();
+const _dirtyProviders: Set<string> = new Set();
 
 /** Providers marked dirty while a save is in flight. Merged back after save. */
 let _dirtyDuringSave: Set<string> = new Set();
 
 /** Last known encrypted body size (bytes) per provider — updated on each save. */
-let _lastBodySizesPerProvider: Map<string, number> = new Map();
+const _lastBodySizesPerProvider: Map<string, number> = new Map();
 
 /** Current manifest version (incremented on each save). */
 let _manifestVersion: number = 1;

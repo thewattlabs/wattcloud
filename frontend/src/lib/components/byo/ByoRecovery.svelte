@@ -16,7 +16,6 @@
   // recoverySessionId is stored between the verify and rekey steps
   let recoverySessionId: number | null = null;
   import { generateDeviceCryptoKey, setDeviceRecord } from '../../byo/DeviceKeyStore';
-  import { vaultStore } from '../../byo/stores/vaultStore';
   import StepIndicator from '../StepIndicator.svelte';
   import RecoveryKeyDisplay from '../RecoveryKeyDisplay.svelte';
   import ByoPassphraseInput from './ByoPassphraseInput.svelte';
@@ -369,11 +368,6 @@
     font-size: var(--t-body-sm-size, 0.8125rem);
     font-weight: 500;
     color: var(--text-secondary, #999999);
-  }
-
-  .recovery-input {
-    font-family: var(--font-mono, ui-monospace, 'SF Mono', 'JetBrains Mono', Consolas, monospace);
-    letter-spacing: 0.05em;
   }
 
   .error-msg {

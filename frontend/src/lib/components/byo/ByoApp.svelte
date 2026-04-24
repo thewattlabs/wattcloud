@@ -15,13 +15,12 @@
 
   import { setContext, onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import type { StorageProvider, ProviderType, ProviderConfig } from '@wattcloud/sdk';
-  import { createProvider, MockProvider, initStatsClient } from '@wattcloud/sdk';
+  import type { StorageProvider, ProviderConfig } from '@wattcloud/sdk';
+  import { initStatsClient } from '@wattcloud/sdk';
   import * as byoWorker from '@wattcloud/sdk';
   import {
     unlockVault,
     lockVault,
-    getProviders,
     getPrimaryProviderId,
     getProviderConfig,
     exportCurrentShard,
@@ -162,7 +161,6 @@
   let sourceShard = '';
   let sourcePrimaryConfig: ProviderConfig | null = null;
   let sourcePrimaryLabel = '';
-  let sourceError = '';
 
   /**
    * Svelte `setContext` can only run during component initialization, but
@@ -538,7 +536,6 @@
    * plaintext only lives in a short-lived buffer inside DeviceEnrollment.
    */
   async function handleEnrollNewDevice() {
-    sourceError = '';
     try {
       sourceShard = await exportCurrentShard();
       const primaryId = getPrimaryProviderId();
@@ -557,10 +554,9 @@
     sourceShard = '';
     sourcePrimaryConfig = null;
     sourcePrimaryLabel = '';
-    sourceError = '';
   }
 
-  async function handleVaultForgotten(event: CustomEvent<{ vault_id: string }>) {
+  async function handleVaultForgotten(_event: CustomEvent<{ vault_id: string }>) {
     byoToast.show('Vault forgotten on this device.');
     await refreshPersistedVaults();
     if (persistedVaults.length === 0) state = 'provider-select';
@@ -876,9 +872,6 @@
   {:else if state === 'dashboard'}
     <ByoDashboard
       bind:view={dashboardView}
-      onLock={handleLock}
-      onSettings={() => { state = 'settings'; }}
-      onTrash={() => { state = 'trash'; }}
     />
     <ByoCredProtectionOffer
       vaultId={getVaultId()}

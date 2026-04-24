@@ -24,7 +24,7 @@
  */
 
 import type { StorageProvider } from '@wattcloud/sdk';
-import { UnauthorizedError, ProviderError, acquireRelayCookie, evictRelayCookieCache, recordEvent, addShareRelayBandwidth } from '@wattcloud/sdk';
+import { UnauthorizedError, acquireRelayCookie, evictRelayCookieCache, recordEvent, addShareRelayBandwidth } from '@wattcloud/sdk';
 import { ByoUploadStream } from '@wattcloud/sdk';
 import { ByoDownloadStream } from '@wattcloud/sdk';
 import { createZipStream, type ZipEntry } from '@wattcloud/sdk';

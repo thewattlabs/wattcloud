@@ -27,7 +27,6 @@
 <svelte:window on:keydown={handleKeydown} />
 
 {#if open}
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
   <div
     class="sheet-overlay"
     on:click={handleOverlayClick}

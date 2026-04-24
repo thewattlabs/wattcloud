@@ -15,13 +15,11 @@
   import { byoToast } from '../../byo/stores/byoToasts';
   import {
     getWebAuthnRecord,
-    setWebAuthnRecord,
-    clearWebAuthnRecord,
+      clearWebAuthnRecord,
     readRawDeviceCryptoKey,
     setDeviceCryptoKey,
     deleteDeviceCryptoKey,
-    generateDeviceCryptoKey,
-    type DeviceWebAuthnRecord,
+      type DeviceWebAuthnRecord,
     type WebAuthnCredentialEntry,
   } from '../../byo/DeviceKeyStore';
   import {

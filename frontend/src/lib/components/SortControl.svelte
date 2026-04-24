@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { SortingState, SortBy, SortDirection } from '../stores/sorting';
+	import type { SortingState, SortBy } from '../stores/sorting';
 	import CalendarBlank from 'phosphor-svelte/lib/CalendarBlank';
 	import TextAa from 'phosphor-svelte/lib/TextAa';
 	import ArrowDown from 'phosphor-svelte/lib/ArrowDown';

@@ -1,5 +1,4 @@
 import { writable } from 'svelte/store';
-import { get } from 'svelte/store';
 
 // Sorting types
 export type SortBy = 'date' | 'name';

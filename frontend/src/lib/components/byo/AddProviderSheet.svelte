@@ -9,22 +9,17 @@
    *     Fires `on:selected` with the initialized provider instance + config.
    *     Used from ByoApp instead of the now-deleted ProviderPicker.
    */
-  import { createEventDispatcher, getContext } from 'svelte';
+  import { createEventDispatcher } from 'svelte';
   import type { StorageProvider, ProviderType, ProviderConfig } from '@wattcloud/sdk';
   import { createProvider, SftpProvider } from '@wattcloud/sdk';
   import * as byoWorker from '@wattcloud/sdk';
-  import { addProvider, getPrimaryProviderId } from '../../byo/VaultLifecycle';
+  import { addProvider } from '../../byo/VaultLifecycle';
   import { initiateOAuthFlow } from '@wattcloud/sdk';
-  import { vaultStore } from '../../byo/stores/vaultStore';
   import CloudBadge from '../CloudBadge.svelte';
   import Lock from 'phosphor-svelte/lib/Lock';
   import PasswordInput from '../common/PasswordInput.svelte';
   import { byoToast } from '../../byo/stores/byoToasts';
-  import GoogleDriveLogo from 'phosphor-svelte/lib/GoogleDriveLogo';
-  import DropboxLogo from 'phosphor-svelte/lib/DropboxLogo';
-  import Cloud from 'phosphor-svelte/lib/Cloud';
   import CloudArrowUp from 'phosphor-svelte/lib/CloudArrowUp';
-  import Package from 'phosphor-svelte/lib/Package';
   import CloudCheck from 'phosphor-svelte/lib/CloudCheck';
   import HardDrives from 'phosphor-svelte/lib/HardDrives';
   import Terminal from 'phosphor-svelte/lib/Terminal';
@@ -69,10 +64,6 @@
     { type: 'sftp',     name: 'SFTP',                    description: 'Any SSH server you control',         mode: 'inline', icon: Terminal        },
     { type: 's3',       name: 'S3 / R2 / Wasabi / MinIO',description: 'AWS, R2, Wasabi, MinIO, Backblaze',  mode: 'inline', icon: Database        },
   ];
-  const FIRST_INLINE_INDEX = PROVIDERS.findIndex((p) => p.mode === 'inline');
-  // Kept split-by-mode so re-enabling OAuth is a pure markup toggle (see the
-  // commented-out "Cloud accounts" block in the firstRun branch).
-  const OAUTH_PROVIDERS = PROVIDERS.filter((p) => p.mode === 'oauth');
   const INLINE_PROVIDERS = PROVIDERS.filter((p) => p.mode === 'inline');
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -98,9 +89,6 @@
   let sftpPass = ''; let sftpKey = ''; let sftpPassphrase = '';
   /** Optional server-absolute directory the vault lives under (e.g. `/wattcloud`). */
   let sftpBasePath = '';
-  // pCloud region
-  let pcloudRegion: 'us' | 'eu' = 'us';
-
   // S3 form
   let s3Endpoint = ''; let s3Region = ''; let s3Bucket = '';
   let s3AccessKeyId = ''; let s3SecretAccessKey = '';
@@ -464,6 +452,7 @@
             <label class="field-label">Username
               <input class="field-input" type="text" bind:value={wdavUser} required autocomplete="username"/>
             </label>
+            <!-- svelte-ignore a11y-label-has-associated-control -->
             <label class="field-label">Password
               <PasswordInput
                 bind:value={wdavPass}
@@ -501,6 +490,7 @@
               <input class="field-input" type="text" bind:value={sftpBasePath} placeholder="/MyFolder" autocomplete="off"/>
               <span class="field-hint">Optional. The vault folder is always named <code>WattcloudVault/</code>. Setting a base path prefixes where it's created. Leave empty to place it at the SFTP session root. Your vault will land at <code>{(sftpBasePath.trim() || '').replace(/\/+$/, '')}/WattcloudVault/</code>.</span>
             </label>
+            <!-- svelte-ignore a11y-label-has-associated-control -->
             <label class="field-label">Password
               <PasswordInput
                 bind:value={sftpPass}
@@ -553,6 +543,7 @@
             <label class="field-label">Access Key ID
               <input class="field-input" type="text" bind:value={s3AccessKeyId} required autocomplete="off" spellcheck="false"/>
             </label>
+            <!-- svelte-ignore a11y-label-has-associated-control -->
             <label class="field-label">Secret Access Key
               <PasswordInput
                 bind:value={s3SecretAccessKey}
@@ -610,8 +601,7 @@
            and captions would be redundant — captions kept in comments for
            when OAuth ships. -->
       <div class="provider-list">
-        <!-- <p class="group-caption">Cloud accounts</p> -->
-        {#each PROVIDERS as p, i}
+        {#each PROVIDERS as p (p.type)}
           <!--
           {#if i === FIRST_INLINE_INDEX}
             <p class="group-caption">Bring your own endpoint</p>
@@ -664,6 +654,7 @@
                   <label class="field-label">Username
                     <input class="field-input" type="text" bind:value={wdavUser} required autocomplete="username"/>
                   </label>
+                  <!-- svelte-ignore a11y-label-has-associated-control -->
                   <label class="field-label">Password
                     <PasswordInput
                       bind:value={wdavPass}
@@ -696,6 +687,7 @@
                     <input class="field-input" type="text" bind:value={sftpBasePath} placeholder="/MyFolder" autocomplete="off"/>
                     <span class="field-hint">Optional. The vault folder is always named <code>WattcloudVault/</code>. Setting a base path prefixes where it's created. Leave empty to place it at the SFTP session root. Your vault will land at <code>{(sftpBasePath.trim() || '').replace(/\/+$/, '')}/WattcloudVault/</code>.</span>
                   </label>
+                  <!-- svelte-ignore a11y-label-has-associated-control -->
                   <label class="field-label">Password
                     <PasswordInput
                       bind:value={sftpPass}
@@ -743,6 +735,7 @@
                   <label class="field-label">Access Key ID
                     <input class="field-input" type="text" bind:value={s3AccessKeyId} required autocomplete="off" spellcheck="false"/>
                   </label>
+                  <!-- svelte-ignore a11y-label-has-associated-control -->
                   <label class="field-label">Secret Access Key
                     <PasswordInput
                       bind:value={s3SecretAccessKey}
@@ -868,15 +861,6 @@
     color: var(--text-secondary, #999);
   }
 
-  .fr-section-label {
-    margin: var(--sp-md, 16px) 0 var(--sp-xs, 4px);
-    font-size: var(--t-label-size, 0.75rem);
-    font-weight: var(--t-label-weight, 500);
-    line-height: var(--t-label-lh, 1.4);
-    letter-spacing: var(--t-label-ls, 0.03em);
-    text-transform: uppercase;
-    color: var(--text-secondary, #999);
-  }
 
   .tile-grid {
     display: grid;
@@ -1234,16 +1218,6 @@
   .trust-banner :global(svg) { flex-shrink: 0; }
 
   .provider-list { display: flex; flex-direction: column; gap: 4px; }
-
-  .group-caption {
-    margin: var(--sp-md, 14px) var(--sp-xs, 4px) var(--sp-xs, 4px);
-    font-size: var(--t-caption-size, .75rem);
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--text-tertiary, var(--text-secondary, #7A7A7A));
-  }
-  .group-caption:first-of-type { margin-top: 0; }
 
   .provider-row { display: flex; flex-direction: column; }
 

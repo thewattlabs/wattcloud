@@ -17,7 +17,6 @@
 
 import { OAUTH_CONFIGS, getEffectiveClientId, validateOAuthConfig } from './OAuthConfig';
 import * as Worker from '../worker/byoWorkerClient';
-import type { ProviderType } from '../types';
 
 export interface OAuthResult {
   accessToken: string;

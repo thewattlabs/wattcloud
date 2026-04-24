@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import { slide, fade } from 'svelte/transition';
+  import { slide } from 'svelte/transition';
   import List from 'phosphor-svelte/lib/List';
   import ArrowLineLeft from 'phosphor-svelte/lib/ArrowLineLeft';
   import ArrowLineRight from 'phosphor-svelte/lib/ArrowLineRight';
@@ -76,9 +76,6 @@
   function handleToggleDrawer() {
     $drawerCollapsed = !$drawerCollapsed;
   }
-
-  $: hasActiveSearch = searchQuery.length > 0 || searchFileType.length > 0;
-  $: selectedFileType = fileTypes.find(t => t.value === searchFileType) || fileTypes[0];
 </script>
 
 <header class="header-wrapper" class:hidden={!headerVisible}>

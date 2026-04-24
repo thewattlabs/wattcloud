@@ -34,7 +34,6 @@ let decrypt_filename: any;
 // BYO vault WASM functions
 let byo_parse_vault_header: any;
 let byo_derive_vault_keys: any;
-let byo_derive_vault_keys_default: any;
 let byo_unwrap_vault_key: any;
 let byo_derive_kek: any;
 let byo_derive_recovery_vault_kek: any;

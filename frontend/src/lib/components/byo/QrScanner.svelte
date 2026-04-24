@@ -107,7 +107,6 @@
 
 <div class="scanner-wrap">
   <!-- Hidden video + canvas used for processing -->
-  <!-- svelte-ignore a11y-media-has-caption -->
   <video bind:this={video} class="scanner-video" playsinline muted></video>
   <canvas bind:this={canvas} class="scanner-canvas" aria-hidden="true"></canvas>
 
