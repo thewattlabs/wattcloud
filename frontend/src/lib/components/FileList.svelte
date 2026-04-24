@@ -1,6 +1,6 @@
 <script lang="ts">
 
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import type { FileRecord } from '../stores/files';
   import { selectionMode, toggleFileSelection, selectedFiles, clearFileSelection } from '../stores/files';
 
@@ -33,12 +33,15 @@
   interface Props {
     // BYO mode passes its own selection state; managed mode leaves this null.
     selectionContext?: {
-    isSelectionMode: boolean;
-    selectedFiles: Set<number>;
-    toggle: (id: number) => void;
-    selectAll: (ids: number[]) => void;
-    clear: () => void;
-  } | null;
+      isSelectionMode: boolean;
+      selectedFiles: Set<number>;
+      toggle: (id: number) => void;
+      selectAll: (ids: number[]) => void;
+      clear: () => void;
+    } | null;
+    onRefresh?: () => void;
+    onPreview?: (file: any) => void;
+    onUpload?: () => void;
     // Called with (fileId, plaintextName).
     onRename?: ((fileId: number, plaintextName: string) => Promise<void>) | null;
     // When provided (managed), handles encrypt + API rename with the decrypted file key.
@@ -68,12 +71,12 @@
     showFolderContext = false,
     folderNames = {},
     viewMode = 'list',
-    showEncryptionBadge = false
+    showEncryptionBadge = false,
+    onRefresh,
+    onPreview,
+    onUpload
   }: Props = $props();
-
-  const dispatch = createEventDispatcher();
-
-  let draggedFileId: number | null = $state(null);
+let draggedFileId: number | null = $state(null);
   let showSelectionMode = $state(false);
   let longPressTimer: ReturnType<typeof setTimeout> | null = null;
   let touchStartPos = { x: 0, y: 0 };
@@ -237,7 +240,7 @@
       }
       renamingFileId = null;
       fileRenameValue = '';
-      dispatch('refresh');
+      onRefresh?.();
     } catch (e: any) {
       console.error('Failed to rename file:', e);
       renamingFileId = null;
@@ -270,7 +273,7 @@
     } else {
       const decryptedName = file.decrypted_name || file.name;
       if (isPreviewable(decryptedName)) {
-        dispatch('preview', file);
+        onPreview?.(file);
       }
     }
   }
@@ -357,7 +360,7 @@
   }
 
   function handleUploadClick() {
-    dispatch('upload');
+    onUpload?.();
   }
   // Use selectionContext when provided (BYO mode), else fall back to managed stores.
   $effect(() => {

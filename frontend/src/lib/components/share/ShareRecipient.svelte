@@ -85,7 +85,7 @@
   let variant: Variant = 'public';
   let fragmentParams: URLSearchParams = $state(new URLSearchParams());
   let loadingMeta = $state(true);
-  let meta: ShareMeta | null = $state(null);
+  let meta = $state<ShareMeta | null>(null);
   let metaError = $state('');
   let needPassword = $state(false);
   let password = $state('');
@@ -114,7 +114,7 @@
   /** iOS path + block/warn decision, resolved async after meta loads.
    *  Null until the probe completes — the UI gates on `iosDecision !== null`
    *  so we don't flash a banner state before the OPFS quota is known. */
-  let iosDecision: IOSPathDecision | null = $state(null);
+  let iosDecision = $state<IOSPathDecision | null>(null);
 
   async function refreshIosDecision(bytes: number) {
     try {

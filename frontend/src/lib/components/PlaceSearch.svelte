@@ -1,6 +1,6 @@
 <script lang="ts">
 
-  import { createEventDispatcher, tick, onMount } from 'svelte';
+  import { tick, onMount } from 'svelte';
   import { fly } from 'svelte/transition';
   import { searchIn, type PlaceBounds, type PlaceType } from '../data/placeBounds';
   import { placesStore, loadPlaces } from '../stores/placeBounds';
@@ -12,17 +12,18 @@
   interface Props {
     placeholder?: string;
     selected?: PlaceBounds | null;
+  onSelect?: (...args: any[]) => void;
+  onClear?: (...args: any[]) => void;
   }
 
-  let { placeholder = 'Search country, city, region...', selected = $bindable(null) }: Props = $props();
-
-  const dispatch = createEventDispatcher<{ select: PlaceBounds; clear: void }>();
-
-  let query = $state('');
+  let { placeholder = 'Search country, city, region...', selected = $bindable(null),
+  onSelect,
+  onClear }: Props = $props();
+let query = $state('');
   let results: PlaceBounds[] = $state([]);
   let activeIndex = $state(-1);
-  let inputEl: HTMLInputElement = $state();
-  let listEl: HTMLUListElement = $state();
+  let inputEl = $state<HTMLInputElement | undefined>(undefined);
+  let listEl = $state<HTMLUListElement | undefined>(undefined);
   let open = $state(false);
 
   onMount(() => { loadPlaces(); });
@@ -38,8 +39,8 @@
     }
   });
 
-  function select(place: PlaceBounds) { selected = place; query = ''; open = false; dispatch('select', place); }
-  function clearSelection() { selected = null; query = ''; open = false; dispatch('clear'); tick().then(() => inputEl?.focus()); }
+  function select(place: PlaceBounds) { selected = place; query = ''; open = false; onSelect?.(place); }
+  function clearSelection() { selected = null; query = ''; open = false; onClear?.(); tick().then(() => inputEl?.focus()); }
   function handleKeydown(e: KeyboardEvent) {
     if (!open) return;
     if (e.key === 'ArrowDown') { e.preventDefault(); activeIndex = Math.min(activeIndex + 1, results.length - 1); scrollActiveIntoView(); }
@@ -76,7 +77,7 @@
     {#if open}
       <ul bind:this={listEl} class="results-list" role="listbox" id="place-search-listbox" transition:fly={{ y: -6, duration: 140 }}>
         {#each results as place, i}
-          <li class="result-item" class:active={i === activeIndex} role="option" aria-selected={i === activeIndex} data-idx={i} onmousedown={preventDefault(() => select(place))} onmouseover={() => activeIndex = i} onfocus={() => activeIndex = i}>
+          <li class="result-item" class:active={i === activeIndex} role="option" aria-selected={i === activeIndex} data-idx={i} onmousedown={(e) => { e.preventDefault(); select(place); }} onmouseover={() => activeIndex = i} onfocus={() => activeIndex = i}>
             <span class="result-flag">
               {#if place.flag}{place.flag}{:else}<FolderSimple size={14} />{/if}
             </span>

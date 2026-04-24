@@ -1,6 +1,4 @@
 <script lang="ts">
-
-  import { createEventDispatcher } from 'svelte';
   import { fly, fade } from 'svelte/transition';
 
   interface Props {
@@ -9,6 +7,7 @@
     subtitle?: string;
     variant?: 'default' | 'wide';
     children?: import('svelte').Snippet;
+  onClose?: (...args: any[]) => void;
   }
 
   let {
@@ -16,13 +15,11 @@
     title = '',
     subtitle = '',
     variant = 'default',
-    children
+    children,
+    onClose
   }: Props = $props();
-
-  const dispatch = createEventDispatcher();
-
-  function dismiss() {
-    dispatch('close');
+function dismiss() {
+    onClose?.();
   }
 
   function handleOverlayClick() {

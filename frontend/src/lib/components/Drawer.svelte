@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import FolderSimple from 'phosphor-svelte/lib/FolderSimple';
   import Image from 'phosphor-svelte/lib/Image';
@@ -10,14 +9,7 @@
   import SignOut from 'phosphor-svelte/lib/SignOut';
   import LinkIcon from 'phosphor-svelte/lib/Link';
   import CloudBadge from './CloudBadge.svelte';
-
-  
-  
-
-
-  const dispatch = createEventDispatcher();
-
-  type NavId = 'files' | 'photos' | 'favorites' | 'settings';
+type NavId = 'files' | 'photos' | 'favorites' | 'settings';
 
   const navLinks: { id: NavId; label: string; icon: any }[] = [
     { id: 'files', label: 'Files', icon: FolderSimple },
@@ -27,32 +19,32 @@
   ];
 
   function handleNav(id: NavId) {
-    dispatch('navigate', { view: id });
+    onNavigate?.({ view: id });
     close();
   }
 
   function handleAdmin() {
-    dispatch('admin');
+    onAdmin?.();
     close();
   }
 
   function handleLogout() {
-    dispatch('logout');
+    onLogout?.();
     close();
   }
 
   function handleLockVault() {
-    dispatch('lock-vault');
+    onLockVault?.();
     close();
   }
 
   function handleSharesClick() {
-    dispatch('shares-click');
+    onSharesClick?.();
     close();
   }
 
   function close() {
-    dispatch('close');
+    onClose?.();
     if (onClose) onClose();
   }
 
@@ -87,6 +79,11 @@
     onClose?: (() => void) | undefined;
     collapsed?: boolean;
     showLogout?: boolean;
+  onNavigate?: (...args: any[]) => void;
+  onAdmin?: (...args: any[]) => void;
+  onLogout?: (...args: any[]) => void;
+  onLockVault?: (...args: any[]) => void;
+  onSharesClick?: (...args: any[]) => void;
   }
 
   let {
@@ -101,7 +98,12 @@
     relayHeadroomFreeBytes = null,
     onClose = undefined,
     collapsed = $bindable(false),
-    showLogout = true
+    showLogout = true,
+    onNavigate,
+    onAdmin,
+    onLogout,
+    onLockVault,
+    onSharesClick
   }: Props = $props();
 
   export function toggleCollapse() {

@@ -6,7 +6,7 @@
    * SQLite decrypt pipeline in the BYO worker. Shows progress via Argon2Progress.
    * Handles rollback warnings and backup prompts from vaultStore.
    */
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import type { StorageProvider } from '@wattcloud/sdk';
   import { unlockVault } from '../../byo/VaultLifecycle';
   import { vaultStore } from '../../byo/stores/vaultStore';
@@ -36,18 +36,18 @@
    * is unreachable at unlock time (H2).
    */
     vaultIdHint?: string | null;
+  onUnlocked?: (...args: any[]) => void;
+  onCancel?: (...args: any[]) => void;
+  onLinkDevice?: (...args: any[]) => void;
+  onUseRecovery?: (...args: any[]) => void;
   }
 
-  let { provider, vaultIdHint = null }: Props = $props();
-
-  const dispatch = createEventDispatcher<{
-    unlocked: { db: import('sql.js').Database; sessionId: string };
-    'use-recovery': void;
-    'link-device': void;
-    cancel: void;
-  }>();
-
-  type UnlockStep = 'passphrase' | 'unlocking';
+  let { provider, vaultIdHint = null,
+  onUnlocked,
+  onCancel,
+  onLinkDevice,
+  onUseRecovery }: Props = $props();
+type UnlockStep = 'passphrase' | 'unlocking';
 
   let step: UnlockStep = $state('passphrase');
   let argon2Done = $state(false);
@@ -106,7 +106,7 @@
         return;
       }
 
-      dispatch('unlocked', { db, sessionId });
+      onUnlocked?.({ db, sessionId });
     } catch (e: any) {
       argon2Done = false;
       step = 'passphrase';
@@ -148,7 +148,7 @@
         // Show inline, then proceed
       }
 
-      dispatch('unlocked', { db, sessionId });
+      onUnlocked?.({ db, sessionId });
     } catch (e: any) {
       argon2Done = false;
       if (e.name === 'RangeError' || (e.message && e.message.includes('memory'))) {
@@ -174,18 +174,18 @@
   function confirmRollback() {
     showRollback = false;
     vaultStore.setRollbackWarning(false);
-    if (db) dispatch('unlocked', { db, sessionId });
+    if (db) onUnlocked?.({ db, sessionId });
   }
 </script>
 
-<VaultLockAnimation on:done={() => (vaultLockDone = true)} />
+<VaultLockAnimation onDone={() => (vaultLockDone = true)} />
 
 {#if vaultLockDone}
 <div class="byo-unlock">
   {#if memoryError}
     <MemoryFailurePrompt
       onRetry={() => { memoryError = false; }}
-      onBack={() => { memoryError = false; dispatch('cancel'); }}
+      onBack={() => { memoryError = false; onCancel?.(); }}
     />
 
   {:else if step === 'passphrase'}
@@ -222,19 +222,19 @@
       <div class="alt-divider" aria-hidden="true"><span>or enter passphrase</span></div>
     {/if}
 
-    <ByoPassphraseInput mode="unlock" submitLabel="Unlock" on:submit={handlePassphrase} />
+    <ByoPassphraseInput mode="unlock" submitLabel="Unlock" onSubmit={handlePassphrase} />
 
     <div class="alt-divider" aria-hidden="true"><span>or</span></div>
 
     <div class="alt-actions">
-      <button class="alt-row" onclick={() => dispatch('link-device')}>
+      <button class="alt-row" onclick={() => onLinkDevice?.()}>
         <span class="alt-icon" aria-hidden="true"><DeviceMobile size={18} weight="bold" /></span>
         <span class="alt-text">
           <span class="alt-title">Link this device</span>
           <span class="alt-sub">Scan a code from a device that already has your vault</span>
         </span>
       </button>
-      <button class="alt-row" onclick={() => dispatch('use-recovery')}>
+      <button class="alt-row" onclick={() => onUseRecovery?.()}>
         <span class="alt-icon" aria-hidden="true"><Key size={18} weight="bold" /></span>
         <span class="alt-text">
           <span class="alt-title">Use recovery key</span>
@@ -243,7 +243,7 @@
       </button>
     </div>
 
-    <button class="btn btn-ghost back-btn" onclick={() => dispatch('cancel')}>
+    <button class="btn btn-ghost back-btn" onclick={() => onCancel?.()}>
       <ArrowLeft size={16} weight="bold" />
       <span>Back to providers</span>
     </button>
@@ -261,7 +261,7 @@
 {/if}
 
 <!-- Rollback warning as BottomSheet (sits on top of passphrase/unlocking step) -->
-<BottomSheet open={showRollback} title="Vault may have been rolled back" on:close={abortRollback}>
+<BottomSheet open={showRollback} title="Vault may have been rolled back" onClose={abortRollback}>
   <div class="rollback-body">
     <div class="warning-icon" aria-hidden="true">
       <svg width="28" height="28" viewBox="0 0 32 32" fill="none">

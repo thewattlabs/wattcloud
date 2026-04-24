@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';
   import Copy from 'phosphor-svelte/lib/Copy';
   import Check from 'phosphor-svelte/lib/Check';
@@ -13,10 +13,7 @@
   }
 
   let { recoveryKey = $bindable(), onConfirmed, embedded = false }: Props = $props();
-
-  const dispatch = createEventDispatcher();
-
-  let confirmed = $state(false);
+let confirmed = $state(false);
   let copied = $state(false);
   let displayKey = $state('');
 
@@ -43,7 +40,7 @@
 
   function handleContinue() {
     if (!confirmed) return;
-    dispatch('confirmed');
+    onConfirmed?.();
     onConfirmed?.();
   }
 

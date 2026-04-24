@@ -13,7 +13,6 @@
    * Host/port/basePath come from the stored config and are surfaced
    * read-only for confirmation.
    */
-  import { createEventDispatcher } from 'svelte';
   import type { ProviderConfig } from '@wattcloud/sdk';
   import PasswordInput from '../common/PasswordInput.svelte';
   import Lock from 'phosphor-svelte/lib/Lock';
@@ -23,21 +22,19 @@
     vaultLabel?: string;
     busy?: boolean;
     error?: string;
+  onSubmit?: (...args: any[]) => void;
+  onCancel?: (...args: any[]) => void;
   }
 
   let {
     config,
     vaultLabel = '',
     busy = false,
-    error = ''
+    error = '',
+    onSubmit,
+    onCancel
   }: Props = $props();
-
-  const dispatch = createEventDispatcher<{
-    submit: { username: string; password: string; privateKey: string; passphrase: string };
-    cancel: void;
-  }>();
-
-  // svelte-ignore state_referenced_locally
+// svelte-ignore state_referenced_locally
   let username = $state(config.sftpUsername ?? '');
   let password = $state('');
   let privateKey = $state('');
@@ -50,7 +47,7 @@
 
   function handleSubmit() {
     if (!canSubmit) return;
-    dispatch('submit', { username: username.trim(), password, privateKey, passphrase });
+    onSubmit?.({ username: username.trim(), password, privateKey, passphrase });
   }
 </script>
 
@@ -138,7 +135,7 @@
     {/if}
 
     <div class="actions">
-      <button type="button" class="btn btn-ghost" onclick={() => dispatch('cancel')} disabled={busy}>
+      <button type="button" class="btn btn-ghost" onclick={() => onCancel?.()} disabled={busy}>
         Cancel
       </button>
       <button type="submit" class="btn btn-primary" disabled={!canSubmit}>

@@ -47,7 +47,7 @@
   }
 </script>
 
-<BottomSheet open={isOpen && !!file} title="File Details" on:close={onClose}>
+<BottomSheet open={isOpen && !!file} title="File Details" onClose={onClose}>
   {#if file}
     <div class="details-body">
       <div class="row">

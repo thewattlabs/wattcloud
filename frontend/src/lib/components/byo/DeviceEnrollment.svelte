@@ -10,7 +10,7 @@
    * - Shard is transmitted only after SAS visual confirmation
    * - All ephemeral keys cleared on destroy / error / mismatch
    */
-  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
   import * as byoWorker from '@wattcloud/sdk';
   import { acquireEnrollmentRelayCookie, evictEnrollmentRelayCookieCache } from '@wattcloud/sdk';
   import type { StorageProvider, ProviderConfig } from '@wattcloud/sdk';
@@ -61,6 +61,9 @@
    * during the SFTP reauth prompt (e.g. "Home Storage Box"). Optional.
    */
     primaryLabel?: string;
+  onComplete?: (...args: any[]) => void;
+  onCancel?: (...args: any[]) => void;
+  onEnrolled?: (...args: any[]) => void;
   }
 
   let {
@@ -68,27 +71,12 @@
     shard = '',
     provider = $bindable(null),
     primaryConfig = null,
-    primaryLabel = ''
+    primaryLabel = '',
+    onComplete,
+    onCancel,
+    onEnrolled
   }: Props = $props();
-
-  const dispatch = createEventDispatcher<{
-    complete: void;
-    cancel: void;
-    /**
-     * New device: vault unlocked with new device enrolled. Carries the
-     * active provider instance so start-screen (sink) callers can wire it
-     * into the rest of the app — the provider may have been hydrated
-     * inside this component from a received primary_config.
-     */
-    enrolled: {
-      db: import('sql.js').Database;
-      sessionId: string;
-      provider: StorageProvider;
-      config: ProviderConfig | null;
-    };
-  }>();
-
-  type EnrollStep =
+type EnrollStep =
     | 'qr-display'      // existing: show QR
     | 'qr-scan'         // new: scan QR
     | 'waiting-peer'    // both: waiting for peer to connect
@@ -176,7 +164,7 @@
         if (msg.type === 'done') {
           step = 'done';
           cleanup();
-          dispatch('complete');
+          onComplete?.();
         }
       };
 
@@ -195,10 +183,10 @@
 
   // ── New device: scan QR ────────────────────────────────────────────────────
 
-  async function handleQrScanned(event: CustomEvent<string>) {
+  async function handleQrScanned(qrText: string) {
     let payload: unknown;
     try {
-      payload = JSON.parse(event.detail);
+      payload = JSON.parse(qrText);
     } catch {
       error = 'Invalid QR code';
       step = 'error';
@@ -408,7 +396,7 @@
       byoWorker.Worker.byoEnrollmentClose(enrollmentSessionId).catch(() => {/* best-effort */});
       enrollmentSessionId = null;
     }
-    dispatch('cancel');
+    onCancel?.();
   }
 
   // ── SAS confirmation ───────────────────────────────────────────────────────
@@ -592,7 +580,7 @@
       byoWorker.Worker.byoEnrollmentClose(enrollmentSessionId).catch(() => {/* best-effort */});
       enrollmentSessionId = null;
 
-      dispatch('enrolled', {
+      onEnrolled?.({
         db,
         sessionId: vaultKeySessionId,
         // At this point `provider` is guaranteed non-null — either supplied
@@ -644,13 +632,13 @@
     <p class="qr-warning" role="note">
       Never send this QR code over chat or email. Anyone who scans it could try to enroll their device instead of yours.
     </p>
-    <button class="btn btn-secondary wide-btn" onclick={() => dispatch('cancel')}>Cancel</button>
+    <button class="btn btn-secondary wide-btn" onclick={() => onCancel?.()}>Cancel</button>
 
   {:else if step === 'qr-scan'}
     <h2 class="title">Scan the QR code</h2>
     <p class="subtitle">On your existing device, open Settings → Enroll device, then scan the code here.</p>
-    <QrScanner on:scanned={handleQrScanned} on:error={(e) => { error = e.detail; step = 'error'; }} />
-    <button class="btn btn-secondary wide-btn" onclick={() => dispatch('cancel')}>Cancel</button>
+    <QrScanner onScanned={handleQrScanned} onError={(msg) => { error = msg; step = 'error'; }} />
+    <button class="btn btn-secondary wide-btn" onclick={() => onCancel?.()}>Cancel</button>
 
   {:else if step === 'waiting-peer'}
     <h2 class="title">Connecting…</h2>
@@ -659,7 +647,7 @@
 
   {:else if step === 'sas'}
     <h2 class="title">Verify security code</h2>
-    <SasConfirmation {sasCode} on:confirm={handleSasConfirm} on:mismatch={handleSasMismatch} />
+    <SasConfirmation {sasCode} onConfirm={handleSasConfirm} onMismatch={handleSasMismatch} />
 
   {:else if step === 'sas-confirmed'}
     <h2 class="title">{role === 'existing' ? 'Sending credentials…' : 'Receiving credentials…'}</h2>
@@ -676,8 +664,8 @@
       vaultLabel={receivedLabel}
       busy={reauthBusy}
       error={reauthError}
-      on:submit={handleSftpReauthSubmit}
-      on:cancel={handleSftpReauthCancel}
+      onSubmit={handleSftpReauthSubmit}
+      onCancel={handleSftpReauthCancel}
     />
 
   {:else if step === 'hydrating'}
@@ -688,7 +676,7 @@
   {:else if step === 'passphrase'}
     <h2 class="title">Enter your passphrase</h2>
     <p class="subtitle">Verify your identity to complete enrollment.</p>
-    <ByoPassphraseInput mode="unlock" submitLabel="Complete enrollment" on:submit={handlePassphrase} />
+    <ByoPassphraseInput mode="unlock" submitLabel="Complete enrollment" onSubmit={handlePassphrase} />
 
   {:else if step === 'unlocking'}
     <h2 class="title">Unlocking vault…</h2>
@@ -701,7 +689,7 @@
       </div>
       <h2 class="title">Device enrolled</h2>
       <p class="subtitle">The new device now has access to your vault.</p>
-      <button class="btn btn-primary wide-btn" onclick={() => dispatch('complete')}>Done</button>
+      <button class="btn btn-primary wide-btn" onclick={() => onComplete?.()}>Done</button>
     </div>
 
   {:else if step === 'error'}
@@ -713,7 +701,7 @@
           step = role === 'existing' ? 'qr-display' : 'qr-scan';
           if (role === 'existing') { qrData = ''; startExistingDeviceEnrollment(); }
         }}>Try again</button>
-        <button class="btn btn-ghost" onclick={() => dispatch('cancel')}>Cancel</button>
+        <button class="btn btn-ghost" onclick={() => onCancel?.()}>Cancel</button>
       </div>
     </div>
   {/if}

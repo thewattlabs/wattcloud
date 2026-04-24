@@ -17,7 +17,7 @@
     id?: string | undefined;
     name?: string | undefined;
     placeholder?: string;
-    autocomplete?: string;
+    autocomplete?: AutoFill;
     required?: boolean;
     disabled?: boolean;
     spellcheck?: boolean;

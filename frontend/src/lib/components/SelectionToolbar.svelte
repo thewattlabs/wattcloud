@@ -1,6 +1,4 @@
 <script lang="ts">
-
-  import { createEventDispatcher } from 'svelte';
   import { fade, fly } from 'svelte/transition';
 
   // Phosphor icons (v2.x imports)
@@ -34,6 +32,17 @@
     canAddToCollection?: boolean;
     /** 'none' = none are favorites, 'all' = all are favorites, 'mixed' = some are */
     favoriteState?: 'none' | 'all' | 'mixed';
+    onClear?: () => void;
+    onDetails?: () => void;
+    onShare?: () => void;
+    onRename?: () => void;
+    onDownload?: () => void;
+    onMove?: () => void;
+    onCopy?: () => void;
+    onFavorite?: () => void;
+    onUnfavorite?: () => void;
+    onDelete?: () => void;
+    onAddToCollection?: () => void;
   }
 
   let {
@@ -47,17 +56,38 @@
     canDetails = false,
     canShare = false,
     canAddToCollection = false,
-    favoriteState = 'none'
+    favoriteState = 'none',
+    onClear,
+    onDetails,
+    onShare,
+    onRename,
+    onDownload,
+    onMove,
+    onCopy,
+    onFavorite,
+    onUnfavorite,
+    onDelete,
+    onAddToCollection
   }: Props = $props();
-
-  const dispatch = createEventDispatcher();
-  let showSheet = $state(false);
+let showSheet = $state(false);
   let favBurstActive = $state(false);
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function emit(event: string) {
     showSheet = false;
-    dispatch(event);
+    switch (event) {
+      case 'clear':           onClear?.(); break;
+      case 'details':         onDetails?.(); break;
+      case 'share':           onShare?.(); break;
+      case 'rename':          onRename?.(); break;
+      case 'download':        onDownload?.(); break;
+      case 'move':            onMove?.(); break;
+      case 'copy':            onCopy?.(); break;
+      case 'favorite':        onFavorite?.(); break;
+      case 'unfavorite':      onUnfavorite?.(); break;
+      case 'delete':          onDelete?.(); break;
+      case 'addToCollection': onAddToCollection?.(); break;
+    }
   }
 
   function handleFavorite() {

@@ -3,20 +3,18 @@
 </script>
 
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import FolderSimple from 'phosphor-svelte/lib/FolderSimple';
   import Image from 'phosphor-svelte/lib/Image';
   import Star from 'phosphor-svelte/lib/Star';
   import GearSix from 'phosphor-svelte/lib/GearSix';
   interface Props {
     activeView?: ViewType;
+  onNavigate?: (...args: any[]) => void;
   }
 
-  let { activeView = 'files' }: Props = $props();
-
-  const dispatch = createEventDispatcher();
-
-  const navItems: { id: ViewType; label: string; icon: any }[] = [
+  let { activeView = 'files',
+  onNavigate }: Props = $props();
+const navItems: { id: ViewType; label: string; icon: any }[] = [
     { id: 'files', label: 'Files', icon: FolderSimple },
     { id: 'photos', label: 'Photos', icon: Image },
     { id: 'favorites', label: 'Favorites', icon: Star },
@@ -24,7 +22,7 @@
   ];
 
   function handleNavClick(id: ViewType) {
-    dispatch('navigate', { view: id });
+    onNavigate?.({ view: id });
   }
 </script>
 

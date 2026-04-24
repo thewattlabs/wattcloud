@@ -555,7 +555,7 @@
                 <div class="inline-error">{passphraseError}</div>
               {/if}
               <p class="row-desc">Enter a new passphrase. All enrolled devices will continue to work.</p>
-              <ByoPassphraseInput mode="change" on:submit={handlePassphraseSubmit} />
+              <ByoPassphraseInput mode="change" onSubmit={handlePassphraseSubmit} />
             {:else if passphraseStep === 'changing'}
               <Argon2Progress done={argonDone} />
               {#if argonDone}<p class="status-msg">Updating vault…</p>{/if}
@@ -731,15 +731,15 @@
   <ProviderContextSheet
     provider={contextProvider}
     isOnlyProvider={$vaultStore.providers.length <= 1}
-    on:close={() => contextProvider = null}
-    on:change={() => { contextProvider = null; }}
+    onClose={() => contextProvider = null}
+    onChange={() => { contextProvider = null; }}
   />
 {/if}
 
 {#if showAddProvider}
   <AddProviderSheet
-    on:added={() => showAddProvider = false}
-    on:close={() => showAddProvider = false}
+    onAdded={() => showAddProvider = false}
+    onClose={() => showAddProvider = false}
   />
 {/if}
 
@@ -749,8 +749,8 @@
   message={confirmMessage}
   confirmText={confirmDanger ? 'Revoke' : 'Confirm'}
   confirmClass={confirmDanger ? 'btn-danger' : 'btn-primary'}
-  on:confirm={handleConfirm}
-  on:cancel={() => { confirmOpen = false; confirmAction = null; }}
+  onConfirm={handleConfirm}
+  onCancel={() => { confirmOpen = false; confirmAction = null; }}
 />
 
 <style>

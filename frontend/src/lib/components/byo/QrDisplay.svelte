@@ -11,7 +11,7 @@
 
   let { data, ariaLabel = 'QR code' }: Props = $props();
 
-  let canvas: HTMLCanvasElement = $state();
+  let canvas = $state<HTMLCanvasElement | undefined>(undefined);
   let error = $state('');
 
   async function render() {

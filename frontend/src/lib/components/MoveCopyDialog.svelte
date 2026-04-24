@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import { folders } from '../stores/files';
   import Icon from './Icons.svelte';
   import FolderTree from './FolderTree.svelte';
@@ -18,6 +17,8 @@
     allFolders?: import('../stores/files').Folder[] | null;
     // Inject create-folder implementation (BYO or managed); handles encrypt + persist.
     onCreateFolder?: ((name: string, parentId: number | null) => Promise<import('../stores/files').Folder>) | null;
+  onConfirm?: (...args: any[]) => void;
+  onCancel?: (...args: any[]) => void;
   }
 
   let {
@@ -27,12 +28,11 @@
     selectedItemCount = 0,
     items = [],
     allFolders = null,
-    onCreateFolder = null
+    onCreateFolder = null,
+    onConfirm,
+    onCancel
   }: Props = $props();
-
-  const dispatch = createEventDispatcher();
-
-  // Destination selection: a folder by id OR the vault root. Both dispatch
+// Destination selection: a folder by id OR the vault root. Both dispatch
   // the same `destinationId` (null == vault root), but the UI needs a
   // separate `selectRoot` flag so we can visually distinguish "user
   // picked root" from "user hasn't picked anything yet".
@@ -119,14 +119,14 @@
 
     // selectRoot → null destination; any value in selectedDestinationId
     // is already the correct folder id for the non-root path.
-    dispatch('confirm', {
+    onConfirm?.({
       destinationId: selectRoot ? null : selectedDestinationId,
       mode,
     });
   }
 
   function handleCancel() {
-    dispatch('cancel');
+    onCancel?.();
   }
 
   function getItemTypeLabel() {
@@ -144,7 +144,7 @@
   {open}
   title="{getOperationLabel()} {getItemTypeLabel()}"
   subtitle="{getOperationLabel()} {selectedItemCount} {getItemTypeLabel()} to:"
-  on:close={handleCancel}
+  onClose={handleCancel}
 >
   {#if itemType === 'mixed'}
     <div class="tabs">
@@ -249,7 +249,7 @@
     <FolderTree
       folders={filteredFolders}
       selected={selectRoot ? undefined : (selectedDestinationId ?? undefined)}
-      on:select={handleDestinationSelect}
+      onSelect={handleDestinationSelect}
     />
   </div>
 

@@ -1,7 +1,4 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
-
-  
   interface Props {
     /**
    * Full-screen overlay shown during key rotation (compromise response).
@@ -9,13 +6,14 @@
    * Caller drives progress via updateProgress() / complete() / setError().
    */
     totalFiles: number;
+  onComplete?: (...args: any[]) => void;
+  onError?: (...args: any[]) => void;
   }
 
-  let { totalFiles }: Props = $props();
-
-  const dispatch = createEventDispatcher<{ complete: void; error: string }>();
-
-  let filesProcessed = $state(0);
+  let { totalFiles,
+  onComplete,
+  onError }: Props = $props();
+let filesProcessed = $state(0);
   let currentFileName = $state('');
   let error = $state('');
   let done = $state(false);
@@ -28,12 +26,12 @@
   export function complete() {
     filesProcessed = totalFiles;
     done = true;
-    dispatch('complete');
+    onComplete?.();
   }
 
   export function setError(msg: string) {
     error = msg;
-    dispatch('error', msg);
+    onError?.(msg);
   }
 
   let progressPct = $derived(totalFiles > 0 ? Math.round((filesProcessed / totalFiles) * 100) : 0);
@@ -105,7 +103,7 @@
     {/if}
 
     {#if done || error}
-      <button class="btn btn-primary" onclick={() => dispatch(done ? 'complete' : 'error', error || '')}>
+      <button class="btn btn-primary" onclick={() => done ? onComplete?.() : onError?.(error || '')}>
         {done ? 'Done' : 'Dismiss'}
       </button>
     {/if}

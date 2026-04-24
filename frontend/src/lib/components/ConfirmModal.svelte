@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import BottomSheet from './BottomSheet.svelte';
 
   interface Props {
@@ -10,6 +9,8 @@
     confirmClass?: string;
     loading?: boolean;
     children?: import('svelte').Snippet;
+  onConfirm?: (...args: any[]) => void;
+  onCancel?: (...args: any[]) => void;
   }
 
   let {
@@ -19,18 +20,17 @@
     confirmText = 'Confirm',
     confirmClass = 'btn-danger',
     loading = false,
-    children
+    children,
+    onConfirm,
+    onCancel
   }: Props = $props();
-
-  const dispatch = createEventDispatcher();
-
-  function handleConfirm() {
-    dispatch('confirm');
+function handleConfirm() {
+    onConfirm?.();
   }
 
   function handleCancel() {
     if (!loading) {
-      dispatch('cancel');
+      onCancel?.();
     }
   }
 
@@ -42,7 +42,7 @@
   }
 </script>
 
-<BottomSheet open={isOpen} {title} on:close={handleCancel}>
+<BottomSheet open={isOpen} {title} onClose={handleCancel}>
   <div class="confirm-body">
     {#if children}{@render children()}{:else}
       {#if message}

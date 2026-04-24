@@ -21,8 +21,6 @@
    * open the same sheet with a "source" prop; the shape of the sheet is
    * identical, only the underlying dataProvider method changes.
    */
-
-  import { createEventDispatcher } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
   import { getContext } from 'svelte';
@@ -37,10 +35,7 @@
   import CaretUp from 'phosphor-svelte/lib/CaretUp';
   import QrCode from 'phosphor-svelte/lib/QrCode';
   import QrDisplay from './QrDisplay.svelte';
-
-  const dispatch = createEventDispatcher<{ close: void }>();
-
-  /**
+/**
    * One of four mutually exclusive sources:
    *   - { kind: 'file', file }              — single-blob share
    *   - { kind: 'folder', folder }          — folder bundle (all descendant files)
@@ -58,9 +53,11 @@
 
   interface Props {
     source: ShareSource;
+  onClose?: (...args: any[]) => void;
   }
 
-  let { source }: Props = $props();
+  let { source,
+  onClose }: Props = $props();
 
   const dataProvider = getContext<{ current: DataProvider }>('byo:dataProvider').current;
 
@@ -211,7 +208,7 @@
   }
 
   function close() {
-    dispatch('close');
+    onClose?.();
   }
   let sourceName = $derived(source.kind === 'file'
     ? source.file.decrypted_name

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, createEventDispatcher, getContext } from 'svelte';
+  import { onMount, getContext } from 'svelte';
   import type { DataProvider } from '../../byo/DataProvider';
   type DpHolder = { current: DataProvider | null };
   const dpHolder = getContext<DpHolder>('byo:dataProvider');
@@ -59,20 +59,20 @@
     sortDir?: 'asc' | 'desc';
     /** Selection plumbing — shared with ByoDashboard's byoSelectedFiles store. */
     selectionContext?: {
-    isSelectionMode: boolean;
-    selectedFiles: Set<number>;
-    toggle: (id: number) => void;
-    selectAll: (ids: number[]) => void;
-    clear: () => void;
-  } | null;
+      isSelectionMode: boolean;
+      selectedFiles: Set<number>;
+      toggle: (id: number) => void;
+      selectAll: (ids: number[]) => void;
+      clear: () => void;
+    } | null;
+    onShareCollection?: (...args: any[]) => void;
+    onUpload?: (...args: any[]) => void;
   }
 
-  let { loadFileData = null, sortDir = $bindable('desc'), selectionContext = null }: Props = $props();
-
-  const dispatch = createEventDispatcher<{ upload: void; shareCollection: { collectionId: number } }>();
-
-
-  function toggleSelection(fileId: number) {
+  let { loadFileData = null, sortDir = $bindable('desc'), selectionContext = null,
+  onShareCollection,
+  onUpload }: Props = $props();
+function toggleSelection(fileId: number) {
     selectionContext?.toggle(fileId);
   }
 
@@ -538,8 +538,8 @@
                 <div class="folder-picker-divider"></div>
                 <PlaceSearch
                   selected={locationPlace}
-                  on:select={handlePlaceSelect}
-                  on:clear={handlePlaceClear}
+                  onSelect={handlePlaceSelect}
+                  onClear={handlePlaceClear}
                 />
                 <div class="folder-picker-divider"></div>
                 <button
@@ -608,7 +608,7 @@
         {#if $byoCollectionFiles.length > 0 && activeCollection}
           <button
             class="icon-btn"
-            onclick={() => { if (activeCollection) dispatch('shareCollection', { collectionId: activeCollection.id }); }}
+            onclick={() => { if (activeCollection) onShareCollection?.({ collectionId: activeCollection.id }); }}
             aria-label="Share collection"
             title="Share collection"
           >
@@ -752,7 +752,7 @@
       <ImageSquare size={56} weight="light" color="var(--text-disabled, #616161)" />
       <p class="empty-heading">No memories yet</p>
       <p class="empty-sub">Photos you upload will appear here.</p>
-      <button class="btn btn-primary" onclick={() => dispatch('upload')}>
+      <button class="btn btn-primary" onclick={() => onUpload?.()}>
         <UploadSimple size={20} />
         Upload
       </button>
@@ -810,8 +810,8 @@
     message="The collection will be removed. Photos inside it remain in the timeline and are not deleted."
     confirmText={deletingCollection ? 'Deleting…' : 'Delete'}
     loading={deletingCollection}
-    on:confirm={confirmDeleteCollection}
-    on:cancel={() => { confirmDeleteCollectionId = null; }}
+    onConfirm={confirmDeleteCollection}
+    onCancel={() => { confirmDeleteCollectionId = null; }}
   />
 {/if}
 

@@ -201,8 +201,8 @@
   message="Anyone holding this link will immediately lose access to {confirmDisplayName}. This cannot be undone."
   confirmText="Revoke"
   confirmClass="btn-danger"
-  on:confirm={revokeConfirmed}
-  on:cancel={() => { confirmShareId = null; }}
+  onConfirm={revokeConfirmed}
+  onCancel={() => { confirmShareId = null; }}
 />
 
 <style>

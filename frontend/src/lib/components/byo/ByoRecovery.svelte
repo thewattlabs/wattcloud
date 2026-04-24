@@ -9,7 +9,7 @@
    * - New passphrase cleared from component state immediately after worker call
    * - All slots (device + old passphrase) cleared before new keys are written
    */
-  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
   import type { StorageProvider } from '@wattcloud/sdk';
   import * as byoWorker from '@wattcloud/sdk';
   import { bytesToBase64, base64ToBytes } from '../../byo/VaultLifecycle';
@@ -24,16 +24,14 @@
 
   interface Props {
     provider: StorageProvider;
+  onCancel?: (...args: any[]) => void;
+  onComplete?: (...args: any[]) => void;
   }
 
-  let { provider }: Props = $props();
-
-  const dispatch = createEventDispatcher<{
-    complete: void;
-    cancel: void;
-  }>();
-
-  const STEPS = ['Recovery Key', 'New Passphrase', 'Re-keying', 'New Recovery Key'];
+  let { provider,
+  onCancel,
+  onComplete }: Props = $props();
+const STEPS = ['Recovery Key', 'New Passphrase', 'Re-keying', 'New Recovery Key'];
   type RecoveryStep = 'enter-key' | 'verifying' | 'new-passphrase' | 'rekeying' | 'new-recovery-key' | 'error';
 
   let step: RecoveryStep = $state('enter-key');
@@ -278,7 +276,7 @@
       >
         {step === 'verifying' ? 'Verifying…' : 'Continue'}
       </button>
-      <button class="btn btn-secondary" onclick={() => dispatch('cancel')}>Cancel</button>
+      <button class="btn btn-secondary" onclick={() => onCancel?.()}>Cancel</button>
     </div>
 
   {:else if step === 'new-passphrase'}
@@ -287,7 +285,7 @@
       <p class="step-sub">
         Choose a strong new passphrase. Your old passphrase will no longer work.
       </p>
-      <ByoPassphraseInput mode="create" submitLabel="Re-key Vault" on:submit={handleNewPassphrase} />
+      <ByoPassphraseInput mode="create" submitLabel="Re-key Vault" onSubmit={handleNewPassphrase} />
     </div>
 
   {:else if step === 'rekeying'}
@@ -316,7 +314,7 @@
       <RecoveryKeyDisplay
         recoveryKey={newRecoveryKeyB64}
         embedded
-        onConfirmed={() => dispatch('complete')}
+        onConfirmed={() => onComplete?.()}
       />
     </div>
 
@@ -326,7 +324,7 @@
       <button class="btn btn-secondary" onclick={() => { error = ''; step = 'enter-key'; }}>
         Try again
       </button>
-      <button class="btn btn-ghost" onclick={() => dispatch('cancel')}>Cancel</button>
+      <button class="btn btn-ghost" onclick={() => onCancel?.()}>Cancel</button>
     </div>
   {/if}
 </div>

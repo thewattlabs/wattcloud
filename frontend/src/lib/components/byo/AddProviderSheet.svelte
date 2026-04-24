@@ -10,8 +10,7 @@
    *     Fires `on:selected` with the initialized provider instance + config.
    *     Used from ByoApp instead of the now-deleted ProviderPicker.
    */
-  import { createEventDispatcher } from 'svelte';
-  import type { StorageProvider, ProviderType, ProviderConfig } from '@wattcloud/sdk';
+  import type { ProviderType, ProviderConfig } from '@wattcloud/sdk';
   import { createProvider, SftpProvider } from '@wattcloud/sdk';
   import * as byoWorker from '@wattcloud/sdk';
   import { addProvider } from '../../byo/VaultLifecycle';
@@ -35,19 +34,18 @@
   interface Props {
     /** Set to true when used as the first-run provider selection screen. */
     firstRun?: boolean;
+  onSelected?: (...args: any[]) => void;
+  onAdded?: (...args: any[]) => void;
+  onLinkDevice?: (...args: any[]) => void;
+  onClose?: (...args: any[]) => void;
   }
 
-  let { firstRun = false }: Props = $props();
-
-  const dispatch = createEventDispatcher<{
-    added: { providerId: string };
-    selected: { provider: StorageProvider; config: ProviderConfig };
-    close: void;
-    /** First-run only: user wants to join a vault that already exists on another device. */
-    linkDevice: void;
-  }>();
-
-  // ── Provider list ──────────────────────────────────────────────────────────
+  let { firstRun = false,
+  onSelected,
+  onAdded,
+  onLinkDevice,
+  onClose }: Props = $props();
+// ── Provider list ──────────────────────────────────────────────────────────
 
   const PROVIDERS: Array<{
     type: ProviderType;
@@ -272,11 +270,11 @@
 
       if (firstRun) {
         // First-run: vault not open yet — hand the ready instance + config to ByoApp
-        dispatch('selected', { provider: instance, config });
+        onSelected?.({ provider: instance, config });
       } else {
         // Dashboard: vault is open — register the provider and notify the tab switcher
         const providerId = await addProvider(instance, config);
-        dispatch('added', { providerId });
+        onAdded?.({ providerId });
       }
       return true;
     } catch (e: any) {
@@ -358,7 +356,7 @@
           class="tile"
           class:loading={oauthLoading === p.type}
           disabled={connecting || !!oauthLoading}
-          on:click={() => connectOAuth(p.type)}
+          onclick={() => connectOAuth(p.type)}
           aria-label={`Connect ${p.name}`}
         >
           <span class="tile-logo" aria-hidden="true">
@@ -434,7 +432,7 @@
     <!-- Secondary path: join a vault that already exists on another device.
          Demoted from a pill to a small text link so it doesn't compete with
          the tile grid as a primary action. -->
-    <button class="link-device-link" onclick={() => dispatch('linkDevice')}>
+    <button class="link-device-link" onclick={() => onLinkDevice?.()}>
       <DeviceMobile size={14} weight="regular" />
       <span>Already enrolled? Link this device</span>
     </button>
@@ -589,7 +587,7 @@
   <!-- Dashboard "add provider": bottom sheet (DESIGN.md §11.2, role=dialog). -->
   <div
     class="sheet-overlay"
-    onclick={(e) => { if (e.target === e.currentTarget) dispatch('close'); }}
+    onclick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
   >
     <div class="sheet" role="dialog" aria-modal="true" aria-label="Add storage provider">
       <div class="drag-handle" aria-hidden="true"></div>
@@ -776,7 +774,7 @@
         {/each}
       </div>
 
-      <button class="btn-ghost" onclick={() => dispatch('close')}>Cancel</button>
+      <button class="btn-ghost" onclick={() => onClose?.()}>Cancel</button>
     </div>
   </div>
 {/if}

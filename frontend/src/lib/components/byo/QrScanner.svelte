@@ -1,12 +1,17 @@
 <script lang="ts">
-  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import jsQR from 'jsqr';
   import Warning from 'phosphor-svelte/lib/Warning';
 
-  const dispatch = createEventDispatcher<{ scanned: string; error: string }>();
+  interface Props {
+    onError?: (message: string) => void;
+    onScanned?: (payload: string) => void;
+  }
 
-  let video: HTMLVideoElement = $state();
-  let canvas: HTMLCanvasElement = $state();
+  let { onError, onScanned }: Props = $props();
+
+  let video = $state<HTMLVideoElement | undefined>(undefined);
+  let canvas = $state<HTMLCanvasElement | undefined>(undefined);
   let ctx: CanvasRenderingContext2D | null = null;
   let stream: MediaStream | null = null;
   let animFrame: number | null = null;
@@ -25,6 +30,7 @@
 
   onMount(async () => {
     try {
+      if (!video || !canvas) return;
       stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' },
       });
@@ -50,7 +56,7 @@
         permissionDenied = true;
         showManualEntry = true;
       } else {
-        dispatch('error', e.message || 'Camera error');
+        onError?.(e.message || 'Camera error');
       }
     }
   });
@@ -64,7 +70,7 @@
   }
 
   function scanLoop() {
-    if (!ctx || !video || video.readyState !== video.HAVE_ENOUGH_DATA) {
+    if (!ctx || !video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
       animFrame = requestAnimationFrame(scanLoop);
       return;
     }
@@ -80,7 +86,7 @@
 
     if (code) {
       stopAll();
-      dispatch('scanned', code.data);
+      onScanned?.(code.data);
       return;
     }
 
@@ -101,7 +107,7 @@
     const trimmed = manualCode.trim();
     if (!trimmed) { manualError = 'Enter a code or URL to continue.'; return; }
     stopAll();
-    dispatch('scanned', trimmed);
+    onScanned?.(trimmed);
   }
 </script>
 

@@ -7,7 +7,6 @@
    * from IDB) or connect a brand-new one (falls through to the existing
    * AddProviderSheet flow).
    */
-  import { createEventDispatcher } from 'svelte';
   import type { PersistedVaultSummary } from '../../byo/ProviderConfigStore';
   import Lock from 'phosphor-svelte/lib/Lock';
   import DotsThreeVertical from 'phosphor-svelte/lib/DotsThreeVertical';
@@ -26,18 +25,18 @@
 
   interface Props {
     vaults?: PersistedVaultSummary[];
+  onOpen?: (...args: any[]) => void;
+  onMenu?: (...args: any[]) => void;
+  onAddNew?: (...args: any[]) => void;
+  onLinkDevice?: (...args: any[]) => void;
   }
 
-  let { vaults = [] }: Props = $props();
-
-  const dispatch = createEventDispatcher<{
-    open: { vault_id: string };
-    menu: { vault_id: string };
-    addNew: void;
-    linkDevice: void;
-  }>();
-
-  const ICONS: Record<ProviderType, ComponentType> = {
+  let { vaults = [],
+  onOpen,
+  onMenu,
+  onAddNew,
+  onLinkDevice }: Props = $props();
+const ICONS: Record<ProviderType, ComponentType> = {
     gdrive: GoogleDriveLogo,
     dropbox: DropboxLogo,
     onedrive: Cloud,
@@ -77,7 +76,7 @@
       <div class="vault-card">
         <button
           class="vault-main"
-          onclick={() => dispatch('open', { vault_id: v.vault_id })}
+          onclick={() => onOpen?.({ vault_id: v.vault_id })}
           aria-label={`Open vault ${v.vault_label}`}
         >
           <span class="vault-icon" aria-hidden="true">
@@ -96,7 +95,7 @@
         </button>
         <button
           class="vault-menu"
-          onclick={() => dispatch('menu', { vault_id: v.vault_id })}
+          onclick={() => onMenu?.({ vault_id: v.vault_id })}
           aria-label={`More actions for ${v.vault_label}`}
         >
           <DotsThreeVertical size={20} weight="bold" />
@@ -107,7 +106,7 @@
 
   <div class="divider" aria-hidden="true"><span>or</span></div>
 
-  <button class="add-new" onclick={() => dispatch('addNew')}>
+  <button class="add-new" onclick={() => onAddNew?.()}>
     <span class="add-icon" aria-hidden="true"><Plus size={18} weight="bold" /></span>
     <span class="add-text">
       <span class="add-title">Connect a new vault</span>
@@ -115,7 +114,7 @@
     </span>
   </button>
 
-  <button class="link-device" onclick={() => dispatch('linkDevice')}>
+  <button class="link-device" onclick={() => onLinkDevice?.()}>
     <span class="link-icon" aria-hidden="true"><DeviceMobile size={18} weight="bold" /></span>
     <span class="link-text">
       <span class="link-title">Link from another device</span>

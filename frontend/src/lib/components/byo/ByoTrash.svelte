@@ -250,8 +250,8 @@
   message={confirmMessage}
   confirmText={confirmDanger ? 'Delete' : 'Confirm'}
   confirmClass={confirmDanger ? 'btn-danger' : 'btn-primary'}
-  on:confirm={handleConfirm}
-  on:cancel={() => { confirmOpen = false; confirmAction = null; }}
+  onConfirm={handleConfirm}
+  onCancel={() => { confirmOpen = false; confirmAction = null; }}
 />
 
 <style>

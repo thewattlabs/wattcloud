@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
 
   
   interface Props {
@@ -17,18 +17,17 @@
     label?: any;
     submitLabel?: any;
     disabled?: boolean;
+  onSubmit?: (...args: any[]) => void;
   }
 
   let {
     mode = 'create',
     label = mode === 'unlock' ? 'Passphrase' : 'New passphrase',
     submitLabel = mode === 'unlock' ? 'Unlock' : mode === 'change' ? 'Change Passphrase' : 'Continue',
-    disabled = false
+    disabled = false,
+    onSubmit
   }: Props = $props();
-
-  const dispatch = createEventDispatcher<{ submit: string }>();
-
-  const MIN_LENGTH = 16;
+const MIN_LENGTH = 16;
   const MIN_ENTROPY = 60;
 
   let passphrase = $state('');
@@ -37,6 +36,7 @@
   let showConfirm = $state(false);
   let error = $state('');
   let entropyBits = $state(0);
+  let _entropyScore = $state(0);
   let entropyLoaded = false;
   let entropyLoading = false;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -115,7 +115,7 @@
   function handleSubmit() {
     error = validate() || '';
     if (error) return;
-    dispatch('submit', passphrase);
+    onSubmit?.(passphrase);
     // Caller is responsible for zeroizing after use.
     // Clear local state immediately.
     passphrase = '';

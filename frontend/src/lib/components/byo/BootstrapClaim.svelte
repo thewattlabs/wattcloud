@@ -98,7 +98,7 @@
         spellcheck="false"
         autocomplete="off"
         autocapitalize="off"
-        autocorrect="off"
+        {...{ autocorrect: 'off' }}
         placeholder="Paste the 64-character token from your server"
         disabled={busy}
       ></textarea>

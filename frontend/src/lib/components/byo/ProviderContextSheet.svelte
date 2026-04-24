@@ -11,7 +11,7 @@
    * Fires `on:close` when dismissed without an action.
    * Fires `on:change` after any successful mutation so the parent can refresh.
    */
-  import { createEventDispatcher, tick } from 'svelte';
+  import { tick } from 'svelte';
   import type { ProviderMeta } from '../../byo/stores/vaultStore';
   import { renameProvider, setAsPrimaryProvider, removeProvider, reconnectSftpProvider } from '../../byo/VaultLifecycle';
   import { deleteProviderConfig } from '../../byo/ProviderConfigStore';
@@ -22,13 +22,14 @@
   interface Props {
     provider: ProviderMeta;
     isOnlyProvider?: boolean;
+  onChange?: (...args: any[]) => void;
+  onClose?: (...args: any[]) => void;
   }
 
-  let { provider, isOnlyProvider = false }: Props = $props();
-
-  const dispatch = createEventDispatcher<{ close: void; change: void }>();
-
-  // ── State ────────────────────────────────────────────────────────────────
+  let { provider, isOnlyProvider = false,
+  onChange,
+  onClose }: Props = $props();
+// ── State ────────────────────────────────────────────────────────────────
 
   type Sheet = 'menu' | 'rename' | 'confirm-remove' | 'sftp-reconnect' | 'confirm-forget';
   let sheet: Sheet = $state('menu');
@@ -58,8 +59,8 @@
   async function handleSetAsPrimary() {
     try {
       await setAsPrimaryProvider(provider.providerId);
-      dispatch('change');
-      dispatch('close');
+      onChange?.();
+      onClose?.();
     } catch (e: any) {
       byoToast.show(e.message, { icon: 'danger' });
     }
@@ -68,8 +69,8 @@
   async function handleRename() {
     try {
       await renameProvider(provider.providerId, newName);
-      dispatch('change');
-      dispatch('close');
+      onChange?.();
+      onClose?.();
     } catch (e: any) {
       byoToast.show(e.message, { icon: 'danger' });
     }
@@ -78,8 +79,8 @@
   async function handleRemove() {
     try {
       await removeProvider(provider.providerId);
-      dispatch('change');
-      dispatch('close');
+      onChange?.();
+      onClose?.();
     } catch (e: any) {
       byoToast.show(e.message, { icon: 'danger' });
     }
@@ -89,8 +90,8 @@
     try {
       await deleteProviderConfig(provider.providerId);
       byoToast.show('Credentials forgotten on this device.');
-      dispatch('change');
-      dispatch('close');
+      onChange?.();
+      onClose?.();
     } catch (e: any) {
       byoToast.show(e?.message ?? 'Forget failed', { icon: 'danger' });
     }
@@ -111,8 +112,8 @@
       );
       sftpPass = ''; sftpKey = ''; sftpPassphrase = '';
       await reconnectSftpProvider(provider.providerId, credHandle);
-      dispatch('change');
-      dispatch('close');
+      onChange?.();
+      onClose?.();
     } catch (e: any) {
       if (credHandle !== undefined) {
         byoWorker.Worker.sftpClearCredential(credHandle).catch(() => {});
@@ -125,7 +126,7 @@
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-<div class="sheet-overlay" onclick={self(() => dispatch('close'))}>
+<div class="sheet-overlay" onclick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
   <div class="sheet" role="dialog" aria-modal="true" aria-label="Provider options">
     <div class="drag-handle" aria-hidden="true"></div>
 
@@ -247,7 +248,7 @@
       </div>
     {/if}
 
-    <button class="btn-ghost" onclick={() => dispatch('close')}>Dismiss</button>
+    <button class="btn-ghost" onclick={() => onClose?.()}>Dismiss</button>
   </div>
 </div>
 

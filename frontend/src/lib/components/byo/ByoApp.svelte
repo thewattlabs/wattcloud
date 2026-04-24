@@ -91,7 +91,7 @@
     | 'settings'
     | 'trash';
 
-  let appState: AppState = $state('vault-list');
+  let appState = $state<AppState>('vault-list');
   let provider: StorageProvider | null = $state(null);
   let providerConfig: ProviderConfig | null = $state(null);
   let dataProvider: ByoDataProvider | null = $state(null);
@@ -135,7 +135,7 @@
   // back to Dashboard lands on the tab the user picked. `bind:view` on
   // ByoDashboard keeps this in sync when the user taps the bottom nav
   // inside the dashboard.
-  let dashboardView: 'files' | 'photos' | 'favorites' = $state('files');
+  let dashboardView = $state<'files' | 'photos' | 'favorites'>('files');
 
   // Chrome visibility: DashboardHeader + shared Drawer render while the
   // user is inside a vault (dashboard / settings / trash). Excluded from
@@ -725,20 +725,6 @@
     appState = 'settings';
   }
 
-  async function handleTestProvider(e: CustomEvent) {
-    appState = 'check-vault';
-    try {
-      provider = e.detail;
-      await provider!.init();
-      providerConfig = provider!.getConfig();
-      let vaultExists = false;
-      try { await provider!.getVersion(provider!.manifestRef()); vaultExists = true; } catch { vaultExists = false; }
-      appState = vaultExists ? 'unlock' : 'new-user-setup';
-    } catch (err: any) {
-      byoToast.show(err?.message ?? 'Failed to initialize test provider', { icon: 'danger' });
-      appState = 'provider-select';
-    }
-  }
 </script>
 
 <div class="byo-app">
@@ -746,10 +732,10 @@
     <div class="byo-shell">
       <VaultsListScreen
         vaults={persistedVaults}
-        on:open={handleVaultListOpen}
-        on:menu={handleVaultListMenu}
-        on:addNew={handleVaultListAddNew}
-        on:linkDevice={handleVaultListLinkFromOtherDevice}
+        onOpen={handleVaultListOpen}
+        onMenu={handleVaultListMenu}
+        onAddNew={handleVaultListAddNew}
+        onLinkDevice={handleVaultListLinkFromOtherDevice}
       />
     </div>
 
@@ -760,8 +746,8 @@
         vaultLabel={reauthPending.vaultLabel}
         busy={reauthBusy}
         error={reauthError}
-        on:submit={handleSftpReauthSubmit}
-        on:cancel={handleSftpReauthCancel}
+        onSubmit={handleSftpReauthSubmit}
+        onCancel={handleSftpReauthCancel}
       />
     </div>
 
@@ -777,9 +763,8 @@
       {:else}
         <AddProviderSheet
           firstRun={true}
-          on:selected={handleAddSheetSelected}
-          on:testProvider={handleTestProvider}
-          on:linkDevice={handleVaultListLinkFromOtherDevice}
+          onSelected={handleAddSheetSelected}
+          onLinkDevice={handleVaultListLinkFromOtherDevice}
         />
       {/if}
     </div>
@@ -790,8 +775,8 @@
         {provider}
         providerConfig={providerConfig}
         configJson={providerConfig ? JSON.stringify(providerConfig) : '{}'}
-        on:complete={handleSetupComplete}
-        on:cancel={() => { appState = 'provider-select'; }}
+        onComplete={handleSetupComplete}
+        onCancel={() => { appState = 'provider-select'; }}
       />
     {/if}
 
@@ -800,10 +785,10 @@
       <ByoUnlock
         {provider}
         vaultIdHint={currentVaultId}
-        on:unlocked={(e) => handleUnlocked(e.detail)}
-        on:use-recovery={() => { appState = 'use-recovery'; }}
-        on:link-device={() => { appState = 'link-device'; }}
-        on:cancel={() => {
+        onUnlocked={(e) => handleUnlocked(e.detail)}
+        onUseRecovery={() => { appState = 'use-recovery'; }}
+        onLinkDevice={() => { appState = 'link-device'; }}
+        onCancel={() => {
           currentVaultId = null;
           appState = persistedVaults.length > 0 ? 'vault-list' : 'provider-select';
         }}
@@ -817,8 +802,8 @@
           role="new"
           shard=""
           {provider}
-          on:complete={goToDashboard}
-          on:cancel={() => { appState = 'unlock'; }}
+          onComplete={goToDashboard}
+          onCancel={() => { appState = 'unlock'; }}
         />
       </div>
     {/if}
@@ -830,11 +815,11 @@
         shard={sourceShard}
         primaryConfig={sourcePrimaryConfig}
         primaryLabel={sourcePrimaryLabel}
-        on:complete={() => {
+        onComplete={() => {
           resetSourceEnrollment();
           appState = 'dashboard';
         }}
-        on:cancel={() => {
+        onCancel={() => {
           resetSourceEnrollment();
           appState = 'settings';
         }}
@@ -847,13 +832,13 @@
         role="new"
         shard=""
         provider={null}
-        on:enrolled={(e) => {
+        onEnrolled={(e) => {
           provider = e.detail.provider;
           providerConfig = e.detail.config;
           handleUnlocked({ db: e.detail.db, sessionId: e.detail.sessionId });
         }}
-        on:complete={goToDashboard}
-        on:cancel={() => {
+        onComplete={goToDashboard}
+        onCancel={() => {
           appState = persistedVaults.length > 0 ? 'vault-list' : 'provider-select';
         }}
       />
@@ -864,8 +849,8 @@
       <!-- After re-keying, send user to unlock with new passphrase -->
       <ByoRecovery
         {provider}
-        on:complete={() => { appState = 'unlock'; }}
-        on:cancel={() => { appState = 'unlock'; }}
+        onComplete={() => { appState = 'unlock'; }}
+        onCancel={() => { appState = 'unlock'; }}
       />
     {/if}
 
@@ -875,7 +860,7 @@
     />
     <ByoCredProtectionOffer
       vaultId={getVaultId()}
-      on:openSettings={() => { openCredProtectionOnSettings = true; appState = 'settings'; }}
+      onOpenSettings={() => { openCredProtectionOnSettings = true; appState = 'settings'; }}
     />
 
 
@@ -903,15 +888,14 @@
       showLogout={false}
       currentView={drawerCurrentView}
       onClose={() => $drawerOpen = false}
-      on:close={() => $drawerOpen = false}
       storageUsedBytes={$storageUsage.used}
       storageQuotaBytes={$storageUsage.quota ?? 0}
       shareCount={dataProvider ? $byoShareStats.count : null}
       shareBytes={dataProvider ? $byoShareStats.bytes : null}
       relayHeadroomFreeBytes={$byoRelayHeadroom?.freeBytes ?? null}
-      on:navigate={handleDrawerNavigate}
-      on:lock-vault={handleLock}
-      on:shares-click={openSharesSettings}
+      onNavigate={handleDrawerNavigate}
+      onLockVault={handleLock}
+      onSharesClick={openSharesSettings}
     />
 
     <!-- Bottom nav — hoisted to ByoApp so it shows on dashboard, settings,
@@ -920,22 +904,22 @@
     <div class="bottom-nav-wrap" class:nav-hidden={$byoSelectionMode} aria-hidden={$byoSelectionMode}>
       <BottomNav
         activeView={bottomNavView}
-        on:navigate={handleDrawerNavigate}
+        onNavigate={handleDrawerNavigate}
       />
     </div>
   {/if}
 
   {#if showLockAnimation}
-    <VaultLockAnimation on:done={handleLockAnimationDone} />
+    <VaultLockAnimation onDone={handleLockAnimationDone} />
   {/if}
 
   <VaultContextSheet
     open={menuOpen}
     vault={menuVault}
-    on:close={() => { menuOpen = false; menuVault = null; }}
-    on:open={handleVaultListOpen}
-    on:forgotten={handleVaultForgotten}
-    on:renamed={refreshPersistedVaults}
+    onClose={() => { menuOpen = false; menuVault = null; }}
+    onOpen={handleVaultListOpen}
+    onForgotten={handleVaultForgotten}
+    onRenamed={refreshPersistedVaults}
   />
 
   <ConfirmModal
@@ -944,8 +928,8 @@
     confirmText="Forget & re-add"
     confirmClass="btn-danger"
     loading={unopenableBusy}
-    on:confirm={handleForgetUnopenable}
-    on:cancel={handleCancelUnopenable}
+    onConfirm={handleForgetUnopenable}
+    onCancel={handleCancelUnopenable}
   >
     {#if unopenableVault}
       <p>

@@ -2,7 +2,6 @@
   /**
    * ProviderMoveSheet — bottom sheet for cross-provider file move.
    */
-  import { createEventDispatcher } from 'svelte';
   import { slide, fade } from 'svelte/transition';
   import type { ProviderMeta } from '../../byo/stores/vaultStore';
   import ArrowSquareOut from 'phosphor-svelte/lib/ArrowSquareOut';
@@ -18,6 +17,10 @@
     progress?: { done: number; total: number } | null;
     fileErrors?: { fileId: number; fileName: string; error: string }[];
     succeededCount?: number | null;
+  onConfirm?: (...args: any[]) => void;
+  onClose?: (...args: any[]) => void;
+  onRetry?: (...args: any[]) => void;
+  onSkipErrors?: (...args: any[]) => void;
   }
 
   let {
@@ -27,17 +30,13 @@
     providers = [],
     progress = null,
     fileErrors = [],
-    succeededCount = null
+    succeededCount = null,
+    onConfirm,
+    onClose,
+    onRetry,
+    onSkipErrors
   }: Props = $props();
-
-  const dispatch = createEventDispatcher<{
-    confirm: { destProviderId: string };
-    retry: { fileIds: number[] };
-    skipErrors: { fileId: number };
-    close: void;
-  }>();
-
-  let selectedProviderId: string | null = $state(null);
+let selectedProviderId: string | null = $state(null);
   let confirmed = $state(false);
 
   let otherProviders = $derived(providers.filter(p => p.providerId !== currentProviderId));
@@ -57,7 +56,7 @@
   function handleConfirm() {
     if (!selectedProviderId) return;
     confirmed = true;
-    dispatch('confirm', { destProviderId: selectedProviderId });
+    onConfirm?.({ destProviderId: selectedProviderId });
   }
 
   function providerIcon(type: string): string {
@@ -80,8 +79,8 @@
     role="button"
     tabindex="-1"
     aria-label="Close"
-    onclick={() => !inProgress && dispatch('close')}
-    onkeydown={(e) => e.key === 'Escape' && !inProgress && dispatch('close')}
+    onclick={() => !inProgress && onClose?.()}
+    onkeydown={(e) => e.key === 'Escape' && !inProgress && onClose?.()}
     transition:fade={{ duration: reducedMotion ? 0 : 150 }}
 ></div>
 
@@ -114,7 +113,7 @@
         <p class="success-label">Integrity verified · {succeededCount} file{succeededCount !== 1 ? 's' : ''}</p>
       </div>
       <div class="sheet-actions">
-        <button class="btn btn-primary" onclick={() => dispatch('close')}>Done</button>
+        <button class="btn btn-primary" onclick={() => onClose?.()}>Done</button>
       </div>
 
     {:else if showResult && hasErrors}
@@ -139,16 +138,16 @@
               <span class="error-msg">{e.error}</span>
             </div>
             <div class="error-actions">
-              <button class="btn-sm btn-sm-primary" onclick={() => dispatch('retry', { fileIds: [e.fileId] })}>Retry</button>
-              <button class="btn-sm btn-sm-ghost" onclick={() => dispatch('skipErrors', { fileId: e.fileId })}>Skip</button>
+              <button class="btn-sm btn-sm-primary" onclick={() => onRetry?.({ fileIds: [e.fileId] })}>Retry</button>
+              <button class="btn-sm btn-sm-ghost" onclick={() => onSkipErrors?.({ fileId: e.fileId })}>Skip</button>
             </div>
           </div>
         {/each}
       </div>
 
       <div class="sheet-actions">
-        <button class="btn btn-ghost" onclick={() => dispatch('close')}>Close</button>
-        <button class="btn btn-primary" onclick={() => dispatch('retry', { fileIds: fileErrors.map(e => e.fileId) })}>
+        <button class="btn btn-ghost" onclick={() => onClose?.()}>Close</button>
+        <button class="btn btn-primary" onclick={() => onRetry?.({ fileIds: fileErrors.map(e => e.fileId) })}>
           Retry all
         </button>
       </div>
@@ -197,7 +196,7 @@
       </div>
 
       <div class="sheet-actions">
-        <button class="btn btn-ghost" onclick={() => dispatch('close')}>Cancel</button>
+        <button class="btn btn-ghost" onclick={() => onClose?.()}>Cancel</button>
         <button
           class="btn btn-primary"
           disabled={!selectedProviderId}

@@ -9,7 +9,6 @@
    * - vault_key / vault_kek never leave the worker after being used
    * - shard is encrypted with non-extractable CryptoKey before IndexedDB storage
    */
-  import { createEventDispatcher } from 'svelte';
   import type { StorageProvider, ProviderConfig } from '@wattcloud/sdk';
   import * as byoWorker from '@wattcloud/sdk';
   import { bytesToBase64, base64ToBytes, MANIFEST_FILE } from '../../byo/VaultLifecycle';
@@ -38,13 +37,14 @@
    * fall back to parsing `configJson`.
    */
     providerConfig?: import('@wattcloud/sdk').ProviderConfig | null;
+  onCancel?: (...args: any[]) => void;
+  onComplete?: (...args: any[]) => void;
   }
 
-  let { provider, configJson = '{}', providerConfig = null }: Props = $props();
-
-  const dispatch = createEventDispatcher<{ complete: void; cancel: void }>();
-
-  // sync-warning-pre: show browser-tab warning before creating the vault
+  let { provider, configJson = '{}', providerConfig = null,
+  onCancel,
+  onComplete }: Props = $props();
+// sync-warning-pre: show browser-tab warning before creating the vault
   type Step = 'passphrase' | 'sync-warning-pre' | 'creating' | 'recovery-key' | 'complete';
 
   const STEPS = ['Passphrase', 'Creating Vault', 'Recovery Key', 'Complete'];
@@ -481,7 +481,7 @@
   {#if memoryError}
     <MemoryFailurePrompt
       onRetry={() => { memoryError = false; }}
-      onBack={() => dispatch('cancel')}
+      onBack={() => onCancel?.()}
     />
   {:else if step === 'passphrase'}
     <div class="step-content">
@@ -506,8 +506,8 @@
       <p class="zk-disclaimer">
         Your passphrase never leaves this device. Forgetting it and losing your recovery key means permanent data loss — this cannot be reset.
       </p>
-      <ByoPassphraseInput mode="create" submitLabel="Create Vault" on:submit={handlePassphrase} />
-      <button type="button" class="btn btn-ghost back-link" onclick={() => dispatch('cancel')}>
+      <ByoPassphraseInput mode="create" submitLabel="Create Vault" onSubmit={handlePassphrase} />
+      <button type="button" class="btn btn-ghost back-link" onclick={() => onCancel?.()}>
         &larr; Back to providers
       </button>
     </div>
@@ -543,7 +543,7 @@
       </div>
       <h2 class="step-title">Vault created!</h2>
       <p class="step-sub">Your encrypted vault is ready. Files you add will be stored in {provider.displayName}.</p>
-      <button class="btn btn-primary" onclick={() => dispatch('complete')}>
+      <button class="btn btn-primary" onclick={() => onComplete?.()}>
         Open vault
       </button>
     </div>

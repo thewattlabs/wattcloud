@@ -52,7 +52,7 @@
   // ── State ────────────────────────────────────────────────────────────────
 
   let loading = $state(true);
-  let record: DeviceWebAuthnRecord | null = $state(null);
+  let record = $state<DeviceWebAuthnRecord | null>(null);
   let busy = $state(false);
   let webauthnAvailable = $state(false);
   let confirmRemove: WebAuthnCredentialEntry | null = $state(null);
@@ -502,8 +502,8 @@
     title="Remove passkey?"
     message={`"${confirmRemove.display_name}" will no longer be able to unlock this vault. You will not be locked out — any other enrolled passkey still works.`}
     confirmText="Remove"
-    on:confirm={handleConfirmRemove}
-    on:cancel={() => (confirmRemove = null)}
+    onConfirm={handleConfirmRemove}
+    onCancel={() => (confirmRemove = null)}
   />
 {/if}
 
@@ -515,8 +515,8 @@
       'credentials and the device shard will be re-encrypted under a fresh ' +
       'device key that any code running on this origin can access.'}
     confirmText="Disable"
-    on:confirm={handleConfirmDisable}
-    on:cancel={() => (confirmDisable = false)}
+    onConfirm={handleConfirmDisable}
+    onCancel={() => (confirmDisable = false)}
   />
 {/if}
 
@@ -526,8 +526,8 @@
   confirmText="Enable passkey unlock"
   confirmClass="btn-danger"
   loading={busy}
-  on:confirm={handleConfirmEnablePasskeyUnlock}
-  on:cancel={() => (confirmEnablePasskeyUnlock = false)}
+  onConfirm={handleConfirmEnablePasskeyUnlock}
+  onCancel={() => (confirmEnablePasskeyUnlock = false)}
 >
   <p>
     You're about to collapse two unlock factors into one on this device.
@@ -558,8 +558,8 @@
   confirmText="Disable passkey unlock"
   confirmClass="btn-danger"
   loading={busy}
-  on:confirm={handleConfirmDisablePasskeyUnlock}
-  on:cancel={() => (confirmDisablePasskeyUnlock = false)}
+  onConfirm={handleConfirmDisablePasskeyUnlock}
+  onCancel={() => (confirmDisablePasskeyUnlock = false)}
 >
   <p>
     The wrapped <code>vault_key</code> copies stored on every enrolled passkey

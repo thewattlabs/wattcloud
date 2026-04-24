@@ -16,7 +16,7 @@
    *   - **Not now** → close silently; next unlock will re-offer.
    *   - "Don't ask again" checkbox → persists the dismissal timestamp.
    */
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import Icon from '../Icons.svelte';
   import {
     getDeviceRecord,
@@ -38,13 +38,12 @@
 
   interface Props {
     vaultId: string;
+  onOpenSettings?: (...args: any[]) => void;
   }
 
-  let { vaultId }: Props = $props();
-
-  const dispatch = createEventDispatcher<{ openSettings: void }>();
-
-  let visible = $state(false);
+  let { vaultId,
+  onOpenSettings }: Props = $props();
+let visible = $state(false);
   let dontAskAgain = $state(false);
   let record: DeviceRecord | null = null;
   let busy = $state(false);
@@ -176,7 +175,7 @@
   function handleOpenSettings() {
     if (busy) return;
     visible = false;
-    dispatch('openSettings');
+    onOpenSettings?.();
   }
 </script>
 

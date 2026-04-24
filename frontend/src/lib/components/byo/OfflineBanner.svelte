@@ -8,17 +8,16 @@
    * alert (red), because the flow is retry-driven and recovery is expected.
    */
   import { slide } from 'svelte/transition';
-  import { createEventDispatcher } from 'svelte';
   import CloudSlash from 'phosphor-svelte/lib/CloudSlash';
 
   interface Props {
     providerName: string;
     retrying?: boolean;
+  onRetry?: (...args: any[]) => void;
   }
 
-  let { providerName, retrying = false }: Props = $props();
-
-  const dispatch = createEventDispatcher<{ retry: void }>();
+  let { providerName, retrying = false,
+  onRetry }: Props = $props();
 </script>
 
 <div class="offline-banner" role="status" aria-live="polite" transition:slide={{ duration: 200 }}>
@@ -29,7 +28,7 @@
   <button
     class="retry-btn"
     disabled={retrying}
-    onclick={() => dispatch('retry')}
+    onclick={() => onRetry?.()}
     aria-label="Retry connection to {providerName}"
   >
     {retrying ? 'Retrying…' : 'Retry'}

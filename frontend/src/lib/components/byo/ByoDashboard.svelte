@@ -1230,9 +1230,9 @@
     searchQuery={$byoSearchQuery}
     currentView={view}
     hideSearch={view === 'photos'}
-    on:toggleSearch={() => { showSearch = !showSearch; if (!showSearch) clearByoSearch(); }}
-    on:closeSearch={() => { showSearch = false; clearByoSearch(); }}
-    on:searchChange={(e) => {
+    onToggleSearch={() => { showSearch = !showSearch; if (!showSearch) clearByoSearch(); }}
+    onCloseSearch={() => { showSearch = false; clearByoSearch(); }}
+    onSearchChange={(e) => {
       setByoSearchQuery(e.detail?.query ?? '');
       setByoFileTypeFilter(normalizeFileType(e.detail?.fileType));
     }}
@@ -1295,7 +1295,7 @@
     <OfflineBanner
       providerName={activeProvider.displayName}
       {retrying}
-      on:retry={retryActiveProvider}
+      onRetry={retryActiveProvider}
     />
   {/if}
 
@@ -1331,24 +1331,17 @@
       canShare={canShareSelection}
       canAddToCollection={view === 'photos' && $byoSelectedFiles.size > 0}
       favoriteState={favCount === 0 ? 'none' : favCount === totalSel ? 'all' : 'mixed'}
-      on:selectAll={() => {
-        const fileIds = sortedFiles.map((f) => f.id);
-        byoSelectedFiles.set(new Set(fileIds));
-        byoSelectionMode.set(true);
-      }}
-      on:clear={clearByoSelection}
-      on:clearSelection={clearByoSelection}
-      on:move={async () => { moveCopyMode = 'move'; await refreshMoveCopyFolders(); showMoveCopyDialog = true; }}
-      on:copy={async () => { moveCopyMode = 'copy'; await refreshMoveCopyFolders(); showMoveCopyDialog = true; }}
-      on:moveToProvider={() => { if ($vaultStore.providers.length > 1) showProviderMoveSheet = true; }}
-      on:favorite={() => bulkToggleFavorite(true)}
-      on:unfavorite={() => bulkToggleFavorite(false)}
-      on:download={() => handleDownloadSelection()}
-      on:details={() => {
+      onClear={clearByoSelection}
+      onMove={async () => { moveCopyMode = 'move'; await refreshMoveCopyFolders(); showMoveCopyDialog = true; }}
+      onCopy={async () => { moveCopyMode = 'copy'; await refreshMoveCopyFolders(); showMoveCopyDialog = true; }}
+      onFavorite={() => bulkToggleFavorite(true)}
+      onUnfavorite={() => bulkToggleFavorite(false)}
+      onDownload={() => handleDownloadSelection()}
+      onDetails={() => {
         const ids = [...get(byoSelectedFiles)];
         if (ids.length === 1) openDetails(ids[0]);
       }}
-      on:share={() => {
+      onShare={() => {
         const fileIds = [...get(byoSelectedFiles)];
         const folderIds = [...get(byoSelectedFolders)];
         if (fileIds.length === 1 && folderIds.length === 0) {
@@ -1365,11 +1358,11 @@
         // intentionally unsupported for now — the share toolbar button
         // is disabled by SelectionToolbar's canShare guard for those.
       }}
-      on:delete={() => {
+      onDelete={() => {
         const ids = [...get(byoSelectedFiles)];
         if (ids.length > 0) promptDelete('file', ids[0], `${ids.length} file${ids.length !== 1 ? 's' : ''}`);
       }}
-      on:addToCollection={openAddToCollection}
+      onAddToCollection={openAddToCollection}
     />
   {/if}
 
@@ -1459,12 +1452,12 @@
                     isSelectionMode={$byoSelectionMode}
                     isFavorite={favoriteFolderIds.has(folder.id)}
                     viewMode="list"
-                    on:click={() => {
+                    onClick={() => {
                       if ($byoSelectionMode) { toggleByoFolderSelection(folder.id); }
                       else { openFolder(folder); }
                     }}
-                    on:select={() => { toggleByoFolderSelection(folder.id); byoSelectionMode.set(true); }}
-                    on:toggle={() => toggleByoFolderSelection(folder.id)}
+                    onSelect={() => { toggleByoFolderSelection(folder.id); byoSelectionMode.set(true); }}
+                    onToggle={() => toggleByoFolderSelection(folder.id)}
                   />
                 {/each}
               </div>
@@ -1489,12 +1482,12 @@
                       isSelectionMode={$byoSelectionMode}
                       isFavorite={favoriteFolderIds.has(folder.id)}
                       viewMode="grid"
-                      on:click={() => {
+                      onClick={() => {
                         if ($byoSelectionMode) { toggleByoFolderSelection(folder.id); }
                         else { openFolder(folder); }
                       }}
-                      on:select={() => { toggleByoFolderSelection(folder.id); byoSelectionMode.set(true); }}
-                      on:toggle={() => toggleByoFolderSelection(folder.id)}
+                      onSelect={() => { toggleByoFolderSelection(folder.id); byoSelectionMode.set(true); }}
+                      onToggle={() => toggleByoFolderSelection(folder.id)}
                     />
                   </div>
                 {/each}
@@ -1510,12 +1503,12 @@
                     isSelectionMode={$byoSelectionMode}
                     isFavorite={favoriteFolderIds.has(folder.id)}
                     viewMode="grid"
-                    on:click={() => {
+                    onClick={() => {
                       if ($byoSelectionMode) { toggleByoFolderSelection(folder.id); }
                       else { openFolder(folder); }
                     }}
-                    on:select={() => { toggleByoFolderSelection(folder.id); byoSelectionMode.set(true); }}
-                    on:toggle={() => toggleByoFolderSelection(folder.id)}
+                    onSelect={() => { toggleByoFolderSelection(folder.id); byoSelectionMode.set(true); }}
+                    onToggle={() => toggleByoFolderSelection(folder.id)}
                   />
                 {/each}
               </div>
@@ -1534,14 +1527,8 @@
             favoriteFileIds={favoriteFileIds}
             onRename={handleRenameFile}
             showEncryptionBadge={true}
-            on:preview={(e) => { previewFile = sortedFiles.find((f) => f.id === (e.detail?.id ?? e.detail)) || null; previewOpen = !!previewFile; }}
-            on:download={(e) => { const id = e.detail?.id ?? e.detail; const f = sortedFiles.find((x) => x.id === id); if (f) downloadFile(f); }}
-            on:delete={(e) => {
-              const id = e.detail?.id ?? e.detail;
-              const f = sortedFiles.find((file) => file.id === id);
-              if (f) promptDelete('file', f.id, f.decrypted_name);
-            }}
-            on:upload={handleFabUpload}
+            onPreview={(file) => { previewFile = file; previewOpen = !!previewFile; }}
+            onUpload={handleFabUpload}
           />
         {/if}
 
@@ -1552,8 +1539,8 @@
         loadFileData={loadFileData}
         bind:sortDir
         {selectionContext}
-        on:upload={() => { if (canWrite) handleFabUpload(); }}
-        on:shareCollection={(e) => {
+        onUpload={() => { if (canWrite) handleFabUpload(); }}
+        onShareCollection={(e) => {
           const col = $byoCollections.find((c) => c.id === e.detail.collectionId);
           if (col) openCollectionShareSheet(col);
         }}
@@ -1611,12 +1598,12 @@
                     isSelected={$byoSelectedFolders.has(folder.id)}
                     isSelectionMode={$byoSelectionMode}
                     viewMode="list"
-                    on:click={() => {
+                    onClick={() => {
                       if ($byoSelectionMode) { toggleByoFolderSelection(folder.id); }
                       else { openFolder(folder); view = 'files'; }
                     }}
-                    on:select={() => { toggleByoFolderSelection(folder.id); byoSelectionMode.set(true); }}
-                    on:toggle={() => toggleByoFolderSelection(folder.id)}
+                    onSelect={() => { toggleByoFolderSelection(folder.id); byoSelectionMode.set(true); }}
+                    onToggle={() => toggleByoFolderSelection(folder.id)}
                   />
                 {/each}
               </div>
@@ -1641,12 +1628,12 @@
                       isSelected={$byoSelectedFolders.has(folder.id)}
                       isSelectionMode={$byoSelectionMode}
                       viewMode="grid"
-                      on:click={() => {
+                      onClick={() => {
                         if ($byoSelectionMode) { toggleByoFolderSelection(folder.id); }
                         else { openFolder(folder); view = 'files'; }
                       }}
-                      on:select={() => { toggleByoFolderSelection(folder.id); byoSelectionMode.set(true); }}
-                      on:toggle={() => toggleByoFolderSelection(folder.id)}
+                      onSelect={() => { toggleByoFolderSelection(folder.id); byoSelectionMode.set(true); }}
+                      onToggle={() => toggleByoFolderSelection(folder.id)}
                     />
                   </div>
                 {/each}
@@ -1662,12 +1649,12 @@
                     isSelected={$byoSelectedFolders.has(folder.id)}
                     isSelectionMode={$byoSelectionMode}
                     viewMode="grid"
-                    on:click={() => {
+                    onClick={() => {
                       if ($byoSelectionMode) { toggleByoFolderSelection(folder.id); }
                       else { openFolder(folder); view = 'files'; }
                     }}
-                    on:select={() => { toggleByoFolderSelection(folder.id); byoSelectionMode.set(true); }}
-                    on:toggle={() => toggleByoFolderSelection(folder.id)}
+                    onSelect={() => { toggleByoFolderSelection(folder.id); byoSelectionMode.set(true); }}
+                    onToggle={() => toggleByoFolderSelection(folder.id)}
                   />
                 {/each}
               </div>
@@ -1682,14 +1669,8 @@
             favoriteFileIds={favoriteFileIds}
             onRename={handleRenameFile}
             showEncryptionBadge={true}
-            on:preview={(e) => { previewFile = favoriteFiles.find((f) => f.id === (e.detail?.id ?? e.detail)) || null; previewOpen = !!previewFile; }}
-            on:download={(e) => { const id = e.detail?.id ?? e.detail; const f = favoriteFiles.find((x) => x.id === id); if (f) downloadFile(f); }}
-            on:delete={(e) => {
-              const id = e.detail?.id ?? e.detail;
-              const f = favoriteFiles.find((file) => file.id === id);
-              if (f) promptDelete('file', f.id, f.decrypted_name);
-            }}
-            on:upload={handleFabUpload}
+            onPreview={(file) => { previewFile = file; previewOpen = !!previewFile; }}
+            onUpload={handleFabUpload}
           />
         {/if}
       {/if}
@@ -1708,16 +1689,16 @@
     <FAB
       showMenu={false}
       disabled={!canWrite}
-      on:toggle={() => { if (canWrite) handleFabUpload(); }}
+      onToggle={() => { if (canWrite) handleFabUpload(); }}
     />
   {:else if view === 'files'}
     <FAB
       showMenu={showFabMenu && canWrite}
       disabled={!canWrite}
-      on:toggle={() => { if (canWrite) showFabMenu = !showFabMenu; }}
-      on:upload={() => { if (canWrite) handleFabUpload(); }}
-      on:uploadFolder={() => { if (canWrite) handleFabUploadFolder(); }}
-      on:newFolder={() => { if (canWrite) { showFabMenu = false; showNewFolderModal = true; } }}
+      onToggle={() => { if (canWrite) showFabMenu = !showFabMenu; }}
+      onUpload={() => { if (canWrite) handleFabUpload(); }}
+      onUploadFolder={() => { if (canWrite) handleFabUploadFolder(); }}
+      onNewFolder={() => { if (canWrite) { showFabMenu = false; showNewFolderModal = true; } }}
     />
   {/if}
 
@@ -1742,8 +1723,8 @@
       title="New Folder"
       confirmText={creatingFolder ? 'Creating…' : 'Create'}
       loading={creatingFolder}
-      on:confirm={handleCreateFolder}
-      on:cancel={() => { showNewFolderModal = false; newFolderName = ''; }}
+      onConfirm={handleCreateFolder}
+      onCancel={() => { showNewFolderModal = false; newFolderName = ''; }}
     >
       <input
         type="text"
@@ -1762,8 +1743,8 @@
     confirmText="Move to Trash"
     confirmClass="btn-danger"
     loading={deleteLoading}
-    on:confirm={confirmDelete}
-    on:cancel={() => { showDeleteModal = false; deleteTarget = null; }}
+    onConfirm={confirmDelete}
+    onCancel={() => { showDeleteModal = false; deleteTarget = null; }}
   >
     {#if deleteTarget}
       <p>Move <strong>{deleteTarget.name}</strong> to trash?</p>
@@ -1789,8 +1770,8 @@
     selectedItemCount={$byoSelectedFiles.size}
     allFolders={activeFoldersAny}
     onCreateFolder={createFolderAny}
-    on:confirm={handleMoveCopyConfirm}
-    on:cancel={() => showMoveCopyDialog = false}
+    onConfirm={handleMoveCopyConfirm}
+    onCancel={() => showMoveCopyDialog = false}
   />
 
   <!-- File details modal -->
@@ -1806,7 +1787,7 @@
   {#if showShareSheet && shareSource !== null}
     <ShareLinkSheet
       source={shareSource}
-      on:close={() => { showShareSheet = false; shareSource = null; }}
+      onClose={() => { showShareSheet = false; shareSource = null; }}
     />
   {/if}
 
@@ -1820,8 +1801,8 @@
   <!-- Add provider sheet -->
   {#if showAddProvider}
     <AddProviderSheet
-      on:added={onProviderAdded}
-      on:close={() => showAddProvider = false}
+      onAdded={onProviderAdded}
+      onClose={() => showAddProvider = false}
     />
   {/if}
 
@@ -1829,14 +1810,14 @@
     <ProviderContextSheet
       provider={contextSheetProvider}
       isOnlyProvider={$vaultStore.providers.length <= 1}
-      on:close={() => contextSheetProvider = null}
-      on:change={() => { contextSheetProvider = null; }}
+      onClose={() => contextSheetProvider = null}
+      onChange={() => { contextSheetProvider = null; }}
     />
   {/if}
 
   <!-- Add-to-collection picker -->
   {#if showAddToCollection}
-    <div class="atc-overlay" role="presentation" onclick={self(() => (showAddToCollection = false))} onkeydown={() => {}}>
+    <div class="atc-overlay" role="presentation" onclick={(e) => { if (e.target === e.currentTarget) showAddToCollection = false; }} onkeydown={() => {}}>
       <div class="atc-sheet" role="dialog" aria-label="Add photos to collection" aria-modal="true">
         <header class="atc-header">
           <h3 class="atc-title">Add to collection</h3>
@@ -1910,10 +1891,10 @@
     progress={crossMoveProgress}
     fileErrors={crossMoveErrors}
     succeededCount={crossMoveSucceeded}
-    on:confirm={(e) => handleCrossProviderMove(e.detail.destProviderId)}
-    on:retry={handleMoveRetry}
-    on:skipErrors={handleMoveSkipErrors}
-    on:close={() => { if (!crossMoveProgress) { showProviderMoveSheet = false; crossMoveSucceeded = null; crossMoveErrors = []; } }}
+    onConfirm={(e) => handleCrossProviderMove(e.detail.destProviderId)}
+    onRetry={handleMoveRetry}
+    onSkipErrors={handleMoveSkipErrors}
+    onClose={() => { if (!crossMoveProgress) { showProviderMoveSheet = false; crossMoveSucceeded = null; crossMoveErrors = []; } }}
   />
 </div>
 

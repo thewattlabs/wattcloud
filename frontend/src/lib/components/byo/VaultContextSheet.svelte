@@ -9,7 +9,6 @@
    *     + body cache + WAL for this vault. Does NOT touch the remote vault
    *     manifest. The user can re-add this vault later via the same provider.
    */
-  import { createEventDispatcher } from 'svelte';
   import BottomSheet from '../BottomSheet.svelte';
   import type { PersistedVaultSummary } from '../../byo/ProviderConfigStore';
   import { renameVaultLabel, deleteVaultProviderConfigs } from '../../byo/ProviderConfigStore';
@@ -22,18 +21,18 @@
   interface Props {
     open?: boolean;
     vault?: PersistedVaultSummary | null;
+  onRenamed?: (...args: any[]) => void;
+  onClose?: (...args: any[]) => void;
+  onForgotten?: (...args: any[]) => void;
+  onOpen?: (...args: any[]) => void;
   }
 
-  let { open = false, vault = null }: Props = $props();
-
-  const dispatch = createEventDispatcher<{
-    close: void;
-    open: { vault_id: string };
-    forgotten: { vault_id: string };
-    renamed: { vault_id: string };
-  }>();
-
-  type SheetMode = 'menu' | 'rename' | 'confirm-forget';
+  let { open = false, vault = null,
+  onRenamed,
+  onClose,
+  onForgotten,
+  onOpen }: Props = $props();
+type SheetMode = 'menu' | 'rename' | 'confirm-forget';
   let mode: SheetMode = $state('menu');
   let newLabel = $state('');
   let busy = $state(false);
@@ -55,8 +54,8 @@
     err = '';
     try {
       await renameVaultLabel(vault.vault_id, trimmed);
-      dispatch('renamed', { vault_id: vault.vault_id });
-      dispatch('close');
+      onRenamed?.({ vault_id: vault.vault_id });
+      onClose?.();
     } catch (e: any) {
       err = e?.message ?? 'Rename failed';
     } finally {
@@ -78,8 +77,8 @@
       await deleteVaultProviderConfigs(vault.vault_id);
       await deleteDeviceCryptoKey(vault.vault_id).catch(() => {});
       await deleteDeviceRecord(vault.vault_id).catch(() => {});
-      dispatch('forgotten', { vault_id: vault.vault_id });
-      dispatch('close');
+      onForgotten?.({ vault_id: vault.vault_id });
+      onClose?.();
     } catch (e: any) {
       err = e?.message ?? 'Forget failed';
     } finally {
@@ -92,14 +91,14 @@
   open={open && vault !== null}
   title={vault?.vault_label ?? ''}
   subtitle={vault ? `${vault.primary.type.toUpperCase()} · ${vault.primary.display_name}` : ''}
-  on:close={() => dispatch('close')}
+  onClose={() => onClose?.()}
 >
   {#if vault}
     {#if mode === 'menu'}
       <div class="rows">
         <button
           class="row"
-          onclick={() => { dispatch('open', { vault_id: vault.vault_id }); dispatch('close'); }}
+          onclick={() => { onOpen?.({ vault_id: vault.vault_id }); onClose?.(); }}
         >
           <span class="row-icon"><ArrowRight size={18} weight="bold" /></span>
           <span class="row-text">

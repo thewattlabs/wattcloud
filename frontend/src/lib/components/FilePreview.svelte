@@ -160,6 +160,7 @@
 	// Gesture state
 	let pinchStartDist = 0;
 	let pinchStartScale = 1;
+	let _pinchStartCenter: { x: number; y: number } = { x: 0, y: 0 };
 	let panStart = { x: 0, y: 0, tx: 0, ty: 0 };
 	let lastTapTime = 0;
 	let lastTapX = 0;
@@ -183,7 +184,7 @@
 			e.preventDefault();
 			pinchStartDist = touchDist(e.touches);
 			pinchStartScale = zoomScale;
-			pinchStartCenter = touchCenter(e.touches);
+			_pinchStartCenter = touchCenter(e.touches);
 			swiping = false;
 			return;
 		}

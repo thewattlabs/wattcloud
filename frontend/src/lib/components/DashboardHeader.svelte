@@ -1,6 +1,4 @@
 <script lang="ts">
-
-  import { createEventDispatcher } from 'svelte';
   import { slide } from 'svelte/transition';
   import List from 'phosphor-svelte/lib/List';
   import ArrowLineLeft from 'phosphor-svelte/lib/ArrowLineLeft';
@@ -25,6 +23,10 @@
     /** Hides the right-side search button (used on screens where search
       doesn't apply, e.g. Settings). */
     hideSearch?: boolean;
+  onToggleSearch?: (...args: any[]) => void;
+  onCloseSearch?: (...args: any[]) => void;
+  onSearchChange?: (...args: any[]) => void;
+  onNavigate?: (...args: any[]) => void;
   }
 
   let {
@@ -34,12 +36,13 @@
     searchQuery = $bindable(''),
     searchFileType = $bindable(''),
     currentView = 'files',
-    hideSearch = false
+    hideSearch = false,
+    onToggleSearch,
+    onCloseSearch,
+    onSearchChange,
+    onNavigate
   }: Props = $props();
-
-  const dispatch = createEventDispatcher();
-
-  const fileTypes = [
+const fileTypes = [
     { value: '', label: 'All Types', icon: 'files' },
     { value: 'folders', label: 'Folders', icon: 'folder' },
     { value: 'images', label: 'Images', icon: 'image' },
@@ -58,14 +61,14 @@
   };
 
   function handleSearchToggle() {
-    dispatch('toggleSearch');
+    onToggleSearch?.();
   }
 
   function handleSearchClose() {
     searchQuery = '';
     searchFileType = '';
-    dispatch('closeSearch');
-    dispatch('searchChange', { query: '', fileType: '' });
+    onCloseSearch?.();
+    onSearchChange?.({ query: '', fileType: '' });
   }
 
   function handleSearchInput(event: Event) {
@@ -73,14 +76,14 @@
     searchQuery = value;
     // Redirect to Files screen when searching from other screens
     if (value && currentView !== 'files') {
-      dispatch('navigate', { view: 'files' });
+      onNavigate?.({ view: 'files' });
     }
-    dispatch('searchChange', { query: value, fileType: searchFileType });
+    onSearchChange?.({ query: value, fileType: searchFileType });
   }
 
   function clearSearch() {
     searchQuery = '';
-    dispatch('searchChange', { query: '', fileType: searchFileType });
+    onSearchChange?.({ query: '', fileType: searchFileType });
   }
 
   function handleOpenDrawer() {
@@ -178,7 +181,7 @@
                 onclick={() => {
                   const newValue = searchFileType === ft.value ? '' : ft.value;
                   searchFileType = newValue;
-                  dispatch('searchChange', { query: searchQuery, fileType: newValue });
+                  onSearchChange?.({ query: searchQuery, fileType: newValue });
                 }}
                 title={ft.label}
               >

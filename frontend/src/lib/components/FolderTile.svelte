@@ -1,6 +1,4 @@
 <script lang="ts">
-
-  import { createEventDispatcher } from 'svelte';
   import FolderSimple from 'phosphor-svelte/lib/FolderSimple';
   import DotsThree from 'phosphor-svelte/lib/DotsThree';
   import Check from 'phosphor-svelte/lib/Check';
@@ -13,6 +11,14 @@
     isFavorite?: boolean;
     renameValue?: string;
     viewMode?: 'list' | 'grid';
+  onClick?: (...args: any[]) => void;
+  onTouchstart?: (...args: any[]) => void;
+  onTouchmove?: (...args: any[]) => void;
+  onTouchend?: (...args: any[]) => void;
+  onSelect?: (...args: any[]) => void;
+  onToggle?: (...args: any[]) => void;
+  onRenameKeydown?: (...args: any[]) => void;
+  onRenameBlur?: (...args: any[]) => void;
   }
 
   let {
@@ -22,12 +28,17 @@
     isRenaming = false,
     isFavorite = false,
     renameValue = $bindable(''),
-    viewMode = 'grid'
+    viewMode = 'grid',
+    onClick,
+    onTouchstart,
+    onTouchmove,
+    onTouchend,
+    onSelect,
+    onToggle,
+    onRenameKeydown,
+    onRenameBlur
   }: Props = $props();
-
-  const dispatch = createEventDispatcher();
-
-  // Compact date for the desktop Modified column — matches FileList's
+// Compact date for the desktop Modified column — matches FileList's
   // formatDateShort so folder rows and file rows share the column format.
   function formatDateShort(dateStr: string | undefined): string {
     if (!dateStr) return '';
@@ -49,37 +60,37 @@
   }
 
   function handleClick(event: MouseEvent) {
-    dispatch('click', { id: folder.id, event });
+    onClick?.({ id: folder.id, event });
   }
 
   function handleTouchStart(event: TouchEvent) {
-    dispatch('touchstart', { id: folder.id, event });
+    onTouchstart?.({ id: folder.id, event });
   }
 
   function handleTouchMove(event: TouchEvent) {
-    dispatch('touchmove', { event });
+    onTouchmove?.({ event });
   }
 
   function handleTouchEnd(event: TouchEvent) {
-    dispatch('touchend', { event });
+    onTouchend?.({ event });
   }
 
   function handleMenuClick(event: MouseEvent) {
     event.stopPropagation();
-    dispatch('select', { id: folder.id });
+    onSelect?.({ id: folder.id });
   }
 
   function handleCheckboxClick(event: MouseEvent) {
     event.stopPropagation();
-    dispatch('toggle', { id: folder.id });
+    onToggle?.({ id: folder.id });
   }
 
   function handleRenameKeydown(event: KeyboardEvent) {
-    dispatch('renameKeydown', { event });
+    onRenameKeydown?.({ event });
   }
 
   function handleRenameBlur() {
-    dispatch('renameBlur');
+    onRenameBlur?.();
   }
 </script>
 

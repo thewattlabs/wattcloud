@@ -507,8 +507,8 @@
     confirmText={signOutBusy ? 'Signing out…' : 'Sign out'}
     confirmClass="btn-danger"
     loading={signOutBusy}
-    on:confirm={doSignOut}
-    on:cancel={() => (confirmSignOut = false)}
+    onConfirm={doSignOut}
+    onCancel={() => (confirmSignOut = false)}
   />
 {/if}
 
@@ -519,8 +519,8 @@
     message={`"${confirmRevokeInvite.label || confirmRevokeInvite.id}" won't be redeemable after this. You can always mint a new one.`}
     confirmText="Revoke"
     confirmClass="btn-danger"
-    on:confirm={() => confirmRevokeInvite && doRevokeInvite(confirmRevokeInvite)}
-    on:cancel={() => (confirmRevokeInvite = null)}
+    onConfirm={() => confirmRevokeInvite && doRevokeInvite(confirmRevokeInvite)}
+    onCancel={() => (confirmRevokeInvite = null)}
   />
 {/if}
 
@@ -531,8 +531,8 @@
     message={`"${confirmRevokeDevice.label || confirmRevokeDevice.device_id}" will be signed out immediately and won't be able to reach the relay. You can't undo this.`}
     confirmText="Revoke"
     confirmClass="btn-danger"
-    on:confirm={() => confirmRevokeDevice && doRevokeDevice(confirmRevokeDevice)}
-    on:cancel={() => (confirmRevokeDevice = null)}
+    onConfirm={() => confirmRevokeDevice && doRevokeDevice(confirmRevokeDevice)}
+    onCancel={() => (confirmRevokeDevice = null)}
   />
 {/if}
 

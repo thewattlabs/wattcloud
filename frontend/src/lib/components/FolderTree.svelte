@@ -8,8 +8,6 @@
 
 <script lang="ts">
   import FolderTree from './FolderTree.svelte';
-
-  import { createEventDispatcher } from 'svelte';
   import FolderSimple from 'phosphor-svelte/lib/FolderSimple';
   import CaretDown from 'phosphor-svelte/lib/CaretDown';
   import CaretRight from 'phosphor-svelte/lib/CaretRight';
@@ -43,6 +41,9 @@
     managedRenameFolder?: ((folderId: number, name: string) => Promise<void>) | null;
     managedDeletePreview?: ((folderId: number) => Promise<{ subfolder_count: number; file_count: number } | null>) | null;
     managedDeleteFolder?: ((folderId: number) => Promise<void>) | null;
+  onSelect?: (...args: any[]) => void;
+  onMoveFile?: (...args: any[]) => void;
+  onMoveFolder?: (...args: any[]) => void;
   }
 
   let {
@@ -54,12 +55,12 @@
     onDelete = null,
     managedRenameFolder = null,
     managedDeletePreview = null,
-    managedDeleteFolder = null
+    managedDeleteFolder = null,
+    onSelect,
+    onMoveFile,
+    onMoveFolder
   }: Props = $props();
-
-  const dispatch = createEventDispatcher();
-
-  let expanded = $state(new Set<number>());
+let expanded = $state(new Set<number>());
   let renamingFolderId: number | null = $state(null);
   let renameValue = $state('');
   let showDeleteModal = $state(false);
@@ -89,7 +90,7 @@
   // At level 0, build tree from flat folders. At deeper levels, use pre-built nodes.
   let displayNodes = $derived(_treeNodes ? _treeNodes : buildTree(folders));
 
-  function selectFolder(id: number) { dispatch('select', id); }
+  function selectFolder(id: number) { onSelect?.(id); }
 
   function toggleExpand(id: number, event: Event) {
     event.stopPropagation();
@@ -189,7 +190,7 @@
   function handleDrop(event: DragEvent, folderId: number) {
     event.preventDefault(); event.stopPropagation(); dragOverFolder = null;
     const data = event.dataTransfer?.getData('application/json');
-    if (data) { try { const parsed = JSON.parse(data); if (parsed.type === 'file') { dispatch('moveFile', { fileId: parsed.id, folderId }); } else if (parsed.type === 'folder' && parsed.id !== folderId) { dispatch('moveFolder', { folderId: parsed.id, parentId: folderId }); } } catch (e) { console.error('Failed to parse drag data:', e); } }
+    if (data) { try { const parsed = JSON.parse(data); if (parsed.type === 'file') { onMoveFile?.({ fileId: parsed.id, folderId }); } else if (parsed.type === 'folder' && parsed.id !== folderId) { onMoveFolder?.({ folderId: parsed.id, parentId: folderId }); } } catch (e) { console.error('Failed to parse drag data:', e); } }
   }
 </script>
 
@@ -269,9 +270,9 @@
               level={level + 1}
               {onRename}
               {onDelete}
-              on:select
-              on:moveFile
-              on:moveFolder
+              
+              
+              
             />
           {/if}
         {/if}
@@ -286,8 +287,8 @@
       confirmText="Delete"
       confirmClass="btn-danger"
       loading={deleteLoading}
-      on:confirm={confirmDelete}
-      on:cancel={cancelDelete}
+      onConfirm={confirmDelete}
+      onCancel={cancelDelete}
     >
       {#if deletingFolder}
         <p class="warning-text">Are you sure you want to delete <strong>{deletingFolder.name}</strong>?</p>

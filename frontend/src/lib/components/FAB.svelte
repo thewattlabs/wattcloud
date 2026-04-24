@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import Plus from 'phosphor-svelte/lib/Plus';
   import UploadSimple from 'phosphor-svelte/lib/UploadSimple';
@@ -9,32 +8,37 @@
   interface Props {
     showMenu?: boolean;
     disabled?: boolean;
+  onToggle?: (...args: any[]) => void;
+  onUpload?: (...args: any[]) => void;
+  onUploadFolder?: (...args: any[]) => void;
+  onNewFolder?: (...args: any[]) => void;
   }
 
-  let { showMenu = false, disabled = false }: Props = $props();
-
-  const dispatch = createEventDispatcher();
-
-  function toggle() {
+  let { showMenu = false, disabled = false,
+  onToggle,
+  onUpload,
+  onUploadFolder,
+  onNewFolder }: Props = $props();
+function toggle() {
     if (disabled) return;
-    dispatch('toggle');
+    onToggle?.();
   }
 
   function handleUpload() {
-    dispatch('upload');
+    onUpload?.();
   }
 
   function handleUploadFolder() {
-    dispatch('uploadFolder');
+    onUploadFolder?.();
   }
 
   function handleNewFolder() {
-    dispatch('newFolder');
+    onNewFolder?.();
   }
 
   function handleBackdropClick() {
     if (showMenu) {
-      dispatch('toggle');
+      onToggle?.();
     }
   }
 </script>
