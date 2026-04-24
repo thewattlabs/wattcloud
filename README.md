@@ -1,6 +1,6 @@
-# Wattcloud
+# Wattcloud - Post-Quantum Encryption Layer
 
-**Turn your NAS — or any cloud storage you already own — into an
+**Turn your NAS or any storage you already own into an
 end-to-end-encrypted cloud drive, with post-quantum crypto and no vendor
 in the middle.** Files are sealed in your browser before they ever touch
 a server. You run the small coordinating server yourself; it never sees
