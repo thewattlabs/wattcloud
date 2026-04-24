@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { self } from 'svelte/legacy';
 
   /**
    * AccessControlPanel — Settings surface for the restricted-enrollment
@@ -436,7 +435,7 @@
 
 <!-- Mint invite modal — split into create form and reveal-once result. -->
 {#if showMintModal}
-  <div class="modal-backdrop" onclick={self(closeMintModal)} role="presentation">
+  <div class="modal-backdrop" onclick={(e) => { if (e.target === e.currentTarget) closeMintModal(); }} role="presentation">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mint-title">
       {#if mintedCode}
         <h3 id="mint-title" class="modal-title">Invite for "{mintedCode.label}"</h3>

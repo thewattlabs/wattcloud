@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { run } from 'svelte/legacy';
-
   import { createEventDispatcher, onMount } from 'svelte';
 
   
@@ -95,7 +93,7 @@
   });
 
   // Reactive entropy check when zxcvbn loads
-  run(() => {
+  $effect(() => {
     if (zxcvbn && passphrase && mode !== 'unlock') checkEntropy(passphrase);
   });
 

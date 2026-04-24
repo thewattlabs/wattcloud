@@ -1,7 +1,5 @@
 <script lang="ts">
-  import { createBubbler, stopPropagation } from 'svelte/legacy';
 
-  const bubble = createBubbler();
   import { createEventDispatcher } from 'svelte';
   import { fade, fly } from 'svelte/transition';
 
@@ -188,8 +186,8 @@
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_interactive_supports_focus -->
     <div
       class="sheet"
-      onclick={stopPropagation(bubble('click'))}
-      onkeydown={stopPropagation(bubble('keydown'))}
+      onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => e.stopPropagation()}
       role="dialog"
       transition:fly={{ y: 200, duration: 300 }}
     >

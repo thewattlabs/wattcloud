@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { self } from 'svelte/legacy';
 
   /**
    * ShareLinkSheet — one-flow share creator.
@@ -253,7 +252,7 @@
   role="dialog"
   aria-modal="true"
   aria-label="Share"
-  onclick={self(close)}
+  onclick={(e) => { if (e.target === e.currentTarget) close(); }}
   onkeydown={(e) => {
     if (e.key === 'Escape') close();
   }}

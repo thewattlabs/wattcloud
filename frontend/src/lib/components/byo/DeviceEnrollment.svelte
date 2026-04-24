@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { run } from 'svelte/legacy';
-
   /**
    * DeviceEnrollment — QR-based two-role device enrollment.
    *
@@ -627,7 +625,7 @@
   });
 
   // Start existing device enrollment on mount
-  run(() => {
+  $effect(() => {
     if (role === 'existing' && step === 'qr-display' && !qrData) {
       startExistingDeviceEnrollment();
     }

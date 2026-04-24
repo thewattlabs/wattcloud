@@ -1,7 +1,5 @@
 <script lang="ts">
-  import { createBubbler, stopPropagation } from 'svelte/legacy';
 
-  const bubble = createBubbler();
   import { createEventDispatcher } from 'svelte';
   import FolderSimple from 'phosphor-svelte/lib/FolderSimple';
   import DotsThree from 'phosphor-svelte/lib/DotsThree';
@@ -104,7 +102,7 @@
     </div>
 
     {#if isRenaming}
-      <div class="rename-form" onclick={stopPropagation(bubble('click'))} onkeydown={stopPropagation(bubble('keydown'))} role="presentation">
+      <div class="rename-form" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="presentation">
         <!-- svelte-ignore a11y_autofocus -->
         <input
           type="text"
@@ -180,7 +178,7 @@
     </div>
 
     {#if isRenaming}
-      <div class="grid-item-info" onclick={stopPropagation(bubble('click'))} onkeydown={stopPropagation(bubble('keydown'))} role="presentation">
+      <div class="grid-item-info" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="presentation">
         <!-- svelte-ignore a11y_autofocus -->
         <input
           type="text"

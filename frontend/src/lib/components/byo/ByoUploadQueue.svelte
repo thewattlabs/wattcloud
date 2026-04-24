@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { run, stopPropagation } from 'svelte/legacy';
 
   import { slide, fly, fade } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
@@ -18,7 +17,7 @@
   const prevStatuses = new Map<string, string>();
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  run(() => {
+  $effect(() => {
     if ($isByoUploading && !expanded) expanded = true;
   });
   let items = $derived($byoUploadQueue.items as ByoUploadItem[]);
@@ -33,7 +32,7 @@
   // Detect uploading → completed transitions and fire the completion
   // toast. Per-row hex-shield animation was removed (cloud motif pivot)
   // — the row's own row-level check icon + toast are enough feedback.
-  run(() => {
+  $effect(() => {
     const liveIds = new Set(items.map((i) => i.id));
     for (const item of items) {
       const prev = prevStatuses.get(item.id);
@@ -119,7 +118,7 @@
       {#if inProgressCount > 0}
         <span class="queue-progress">{overallProgress}%</span>
       {/if}
-      <button class="clear-btn" onclick={stopPropagation(() => byoUploadQueue.clearCompleted())}>
+      <button class="clear-btn" onclick={(e) => { e.stopPropagation(); byoUploadQueue.clearCompleted(); }}>
         Clear done
       </button>
       <Icon name={expanded ? 'chevronUp' : 'chevronDown'} size={16} />
@@ -163,7 +162,7 @@
                   </div>
                   <button
                     class="action-btn"
-                    onclick={stopPropagation(() => byoUploadQueue.pauseUpload(item.id))}
+                    onclick={(e) => { e.stopPropagation(); byoUploadQueue.pauseUpload(item.id); }}
                     aria-label="Pause upload"
                     title="Pause"
                   >
@@ -173,7 +172,7 @@
                   <!-- Resume button -->
                   <button
                     class="action-btn action-btn--resume"
-                    onclick={stopPropagation(() => byoUploadQueue.resumeUpload(item.id))}
+                    onclick={(e) => { e.stopPropagation(); byoUploadQueue.resumeUpload(item.id); }}
                     aria-label="Resume upload"
                     title="Resume"
                   >
@@ -183,7 +182,7 @@
               {:else if item.status === 'error'}
                 <button
                   class="action-btn action-btn--retry"
-                  onclick={stopPropagation(() => byoUploadQueue.retryUpload(item.id))}
+                  onclick={(e) => { e.stopPropagation(); byoUploadQueue.retryUpload(item.id); }}
                   aria-label="Retry upload"
                   title="Retry"
                 >

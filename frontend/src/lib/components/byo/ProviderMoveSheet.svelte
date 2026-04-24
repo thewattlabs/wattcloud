@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { run } from 'svelte/legacy';
-
   /**
    * ProviderMoveSheet — bottom sheet for cross-provider file move.
    */
@@ -44,7 +42,7 @@
 
   let otherProviders = $derived(providers.filter(p => p.providerId !== currentProviderId));
 
-  run(() => {
+  $effect(() => {
     if (!open) {
       selectedProviderId = null;
       confirmed = false;

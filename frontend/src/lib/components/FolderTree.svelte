@@ -8,7 +8,6 @@
 
 <script lang="ts">
   import FolderTree from './FolderTree.svelte';
-  import { stopPropagation } from 'svelte/legacy';
 
   import { createEventDispatcher } from 'svelte';
   import FolderSimple from 'phosphor-svelte/lib/FolderSimple';
@@ -232,7 +231,7 @@
               <button
                 class="icon-btn expand"
                 type="button"
-                onclick={stopPropagation((e) => toggleExpand(folder.id, e))}
+                onclick={(e) => { e.stopPropagation(); toggleExpand(folder.id, e); }}
                 aria-label={expanded.has(folder.id) ? 'Collapse' : 'Expand'}
               >
                 {#if expanded.has(folder.id)}
@@ -253,10 +252,10 @@
             <span class="folder-name">{folder.decrypted_name || folder.name}</span>
 
             <div class="actions">
-              <button class="icon-btn action-rename" type="button" onclick={stopPropagation((e) => startRename(folder, e))} aria-label="Rename" title="Rename">
+              <button class="icon-btn action-rename" type="button" onclick={(e) => { e.stopPropagation(); startRename(folder, e); }} aria-label="Rename" title="Rename">
                 <PencilSimple size={20} />
               </button>
-              <button class="icon-btn action-delete" type="button" onclick={stopPropagation((e) => deleteFolder(folder, e))} aria-label="Delete" title="Delete">
+              <button class="icon-btn action-delete" type="button" onclick={(e) => { e.stopPropagation(); deleteFolder(folder, e); }} aria-label="Delete" title="Delete">
                 <Trash size={20} weight="bold" />
               </button>
             </div>

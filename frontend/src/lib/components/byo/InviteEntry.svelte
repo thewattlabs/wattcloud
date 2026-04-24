@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { preventDefault } from 'svelte/legacy';
 
   /**
    * InviteEntry — first-run screen shown when the relay is in
@@ -91,7 +90,7 @@
     {/if}
   </div>
 
-  <form onsubmit={preventDefault(handleSubmit)} class="form">
+  <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="form">
     <label class="field">
       <span class="field-label">Invite code</span>
       <input

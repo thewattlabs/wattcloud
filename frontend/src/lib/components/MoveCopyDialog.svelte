@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { run } from 'svelte/legacy';
-
   import { createEventDispatcher } from 'svelte';
   import { folders } from '../stores/files';
   import Icon from './Icons.svelte';
@@ -62,7 +60,7 @@
   let fileItems = $derived(items.filter(item => item.type === 'file'));
   let folderItems = $derived(items.filter(item => item.type === 'folder'));
 
-  run(() => {
+  $effect(() => {
     if (!open) {
       selectedDestinationId = null;
       selectRoot = false;
@@ -74,7 +72,7 @@
     }
   });
 
-  run(() => {
+  $effect(() => {
     if (open && itemType === 'folders') {
       activeTab = 'folders';
     } else if (open && itemType === 'files') {

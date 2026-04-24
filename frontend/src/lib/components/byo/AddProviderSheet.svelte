@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { run, preventDefault } from 'svelte/legacy';
 
   /**
    * AddProviderSheet — bottom sheet (DESIGN.md §11.2) for adding a storage provider.
@@ -112,10 +111,10 @@
     return null;
   }
   let s3Detected = $derived(detectS3Service(s3Endpoint));
-  run(() => {
+  $effect(() => {
     if (s3Detected === 'minio' || s3Detected === 'wasabi') s3PathStyle = true;
   });
-  run(() => {
+  $effect(() => {
     if (s3Detected === 'cloudflare-r2') s3PathStyle = false;
   });
 
@@ -455,7 +454,7 @@
             <h2 class="sheet-title">WebDAV</h2>
             <p class="sheet-subtitle">Nextcloud, ownCloud, Synology, or any WebDAV-compatible server.</p>
           </div>
-          <form class="inline-form borderless" onsubmit={preventDefault(submitWebDAV)}>
+          <form class="inline-form borderless" onsubmit={(e) => { e.preventDefault(); submitWebDAV(); }}>
             <label class="field-label">Server URL
               <input class="field-input" type="url" bind:value={wdavUrl} placeholder="https://cloud.example.com" required autocomplete="off"/>
               <span class="field-hint">The vault folder is always named <code>WattcloudVault/</code> and is created directly under this URL. Point the URL at a subfolder to nest the vault inside it. Your vault will land at <code>{(wdavUrl.trim() || 'https://cloud.example.com').replace(/\/+$/, '')}/WattcloudVault/</code>.</span>
@@ -484,7 +483,7 @@
             <h2 class="sheet-title">SFTP</h2>
             <p class="sheet-subtitle">Any SSH server you control.</p>
           </div>
-          <form class="inline-form borderless" onsubmit={preventDefault(submitSFTP)}>
+          <form class="inline-form borderless" onsubmit={(e) => { e.preventDefault(); submitSFTP(); }}>
             <label class="field-label">Hostname
               <input class="field-input" type="text" bind:value={sftpHost} required autocomplete="off"/>
             </label>
@@ -525,7 +524,7 @@
             <h2 class="sheet-title">S3 / R2 / Wasabi / MinIO</h2>
             <p class="sheet-subtitle">AWS, Cloudflare R2, Wasabi, MinIO, Backblaze B2, or any S3-compatible endpoint.</p>
           </div>
-          <form class="inline-form borderless" onsubmit={preventDefault(submitS3)}>
+          <form class="inline-form borderless" onsubmit={(e) => { e.preventDefault(); submitS3(); }}>
             {#if s3Detected}
               <div class="detect-chip">
                 <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -657,7 +656,7 @@
               </button>
 
               {#if activeInline === 'webdav' && p.type === 'webdav'}
-                <form class="inline-form" onsubmit={preventDefault(submitWebDAV)}>
+                <form class="inline-form" onsubmit={(e) => { e.preventDefault(); submitWebDAV(); }}>
                   <label class="field-label">Server URL
                     <input class="field-input" type="url" bind:value={wdavUrl} placeholder="https://cloud.example.com" required autocomplete="off"/>
                     <span class="field-hint">The vault folder is always named <code>WattcloudVault/</code> and is created directly under this URL. Point the URL at a subfolder to nest the vault inside it. Your vault will land at <code>{(wdavUrl.trim() || 'https://cloud.example.com').replace(/\/+$/, '')}/WattcloudVault/</code>.</span>
@@ -681,7 +680,7 @@
               {/if}
 
               {#if activeInline === 'sftp' && p.type === 'sftp'}
-                <form class="inline-form" onsubmit={preventDefault(submitSFTP)}>
+                <form class="inline-form" onsubmit={(e) => { e.preventDefault(); submitSFTP(); }}>
                   <label class="field-label">Hostname
                     <input class="field-input" type="text" bind:value={sftpHost} required autocomplete="off"/>
                   </label>
@@ -717,7 +716,7 @@
               {/if}
 
               {#if activeInline === 's3' && p.type === 's3'}
-                <form class="inline-form" onsubmit={preventDefault(submitS3)}>
+                <form class="inline-form" onsubmit={(e) => { e.preventDefault(); submitS3(); }}>
                   {#if s3Detected}
                     <div class="detect-chip">
                       <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">

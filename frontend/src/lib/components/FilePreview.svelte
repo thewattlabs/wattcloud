@@ -1,7 +1,5 @@
 <script lang="ts">
-	import { run, createBubbler, stopPropagation } from 'svelte/legacy';
 
-	const bubble = createBubbler();
 	import { fade } from 'svelte/transition';
 	import { triggerDownload } from '../utils';
 	import Icon from './Icons.svelte';
@@ -263,7 +261,7 @@
 		zoomScale = clampScale(zoomScale * factor);
 		if (zoomScale === 1) { zoomTx = 0; zoomTy = 0; }
 	}
-	run(() => {
+	$effect(() => {
 		if (file && isOpen) {
 			loadPreview();
 		}
@@ -277,7 +275,7 @@
 	let hasLocation = $derived(typeof exif.lat === 'number' && typeof exif.lon === 'number');
 	// Reset zoom whenever the active file changes so a previous-photo
 	// zoom doesn't carry over into the next one.
-	run(() => { void file; resetZoom(); });
+	$effect(() => { void file; resetZoom(); });
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -295,7 +293,7 @@
 		transition:fade={{ duration: 200 }}
 	>
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events a11y_interactive_supports_focus -->
-		<div class="preview-container" onclick={stopPropagation(bubble('click'))} role="dialog">
+		<div class="preview-container" onclick={(e) => e.stopPropagation()} role="dialog">
 			<!-- Top bar: close left, filename center, actions right -->
 			<div class="preview-top-bar">
 				<button class="preview-btn" onclick={close} title="Close" aria-label="Close preview">

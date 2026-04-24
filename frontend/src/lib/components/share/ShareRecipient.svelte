@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { run } from 'svelte/legacy';
-
   /**
    * ShareRecipient — the /s/:share_id landing page.
    *
@@ -689,7 +687,7 @@
 
   /** Plaintext size — used for iOS warning/block decisions. */
   let totalBytes = $derived(meta?.total_bytes ?? 0);
-  run(() => {
+  $effect(() => {
     if (iosDevice && meta !== null) {
       void refreshIosDecision(totalBytes);
     }

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { run, self, preventDefault } from 'svelte/legacy';
 
   /**
    * ByoDashboard — BYO mode file manager dashboard.
@@ -1134,7 +1133,7 @@
   // user can't see, and the selection toolbar would then act on photos
   // from another screen. Clear on every view change; the initial fire
   // is a no-op against the already-empty store.
-  run(() => {
+  $effect(() => {
     view;
     clearByoSelection();
   });
@@ -1142,13 +1141,13 @@
   // Re-read the preferred view whenever the active folder (or vault) changes.
   // Keeping this reactive means opening a deeply-nested folder that the user
   // previously set to grid restores that choice without any extra wiring.
-  run(() => {
+  $effect(() => {
     const vid = $vaultStore.vaultId;
     const fid = currentFolderId;
     filesViewMode = readViewMode(vid, fid);
     folderStripExpanded = false;
   });
-  run(() => {
+  $effect(() => {
     const now = $byoSelectionMode;
     if (now && !lastSelectionMode && rippleX !== null && rippleY !== null && !reducedMotion) {
       rippleKey++; // force re-render of the ripple element
@@ -1205,7 +1204,7 @@
   let favoriteFilesAny = $derived(favoriteFiles as unknown as any[]);
   let detailsFolders = $derived([...currentFolders, ...($byoFolders as unknown as FolderEntry[])]);
   let createFolderAny = $derived(handleByoCreateFolder as any);
-  run(() => {
+  $effect(() => {
     // Reload when current folder changes
     if (typeof currentFolderId !== 'undefined') {
       loadCurrentFolder();
@@ -1379,7 +1378,7 @@
     class="byo-main-content"
     onRefresh={view === 'favorites' ? loadFavorites : loadCurrentFolder}
     disabled={view === 'photos'}
-    on:pointerdown={onMainPointerDown}>
+    onpointerdown={onMainPointerDown}>
     {#if view === 'files'}
       <!-- Breadcrumb pill -->
       <nav class="breadcrumb-pill" aria-label="Folder navigation">
@@ -1865,7 +1864,7 @@
 
         <section class="atc-section">
           <h4 class="atc-section-label">New collection</h4>
-          <form class="atc-new" onsubmit={preventDefault(handleCreateAndAddCollection)}>
+          <form class="atc-new" onsubmit={(e) => { e.preventDefault(); handleCreateAndAddCollection(); }}>
             <!-- svelte-ignore a11y_autofocus -->
             <input
               type="text"

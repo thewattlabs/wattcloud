@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { run } from 'svelte/legacy';
-
   /**
    * VaultContextSheet — per-vault action sheet shown from VaultsListScreen.
    *
@@ -41,7 +39,7 @@
   let busy = $state(false);
   let err = $state('');
 
-  run(() => {
+  $effect(() => {
     if (!open) {
       mode = 'menu';
       newLabel = vault?.vault_label ?? '';

@@ -15,7 +15,6 @@
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { createBubbler } from 'svelte/legacy';
 
   interface Props {
     /** Called when the user releases past the pull threshold.
@@ -31,6 +30,8 @@
         same layout/padding it had on its original scroll element. */
     class?: string;
     children?: Snippet;
+    /** Forwarded to the scroll container — used by ByoDashboard for drag detection. */
+    onpointerdown?: (e: PointerEvent) => void;
   }
 
   let {
@@ -40,9 +41,8 @@
     maxPull = 96,
     class: className = '',
     children,
+    onpointerdown,
   }: Props = $props();
-
-  const bubble = createBubbler();
 
   // pathLength=100 normalises the cloud path length; dashoffset
   // animates 100→0 to draw the outline as the user pulls down.
@@ -134,7 +134,7 @@
   bind:this={container}
   ontouchend={onTouchEnd}
   ontouchcancel={onTouchEnd}
-  onpointerdown={bubble('pointerdown')}
+  {onpointerdown}
 >
   {#if pullDistance > 0 || refreshing}
     <div

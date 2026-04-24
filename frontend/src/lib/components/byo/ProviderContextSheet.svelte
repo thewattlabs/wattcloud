@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { self, preventDefault } from 'svelte/legacy';
 
   /**
    * ProviderContextSheet — action sheet for a provider chip.
@@ -188,7 +187,7 @@
       </div>
 
     {:else if sheet === 'rename'}
-      <form class="inline-form" onsubmit={preventDefault(handleRename)}>
+      <form class="inline-form" onsubmit={(e) => { e.preventDefault(); handleRename(); }}>
         <label class="field-label">Provider name
           <input
             class="field-input"
@@ -206,7 +205,7 @@
       </form>
 
     {:else if sheet === 'sftp-reconnect'}
-      <form class="inline-form" onsubmit={preventDefault(handleSftpReconnect)}>
+      <form class="inline-form" onsubmit={(e) => { e.preventDefault(); handleSftpReconnect(); }}>
         <p class="reconnect-hint">Enter credentials to reconnect <strong>{provider.displayName}</strong>.</p>
         <!-- svelte-ignore a11y_label_has_associated_control -->
         <label class="field-label">Password

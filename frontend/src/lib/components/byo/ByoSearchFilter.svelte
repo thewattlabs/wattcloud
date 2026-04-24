@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { run } from 'svelte/legacy';
-
   import {
     byoSearchQuery,
     byoSearchFilters,
@@ -29,7 +27,7 @@
 
   let { onResultsChange = null }: Props = $props();
 
-  run(() => {
+  $effect(() => {
     if (onResultsChange) onResultsChange($byoSearchResults);
   });
 

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { preventDefault } from 'svelte/legacy';
 
   /**
    * BootstrapClaim — first-run screen shown when `/relay/info` returns
@@ -89,7 +88,7 @@
     </div>
   </section>
 
-  <form onsubmit={preventDefault(handleSubmit)} class="form">
+  <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="form">
     <label class="field">
       <span class="field-label">Bootstrap token</span>
       <textarea

@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { run } from 'svelte/legacy';
-
   import { createEventDispatcher, onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';
   import Copy from 'phosphor-svelte/lib/Copy';
@@ -22,7 +20,7 @@
   let copied = $state(false);
   let displayKey = $state('');
 
-  run(() => {
+  $effect(() => {
     if (recoveryKey) {
       const clean = recoveryKey.replace(/[-\s]/g, '');
       const groups: string[] = [];

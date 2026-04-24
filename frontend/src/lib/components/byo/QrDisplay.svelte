@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { run } from 'svelte/legacy';
-
   import { onMount } from 'svelte';
   import QRCode from 'qrcode';
 
@@ -35,7 +33,7 @@
   }
 
   onMount(() => { render(); });
-  run(() => {
+  $effect(() => {
     if (canvas && data) render();
   });
 </script>

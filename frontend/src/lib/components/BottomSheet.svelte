@@ -1,7 +1,5 @@
 <script lang="ts">
-  import { createBubbler, stopPropagation } from 'svelte/legacy';
 
-  const bubble = createBubbler();
   import { createEventDispatcher } from 'svelte';
   import { fly, fade } from 'svelte/transition';
 
@@ -52,7 +50,7 @@
   <div
     class="sheet"
     class:sheet--wide={variant === 'wide'}
-    onclick={stopPropagation(bubble('click'))}
+    onclick={(e) => e.stopPropagation()}
     transition:fly={{ y: 300, duration: 300, easing: t => 1 - Math.pow(1 - t, 3) }}
     role="dialog"
     aria-modal="true"

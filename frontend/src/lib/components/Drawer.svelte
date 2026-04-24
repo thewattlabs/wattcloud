@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { run } from 'svelte/legacy';
-
   import { createEventDispatcher } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import FolderSimple from 'phosphor-svelte/lib/FolderSimple';
@@ -110,7 +108,7 @@
     collapsed = !collapsed;
   }
 
-  run(() => {
+  $effect(() => {
     if (typeof document !== 'undefined') {
       document.documentElement.style.setProperty(
         '--drawer-current-width',

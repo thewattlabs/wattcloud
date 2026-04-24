@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { run, preventDefault } from 'svelte/legacy';
 
   import { createEventDispatcher, tick, onMount } from 'svelte';
   import { fly } from 'svelte/transition';
@@ -28,7 +27,7 @@
 
   onMount(() => { loadPlaces(); });
 
-  run(() => {
+  $effect(() => {
     if (query.trim().length >= 1) {
       results = searchIn($placesStore, query, 8);
       open = results.length > 0;

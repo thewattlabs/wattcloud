@@ -268,7 +268,7 @@
           disabled={step === 'verifying'}
           showLabel="Show recovery key"
           hideLabel="Hide recovery key"
-          on:keydown={(e) => e.key === 'Enter' && verifyRecoveryKey()}
+          onkeydown={(e) => e.key === 'Enter' && verifyRecoveryKey()}
         />
       </div>
       <button

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { preventDefault } from 'svelte/legacy';
 
   /**
    * SftpReauthSheet — re-collect SFTP credentials for a legacy vault.
@@ -84,7 +83,7 @@
     {/if}
   </dl>
 
-  <form class="form" onsubmit={preventDefault(handleSubmit)}>
+  <form class="form" onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
     <label class="field">
       <span class="label-text">Username</span>
       <input

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { self } from 'svelte/legacy';
 
   import { createEventDispatcher } from 'svelte';
   import { slide } from 'svelte/transition';
@@ -149,7 +148,7 @@
 
 <!-- Search overlay (outside fixed header, positioned below it) -->
 {#if showSearch && showSearchPanel}
-  <div class="search-overlay" onclick={self(handleSearchClose)} onkeydown={() => {}} role="presentation">
+  <div class="search-overlay" onclick={(e) => { if (e.target === e.currentTarget) handleSearchClose(); }} onkeydown={() => {}} role="presentation">
     <div class="search-dropdown" transition:slide={{ duration: 250 }}>
       <div class="search-container">
         <div class="search-input-wrapper">

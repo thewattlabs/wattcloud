@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { run, stopPropagation } from 'svelte/legacy';
 
   import { slide, fly, fade } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
@@ -15,7 +14,7 @@
 
   let expanded = $state(false);
 
-  run(() => {
+  $effect(() => {
     if ($isByoDownloading && !expanded) expanded = true;
   });
   let items = $derived($byoDownloadQueue.items as ByoDownloadItem[]);
@@ -73,7 +72,7 @@
           {$byoDownloadCompletedCount} / {totalCount} downloaded
         {/if}
       </span>
-      <button class="clear-btn" onclick={stopPropagation(() => byoDownloadQueue.clearCompleted())}>
+      <button class="clear-btn" onclick={(e) => { e.stopPropagation(); byoDownloadQueue.clearCompleted(); }}>
         Clear done
       </button>
       <Icon name={expanded ? 'chevronUp' : 'chevronDown'} size={16} />
@@ -117,7 +116,7 @@
               {#if item.status === 'ready-to-save' && item.iosSaveHandle}
                 <button
                   class="action-btn action-btn--save"
-                  onclick={stopPropagation(() => onIOSSaveTap(item))}
+                  onclick={(e) => { e.stopPropagation(); onIOSSaveTap(item); }}
                   aria-label="Save file"
                   title="Save"
                 >
@@ -132,7 +131,7 @@
                 </div>
                 <button
                   class="action-btn"
-                  onclick={stopPropagation(() => byoDownloadQueue.pauseDownload(item.id))}
+                  onclick={(e) => { e.stopPropagation(); byoDownloadQueue.pauseDownload(item.id); }}
                   aria-label="Pause download"
                   title="Pause"
                 >
@@ -144,7 +143,7 @@
               {:else if item.status === 'paused'}
                 <button
                   class="action-btn action-btn--resume"
-                  onclick={stopPropagation(() => byoDownloadQueue.resumeDownload(item.id))}
+                  onclick={(e) => { e.stopPropagation(); byoDownloadQueue.resumeDownload(item.id); }}
                   aria-label="Resume download"
                   title="Resume"
                 >
@@ -156,7 +155,7 @@
               {:else if item.status === 'error'}
                 <button
                   class="action-btn action-btn--retry"
-                  onclick={stopPropagation(() => byoDownloadQueue.retryDownload(item.id))}
+                  onclick={(e) => { e.stopPropagation(); byoDownloadQueue.retryDownload(item.id); }}
                   aria-label="Retry download"
                   title="Retry"
                 >

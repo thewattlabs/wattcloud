@@ -12,14 +12,6 @@
   that wouldn't apply anyway.
 -->
 <script lang="ts">
-  import { createBubbler } from 'svelte/legacy';
-
-  const bubble = createBubbler();
-  
-  
-  
-  
-  
   interface Props {
     value?: string;
     id?: string | undefined;
@@ -39,6 +31,10 @@
     showLabel?: string;
     /** aria-label when the toggle would hide text. */
     hideLabel?: string;
+    onkeydown?: (e: KeyboardEvent) => void;
+    onkeyup?: (e: KeyboardEvent) => void;
+    onfocus?: (e: FocusEvent) => void;
+    onblur?: (e: FocusEvent) => void;
   }
 
   let {
@@ -54,7 +50,11 @@
     mono = false,
     sm = false,
     showLabel = 'Show',
-    hideLabel = 'Hide'
+    hideLabel = 'Hide',
+    onkeydown,
+    onkeyup,
+    onfocus,
+    onblur
   }: Props = $props();
 
   let shown = $state(false);
@@ -87,10 +87,10 @@
     class:is-sm={sm}
     {value}
     oninput={handleInput}
-    onkeydown={bubble('keydown')}
-    onkeyup={bubble('keyup')}
-    onfocus={bubble('focus')}
-    onblur={bubble('blur')}
+    {onkeydown}
+    {onkeyup}
+    {onfocus}
+    {onblur}
   />
   <button
     type="button"

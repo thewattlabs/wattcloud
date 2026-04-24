@@ -1,7 +1,5 @@
 <script lang="ts">
-  import { run, createBubbler, stopPropagation } from 'svelte/legacy';
 
-  const bubble = createBubbler();
   import { createEventDispatcher, onMount } from 'svelte';
   import type { FileRecord } from '../stores/files';
   import { selectionMode, toggleFileSelection, selectedFiles, clearFileSelection } from '../stores/files';
@@ -362,11 +360,11 @@
     dispatch('upload');
   }
   // Use selectionContext when provided (BYO mode), else fall back to managed stores.
-  run(() => {
+  $effect(() => {
     showSelectionMode = selectionContext ? selectionContext.isSelectionMode : $selectionMode;
   });
   let activeSelectedFiles = $derived(selectionContext ? selectionContext.selectedFiles : $selectedFiles);
-  run(() => {
+  $effect(() => {
     if (renameFileId !== null) {
       startFileRename(renameFileId);
       renameFileId = null;
@@ -449,7 +447,7 @@
         </div>
 
         {#if renamingFileId === file.id}
-          <div class="rename-form" onclick={stopPropagation(bubble('click'))} onkeydown={stopPropagation(bubble('keydown'))} role="presentation">
+          <div class="rename-form" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="presentation">
             <!-- svelte-ignore a11y_autofocus -->
             <input
               type="text"
@@ -569,7 +567,7 @@
         </div>
 
         {#if renamingFileId === file.id}
-          <div class="grid-item-info" onclick={stopPropagation(bubble('click'))} onkeydown={stopPropagation(bubble('keydown'))} role="presentation">
+          <div class="grid-item-info" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="presentation">
             <!-- svelte-ignore a11y_autofocus -->
             <input
               type="text"
