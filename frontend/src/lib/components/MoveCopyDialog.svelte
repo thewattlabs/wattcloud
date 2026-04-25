@@ -98,8 +98,8 @@
     }
   }
 
-  function handleDestinationSelect(event: CustomEvent) {
-    selectedDestinationId = event.detail;
+  function handleDestinationSelect(id: number) {
+    selectedDestinationId = id;
     selectRoot = false;
   }
 

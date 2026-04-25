@@ -253,8 +253,7 @@
 
   // ── Passphrase change ──────────────────────────────────────────────────
 
-  async function handlePassphraseSubmit(event: CustomEvent<string>) {
-    const newPassphrase = event.detail;
+  async function handlePassphraseSubmit(newPassphrase: string) {
     const provider = getProvider();
     const vaultSessionId = getVaultSessionId();
     if (!provider || vaultSessionId === null) { passphraseError = 'Vault not unlocked'; return; }

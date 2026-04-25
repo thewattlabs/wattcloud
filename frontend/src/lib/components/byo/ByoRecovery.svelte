@@ -107,8 +107,7 @@ const STEPS = ['Recovery Key', 'New Passphrase', 'Re-keying', 'New Recovery Key'
     }
   }
 
-  async function handleNewPassphrase(event: CustomEvent<string>) {
-    const newPassphrase = event.detail;
+  async function handleNewPassphrase(newPassphrase: string) {
     step = 'rekeying';
     argon2Done = false;
     error = '';

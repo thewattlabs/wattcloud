@@ -888,8 +888,8 @@
 
   // ── Move/copy ──────────────────────────────────────────────────────────────
 
-  async function handleMoveCopyConfirm(event: CustomEvent<{ destinationId: number | null; mode: 'move' | 'copy' }>) {
-    const { destinationId, mode } = event.detail;
+  async function handleMoveCopyConfirm(event: { destinationId: number | null; mode: 'move' | 'copy' }) {
+    const { destinationId, mode } = event;
     const selectedFileIds = [...get(byoSelectedFiles)];
     if (mode === 'move') {
       for (const id of selectedFileIds) {
@@ -994,12 +994,12 @@
     }
   }
 
-  function handleMoveRetry(e: CustomEvent<{ fileIds: number[] }>) {
-    handleCrossProviderMove(crossMoveDestProviderId, e.detail.fileIds);
+  function handleMoveRetry(e: { fileIds: number[] }) {
+    handleCrossProviderMove(crossMoveDestProviderId, e.fileIds);
   }
 
-  function handleMoveSkipErrors(e: CustomEvent<{ fileId: number }>) {
-    crossMoveErrors = crossMoveErrors.filter(err => err.fileId !== e.detail.fileId);
+  function handleMoveSkipErrors(e: { fileId: number }) {
+    crossMoveErrors = crossMoveErrors.filter(err => err.fileId !== e.fileId);
     if (crossMoveErrors.length === 0) {
       if (crossMoveSucceeded !== null && crossMoveSucceeded > 0) {
         loadCurrentFolder();
@@ -1035,11 +1035,11 @@
     if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
   }
 
-  async function onProviderAdded(e: CustomEvent<{ providerId?: string }>) {
+  async function onProviderAdded(e: { providerId?: string }) {
     showAddProvider = false;
-    if (e.detail?.providerId) {
-      vaultStore.setActiveProviderId(e.detail.providerId);
-      (dataProvider as any).setActiveProviderId?.(e.detail.providerId);
+    if (e.providerId) {
+      vaultStore.setActiveProviderId(e.providerId);
+      (dataProvider as any).setActiveProviderId?.(e.providerId);
       folderStack = [{ id: null, name: 'Home' }];
       await loadCurrentFolder();
     }
@@ -1233,8 +1233,8 @@
     onToggleSearch={() => { showSearch = !showSearch; if (!showSearch) clearByoSearch(); }}
     onCloseSearch={() => { showSearch = false; clearByoSearch(); }}
     onSearchChange={(e) => {
-      setByoSearchQuery(e.detail?.query ?? '');
-      setByoFileTypeFilter(normalizeFileType(e.detail?.fileType));
+      setByoSearchQuery(e.query ?? '');
+      setByoFileTypeFilter(normalizeFileType(e.fileType));
     }}
   />
 
@@ -1541,7 +1541,7 @@
         {selectionContext}
         onUpload={() => { if (canWrite) handleFabUpload(); }}
         onShareCollection={(e) => {
-          const col = $byoCollections.find((c) => c.id === e.detail.collectionId);
+          const col = $byoCollections.find((c) => c.id === e.collectionId);
           if (col) openCollectionShareSheet(col);
         }}
       />
@@ -1891,7 +1891,7 @@
     progress={crossMoveProgress}
     fileErrors={crossMoveErrors}
     succeededCount={crossMoveSucceeded}
-    onConfirm={(e) => handleCrossProviderMove(e.detail.destProviderId)}
+    onConfirm={(e) => handleCrossProviderMove(e.destProviderId)}
     onRetry={handleMoveRetry}
     onSkipErrors={handleMoveSkipErrors}
     onClose={() => { if (!crossMoveProgress) { showProviderMoveSheet = false; crossMoveSucceeded = null; crossMoveErrors = []; } }}

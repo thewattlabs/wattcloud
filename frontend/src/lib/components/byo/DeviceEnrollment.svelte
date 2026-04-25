@@ -370,12 +370,12 @@ type EnrollStep =
   }
 
   async function handleSftpReauthSubmit(
-    event: CustomEvent<{ username: string; password: string; privateKey: string; passphrase: string }>,
+    event: { username: string; password: string; privateKey: string; passphrase: string },
   ) {
     if (!receivedConfig) return;
     reauthBusy = true;
     reauthError = '';
-    const { username, password, privateKey, passphrase } = event.detail;
+    const { username, password, privateKey, passphrase } = event;
     // Splice the re-entered username back into the config so `init()` uses
     // the fresh value (the source device may have a different preferred
     // username, or the user may have corrected a typo).
@@ -449,8 +449,7 @@ type EnrollStep =
 
   // ── New device: unlock with received shard ─────────────────────────────────
 
-  async function handlePassphrase(event: CustomEvent<string>) {
-    const passphrase = event.detail;
+  async function handlePassphrase(passphrase: string) {
     step = 'unlocking';
     argon2Done = false;
 

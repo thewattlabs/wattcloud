@@ -212,8 +212,8 @@
    * config predates credential persistence (see SECURITY.md §12) detour
    * through the re-auth sheet first and self-upgrade after one re-entry.
    */
-  async function handleVaultListOpen(event: CustomEvent<{ vault_id: string }>) {
-    const { vault_id } = event.detail;
+  async function handleVaultListOpen(event: { vault_id: string }) {
+    const { vault_id } = event;
     currentVaultId = vault_id;
     reauthError = '';
 
@@ -441,12 +441,12 @@
   }
 
   async function handleSftpReauthSubmit(
-    event: CustomEvent<{ username: string; password: string; privateKey: string; passphrase: string }>,
+    event: { username: string; password: string; privateKey: string; passphrase: string },
   ) {
     if (!reauthPending) return;
     reauthBusy = true;
     reauthError = '';
-    const { username, password, privateKey, passphrase } = event.detail;
+    const { username, password, privateKey, passphrase } = event;
     // Splice the re-entered username back into the config so `init()` uses
     // the fresh value (the user may have corrected a typo from the original
     // setup); everything else is read-only in the sheet.
@@ -506,8 +506,8 @@
     appState = 'vault-list';
   }
 
-  function handleVaultListMenu(event: CustomEvent<{ vault_id: string }>) {
-    const v = persistedVaults.find((x) => x.vault_id === event.detail.vault_id);
+  function handleVaultListMenu(event: { vault_id: string }) {
+    const v = persistedVaults.find((x) => x.vault_id === event.vault_id);
     if (!v) return;
     menuVault = v;
     menuOpen = true;
@@ -556,7 +556,7 @@
     sourcePrimaryLabel = '';
   }
 
-  async function handleVaultForgotten(_event: CustomEvent<{ vault_id: string }>) {
+  async function handleVaultForgotten(_event: { vault_id: string }) {
     byoToast.show('Vault forgotten on this device.');
     await refreshPersistedVaults();
     if (persistedVaults.length === 0) appState = 'provider-select';
@@ -567,10 +567,10 @@
   // AddProviderSheet (firstRun=true) fires on:selected with an already-initialized
   // provider instance — no need to re-create or re-init here.
   async function handleAddSheetSelected(
-    event: CustomEvent<{ provider: StorageProvider; config: ProviderConfig }>,
+    event: { provider: StorageProvider; config: ProviderConfig },
   ) {
     appState = 'check-vault';
-    const { provider: readyProvider, config } = event.detail;
+    const { provider: readyProvider, config } = event;
 
     try {
       provider = readyProvider;
@@ -706,8 +706,8 @@
   // Drawer is hoisted here so it persists across dashboard/settings/trash.
   // "Files/Photos/Favorites" in the drawer always return to dashboard with
   // the matching subview; "Settings" opens the settings screen.
-  function handleDrawerNavigate(e: CustomEvent<{ view: string }>) {
-    const v = e.detail?.view;
+  function handleDrawerNavigate(e: { view: string }) {
+    const v = e.view;
     $drawerOpen = false;
     if (v === 'files' || v === 'photos' || v === 'favorites') {
       dashboardView = v;
@@ -785,7 +785,7 @@
       <ByoUnlock
         {provider}
         vaultIdHint={currentVaultId}
-        onUnlocked={(e) => handleUnlocked(e.detail)}
+        onUnlocked={handleUnlocked}
         onUseRecovery={() => { appState = 'use-recovery'; }}
         onLinkDevice={() => { appState = 'link-device'; }}
         onCancel={() => {
@@ -833,9 +833,9 @@
         shard=""
         provider={null}
         onEnrolled={(e) => {
-          provider = e.detail.provider;
-          providerConfig = e.detail.config;
-          handleUnlocked({ db: e.detail.db, sessionId: e.detail.sessionId });
+          provider = e.provider;
+          providerConfig = e.config;
+          handleUnlocked({ db: e.db, sessionId: e.sessionId });
         }}
         onComplete={goToDashboard}
         onCancel={() => {

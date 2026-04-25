@@ -225,8 +225,8 @@ function toggleSelection(fileId: number) {
     return e.lat >= p.latMin && e.lat <= p.latMax && e.lon >= p.lonMin && e.lon <= p.lonMax;
   }
 
-  function handlePlaceSelect(e: CustomEvent<PlaceBounds>) {
-    locationPlace = e.detail;
+  function handlePlaceSelect(place: PlaceBounds) {
+    locationPlace = place;
     placeSheetOpen = false;
   }
   function handlePlaceClear() {
