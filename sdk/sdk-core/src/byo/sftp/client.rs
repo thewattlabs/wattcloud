@@ -341,11 +341,24 @@ impl<T: RelayTransport> SftpRelayClient<T> {
             .ok_or_else(|| ProviderError::SftpRelay("host_key missing fingerprint".into()))?
             .to_string();
 
+        // Accepted relay protocol versions. The client treats higher
+        // versions as additive: it speaks the lowest verb set it
+        // understands and ignores response fields it doesn't. Bump this
+        // RANGE in lockstep with byo-relay's `RELAY_PROTOCOL_VERSION`
+        // when adding a new version — leaving it stale silently makes
+        // every connect to a newer relay fail with "unsupported
+        // relay_version". Current version semantics:
+        //   1 — initial (write = single-shot two-frame)
+        //   2 — adds write_open / write_chunk / write_close / write_abort
+        //   3 — adds read_open / read_chunk / read_close (streaming dl)
+        const SUPPORTED_RELAY_VERSIONS: std::ops::RangeInclusive<u64> = 1..=3;
         let relay_version = match msg.get("relay_version").and_then(|v| v.as_u64()) {
-            Some(v @ 1..=2) => v as u32,
+            Some(v) if SUPPORTED_RELAY_VERSIONS.contains(&v) => v as u32,
             Some(v) => {
                 return Err(ProviderError::SftpRelay(format!(
-                    "unsupported relay_version: {v}; expected 1 or 2"
+                    "unsupported relay_version: {v}; expected {}–{}",
+                    SUPPORTED_RELAY_VERSIONS.start(),
+                    SUPPORTED_RELAY_VERSIONS.end()
                 )));
             }
             // Relay did not send relay_version — legacy v1 deployment.
@@ -976,6 +989,15 @@ pub mod mock {
         // host_key_accepted is sent by the CLIENT; relay doesn't send a response.
     }
 
+    /// Build a host_key handshake frame at an arbitrary advertised version.
+    /// Used by the version-negotiation tests to verify the client accepts /
+    /// rejects the right range without wiring full v3 verb mocks.
+    pub fn handshake_frames_at(fingerprint: &str, version: u32) -> Vec<RelayFrame> {
+        vec![RelayFrame::Text(format!(
+            r#"{{"type":"host_key","fingerprint":"{fingerprint}","relay_version":{version}}}"#
+        ))]
+    }
+
     /// Build a successful JSON response frame.
     pub fn ok_response(id: u32, result: Value) -> RelayFrame {
         RelayFrame::Text(format!(r#"{{"id":{id},"result":{result}}}"#))
@@ -1093,6 +1115,35 @@ mod tests {
         assert!(sent
             .iter()
             .any(|f| matches!(f, SentFrame::Text(t) if t.contains("host_key_accepted"))));
+    }
+
+    #[tokio::test]
+    async fn handshake_accepts_relay_version_3() {
+        // Regression: the client was hard-coded to `1..=2` and rejected every
+        // connect to a v3 relay (current production protocol per
+        // byo-relay/src/sftp_relay.rs RELAY_PROTOCOL_VERSION) with
+        // "unsupported relay_version: 3". Range bumped to 1..=3.
+        let client = make_client(handshake_frames_at("SHA256:x", 3));
+        let version = client.handshake(|_| async { true }).await.unwrap();
+        assert_eq!(version, 3);
+    }
+
+    #[tokio::test]
+    async fn handshake_rejects_relay_version_above_supported() {
+        // Future-proofing: any version above the supported range must
+        // produce the new "expected N–M" error, not silently downgrade.
+        let client = make_client(handshake_frames_at("SHA256:x", 99));
+        let err = client
+            .handshake(|_| async { true })
+            .await
+            .expect_err("v99 must be rejected");
+        match err {
+            ProviderError::SftpRelay(msg) => {
+                assert!(msg.contains("unsupported relay_version: 99"));
+                assert!(msg.contains("expected 1"));
+            }
+            other => panic!("wrong error variant: {other:?}"),
+        }
     }
 
     // ── Auth ──────────────────────────────────────────────────────────────────
