@@ -512,13 +512,19 @@
    ============================================ */
 .file-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  /* Match the folder section's .tiles-grid sizing (ByoDashboard.svelte
+     §tiles-grid) so files don't render at 4× the folder tile area on
+     desktop. auto-fill keeps the row dense while capping each tile at
+     140px wide; mobile falls back to 2 columns to avoid under-tapped
+     micro-tiles on a narrow viewport. */
+  grid-template-columns: repeat(auto-fill, minmax(110px, 140px));
   gap: var(--sp-sm);
+  justify-content: start;
 }
 
-@media (min-width: 600px) {
+@media (max-width: 480px) {
   .file-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
