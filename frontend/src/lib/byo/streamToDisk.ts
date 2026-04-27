@@ -38,26 +38,6 @@ export function isIOSDevice(): boolean {
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
 
-/**
- * Firefox-specific bug: SW-streamed downloads with multiple async fetch
- * sources (zip bundles, in our case) succeed in writing the .part file
- * but fail the atomic `.part → final` rename with "source file could
- * not be read", even when Content-Length is set correctly. Single-file
- * shares (one fetch, one stream) don't reproduce. Reproduces in private
- * browsing with extensions disabled, so it's a Firefox bug we can't fix
- * from app code.
- *
- * Workaround: when the caller knows the total bytes up-front AND it
- * fits this threshold AND the browser is Firefox, fall through to the
- * Blob path — buffers in memory but produces a working file. Larger
- * sizes still take the SW path (Blob would OOM the tab); the tradeoff
- * is "Firefox + huge bundle" remains broken until Mozilla fixes it.
- */
-function isFirefox(): boolean {
-  return typeof navigator !== 'undefined' && /Firefox/i.test(navigator.userAgent);
-}
-const FIREFOX_BLOB_FALLBACK_MAX_BYTES = 500 * 1024 * 1024;
-
 export interface StreamToDiskOptions {
   /** Declared plaintext length if known (drives progress UI; informational). */
   sizeHint?: number;
@@ -118,16 +98,7 @@ export async function streamToDisk(
   // if it completes in the background before the user clicks download,
   // this getRegistration check finds the active SW and we stream. If not,
   // we fall through to Blob with no visible wait and no console noise.
-  // Firefox-specific bypass: SW-streamed multi-fetch downloads (bundle
-  // zips) fail the atomic .part → final rename even with correct
-  // Content-Length. When the caller knows the size and it's small
-  // enough to buffer, take the Blob path instead. See the comment on
-  // FIREFOX_BLOB_FALLBACK_MAX_BYTES for the threshold rationale.
-  const knownSize = typeof options.contentLength === 'number' ? options.contentLength : -1;
-  const firefoxBlobBypass =
-    isFirefox() && knownSize >= 0 && knownSize <= FIREFOX_BLOB_FALLBACK_MAX_BYTES;
-
-  if ('serviceWorker' in navigator && !firefoxBlobBypass) {
+  if ('serviceWorker' in navigator) {
     const active = await getActiveDownloadServiceWorker();
     if (active) {
       try {
@@ -139,8 +110,7 @@ export async function streamToDisk(
     }
   }
 
-  // Tier 3: last-ditch Blob. Either we explicitly bypassed SW (Firefox)
-  // or both higher tiers were unreachable.
+  // Tier 3: last-ditch Blob. Only for small payloads.
   return saveViaBlob(stream, filename, mime, options);
 }
 
