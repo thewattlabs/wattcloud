@@ -90,6 +90,15 @@
   let oauthLoading: ProviderType | null = $state(null);
   let connecting = $state(false);
   let error = $state('');
+  /** Long-form name of a coming-soon provider the user just tapped.
+   *  Drives an inline notice below the picker grid — much harder to
+   *  miss than the corner toast, and stays put until the user moves
+   *  on (clears when activeInline flips, the sheet is closed, or the
+   *  user dismisses it). */
+  let comingSoonNotice: string | null = $state(null);
+  $effect(() => {
+    if (activeInline) comingSoonNotice = null;
+  });
 
   // Surface an error to the user via the global toast host — replaces the
   // old top-of-sheet banner that users couldn't see when scrolled down to
@@ -395,18 +404,13 @@
         <button
           class="tile"
           class:active={activeInline === p.type}
-          class:coming-soon={p.comingSoon}
           disabled={connecting}
           onclick={() => {
             if (p.comingSoon) {
-              // Click-to-explain: surface the long-form name plus context
-              // via a toast instead of a static inline pill, so the tile
-              // stays visually consistent with the others. The picker
-              // still won't progress to the form (no activeInline set).
-              byoToast.show(
-                `${p.name} support is coming soon — pick WebDAV or SFTP for now.`,
-                { icon: 'info' },
-              );
+              // Click-to-explain via an inline notice below the grid —
+              // a corner toast was easy to miss next to a busy picker.
+              // The picker still won't progress to the form.
+              comingSoonNotice = p.name;
               return;
             }
             activeInline = p.type;
@@ -421,6 +425,21 @@
         </button>
       {/each}
     </div>
+
+    {#if comingSoonNotice}
+      <div class="coming-soon-notice" role="status">
+        <span class="coming-soon-pill">Coming soon</span>
+        <span class="coming-soon-msg">
+          <strong>{comingSoonNotice}</strong> support is on the roadmap. For now, pick WebDAV or SFTP.
+        </span>
+        <button
+          class="coming-soon-dismiss"
+          type="button"
+          onclick={() => { comingSoonNotice = null; }}
+          aria-label="Dismiss"
+        >×</button>
+      </div>
+    {/if}
 
     <!-- OAuth cloud accounts — deferred. Keep the block commented out
          (not deleted) so re-enabling is a markup toggle once the OAuth
@@ -1031,6 +1050,61 @@
      pill stays legible. */
   .provider-btn.coming-soon { opacity: 0.7; }
   .provider-btn.coming-soon:disabled { opacity: 0.7; }
+
+  /* Inline notice that fires when the user taps a coming-soon tile.
+     Lives directly under the picker grid so the explanation appears in
+     the same visual context as the click — corner toasts were easy to
+     miss next to a dense picker. Warm-accent palette echoes the pill
+     we used to render inside the tile. */
+  .coming-soon-notice {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm, 8px);
+    margin-top: var(--sp-sm, 8px);
+    padding: var(--sp-sm, 10px) var(--sp-md, 14px);
+    background: var(--accent-warm-muted, #3D2F10);
+    border: 1px solid var(--accent-warm, #E0A320);
+    border-radius: var(--r-input, 12px);
+    color: var(--text-primary, #EDEDED);
+    font-size: var(--t-body-sm-size, 0.8125rem);
+    line-height: 1.4;
+  }
+  .coming-soon-pill {
+    flex-shrink: 0;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--accent-warm, #E0A320);
+    color: var(--text-inverse, #121212);
+    text-transform: uppercase;
+  }
+  .coming-soon-msg {
+    flex: 1;
+    min-width: 0;
+  }
+  .coming-soon-msg strong { color: var(--accent-warm, #E0A320); font-weight: 600; }
+  .coming-soon-dismiss {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    color: var(--text-secondary, #999);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease;
+  }
+  .coming-soon-dismiss:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary, #EDEDED);
+  }
 
   .tile-logo {
     display: inline-flex;
