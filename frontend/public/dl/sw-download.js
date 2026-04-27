@@ -36,30 +36,6 @@ const STREAMS = new Map();
 /** ms after register() before an orphan entry is GC'd. */
 const REGISTRATION_TTL_MS = 30_000;
 
-/**
- * Diagnostic — also broadcast to every client so logs land in the
- * regular page DevTools console (Firefox's about:debugging only shows
- * the SW's Inspect button when the SW is in "Running" state, which is
- * a brittle window during a download).
- */
-async function logEvent(level, tag, payload) {
-  const line = ['[sw-dl]', tag, payload];
-  if (level === 'error') console.error(...line);
-  else console.log(...line);
-  try {
-    const clients = await self.clients.matchAll({ includeUncontrolled: true });
-    for (const c of clients) {
-      try {
-        c.postMessage({ type: 'sw-dl-log', level, tag, payload });
-      } catch (_) {
-        /* drop — client gone */
-      }
-    }
-  } catch (_) {
-    /* matchAll failed; in-SW console.log already fired */
-  }
-}
-
 self.addEventListener('install', (event) => {
   // Take over as soon as installed — no reload required for first use.
   self.skipWaiting();
@@ -173,7 +149,7 @@ self.addEventListener('message', (event) => {
     entry.bytes += buf.byteLength;
     entry.chunks++;
     if (entry.chunks <= 3 || entry.chunks % 100 === 0) {
-      logEvent('log', 'chunk ingested', { id, chunks: entry.chunks, bytes: entry.bytes });
+      console.log('[sw-dl]', 'chunk ingested', { id, chunks: entry.chunks, bytes: entry.bytes });
     }
     return;
   }
@@ -181,7 +157,7 @@ self.addEventListener('message', (event) => {
   if (data.type === 'done') {
     const entry = STREAMS.get(id);
     if (!entry) return;
-    logEvent('log', 'done', { id, chunks: entry.chunks, bytes: entry.bytes });
+    console.log('[sw-dl]', 'done', { id, chunks: entry.chunks, bytes: entry.bytes });
     entry.close();
     // Keep the entry around briefly so the iframe fetch still finds it.
     setTimeout(() => {
@@ -194,7 +170,7 @@ self.addEventListener('message', (event) => {
   if (data.type === 'error') {
     const entry = STREAMS.get(id);
     if (!entry) return;
-    logEvent('error', 'error', { id, message: data.message });
+    console.error('[sw-dl]', 'error', { id, message: data.message });
     entry.error(typeof data.message === 'string' ? data.message : 'stream error');
     setTimeout(() => {
       try { entry.releaseLifetime(); } catch (_) { /* drop */ }
@@ -245,52 +221,7 @@ self.addEventListener('fetch', (event) => {
   if (typeof contentLength === 'number' && contentLength >= 0) {
     headers.set('Content-Length', String(contentLength));
   }
-  logEvent('log', 'fetch intercepted', {
-    id,
-    filename,
-    contentLength,
-    method: event.request.method,
-    cache: event.request.cache,
-    destination: event.request.destination,
-    mode: event.request.mode,
-  });
-  // Counting passthrough — observes each chunk that flows to the
-  // browser's download pipeline. flush() runs once when the upstream
-  // closes; pipeTo's catch fires if the browser aborts (e.g. download
-  // cancelled or, what we want to know, Firefox's silent finalize race
-  // we suspect underlies the .part rename failure).
-  const startedReadingAt = Date.now();
-  let drainBytes = 0;
-  let drainChunks = 0;
-  const counter = new TransformStream({
-    transform(chunk, controller) {
-      drainBytes += chunk.byteLength;
-      drainChunks++;
-      controller.enqueue(chunk);
-    },
-    flush() {
-      logEvent('log', 'response body fully drained', {
-        id,
-        bytes: drainBytes,
-        chunks: drainChunks,
-        contentLength,
-        delta: contentLength !== undefined ? drainBytes - contentLength : null,
-        elapsedMs: Date.now() - startedReadingAt,
-      });
-    },
-  });
-  stream.pipeTo(counter.writable).catch((err) => {
-    logEvent('error', 'response body pipe failed', {
-      id,
-      bytes: drainBytes,
-      chunks: drainChunks,
-      contentLength,
-      err: String(err),
-    });
-  });
-
-  const response = new Response(counter.readable, { status: 200, headers });
-  event.respondWith(response);
+  event.respondWith(new Response(stream, { status: 200, headers }));
 });
 
 /**
