@@ -81,6 +81,17 @@ self.addEventListener('message', (event) => {
       stream,
       filename: typeof data.filename === 'string' ? data.filename : 'download.bin',
       mime: typeof data.mime === 'string' ? data.mime : 'application/octet-stream',
+      // Exact total byte length when the page knows it up-front (e.g. zip
+      // predictLength for bundle downloads). Drives Content-Length on the
+      // response — without it Firefox's download manager fails the
+      // .part → final rename for larger SW-streamed bundles even though
+      // the bytes drained cleanly on the page side. undefined → omit
+      // header entirely (chunked transfer; works for size-known streams
+      // in Chrome/Safari but is the failure mode in Firefox).
+      contentLength:
+        typeof data.contentLength === 'number' && data.contentLength >= 0
+          ? data.contentLength
+          : undefined,
       registeredAt: Date.now(),
       bytes: 0,
       chunks: 0,
@@ -172,7 +183,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  const { stream, filename, mime } = entry;
+  const { stream, filename, mime, contentLength } = entry;
 
   const dispositionFilename = buildContentDisposition(filename);
   const headers = new Headers({
@@ -187,6 +198,14 @@ self.addEventListener('fetch', (event) => {
     // Response body to disk.
     'Content-Security-Policy': "default-src 'none'",
   });
+  // Set Content-Length when the page told us the exact total. Skipping
+  // this for unknown sizes is fine — the response is just chunked. But
+  // setting it when known materially helps Firefox finalize the download
+  // (otherwise the .part → final rename fails with "source file could
+  // not be read").
+  if (typeof contentLength === 'number' && contentLength >= 0) {
+    headers.set('Content-Length', String(contentLength));
+  }
 
   event.respondWith(new Response(stream, { status: 200, headers }));
 });
