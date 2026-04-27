@@ -324,6 +324,24 @@
       if (type === 'sftp' && /no such file/i.test(msg)) {
         msg += ' — your SFTP account may not have write access where Wattcloud wants to create the vault. Either create a "WattcloudVault" directory manually at the right location, or set a Base path above that points at a directory you can write to.';
       }
+      // WebDAV: browsers block cross-origin WebDAV without CORS headers,
+      // and the failure surfaces as either an opaque "Unknown error" or
+      // a generic NetworkError because browser security rules hide the
+      // real status from JS. Rewrite the message into something the
+      // user can act on. Most operator-grade WebDAV servers (Nextcloud,
+      // ownCloud, Synology) DO send the right CORS headers; the
+      // pattern that triggers this is consumer file-storage products
+      // that don't (Hetzner Storage Box being the common one — they
+      // expose WebDAV but disable CORS, so use SFTP there instead).
+      if (type === 'webdav' && /unknown error|networkerror|failed to fetch|load failed/i.test(detail)) {
+        msg =
+          "Couldn't reach this WebDAV server from the browser. The server " +
+          "either rejected the connection or doesn't allow cross-origin " +
+          "requests (no CORS headers). If this is a Hetzner Storage Box, " +
+          'use SFTP instead — it works without CORS. For Nextcloud / ' +
+          'ownCloud / Synology, check that the URL is correct and that ' +
+          'the server config allows browser origins.';
+      }
       showError(msg);
       // Clean up worker-side SFTP credential on connection failure.
       if (sftpCredHandle !== undefined) {
@@ -493,6 +511,10 @@
           <div class="sheet-header">
             <h2 class="sheet-title">WebDAV</h2>
             <p class="sheet-subtitle">Nextcloud, ownCloud, Synology, or any WebDAV-compatible server.</p>
+            <p class="sheet-note">
+              Browser-driven WebDAV needs CORS headers from the server.
+              Most self-hosted servers send them; <strong>Hetzner Storage Box does not</strong> — use SFTP for those.
+            </p>
           </div>
           <form class="inline-form borderless" onsubmit={(e) => { e.preventDefault(); submitWebDAV(); }}>
             <label class="field-label">Server URL
@@ -1286,6 +1308,18 @@
     margin: 0;
     font-size: var(--t-body-sm-size, .8125rem);
     color: var(--text-secondary, #999);
+  }
+  /* Inline caveat under sheet-subtitle — used for the WebDAV CORS
+     warning so users don't waste a connection attempt on Hetzner. */
+  .sheet-note {
+    margin: 6px 0 0;
+    padding: 6px 10px;
+    border: 1px solid color-mix(in srgb, var(--accent-warm, #E0A320) 30%, transparent);
+    background: var(--accent-warm-muted, #3D2F10);
+    border-radius: var(--r-input, 12px);
+    font-size: 0.6875rem;
+    line-height: 1.4;
+    color: var(--text-primary, #EDEDED);
   }
 
   /* Trust banner — cloud-badge green+amber pairing (§29.1, §29.2) */
