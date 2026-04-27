@@ -20,7 +20,7 @@
     type HydratedProviderConfig,
   } from '../../byo/ProviderConfigStore';
   import { hydrateProvider } from '../../byo/ProviderHydrate';
-  import { vaultStore } from '../../byo/stores/vaultStore';
+  import { vaultStore, sortedProviders } from '../../byo/stores/vaultStore';
   import type { ProviderMeta } from '../../byo/stores/vaultStore';
   import { queryRows } from '../../byo/ConflictResolver';
   import ByoPassphraseInput from './ByoPassphraseInput.svelte';
@@ -626,7 +626,7 @@
     <div class="settings-group">
       <h3 class="group-title">Providers</h3>
       <div class="group-body">
-        {#each $vaultStore.providers as p (p.providerId)}
+        {#each $sortedProviders as p (p.providerId)}
           <button
             class="settings-row"
             onclick={() => contextProvider = p}

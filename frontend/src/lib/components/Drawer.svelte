@@ -616,7 +616,7 @@ type NavId = 'files' | 'photos' | 'favorites' | 'settings';
 
   .drawer-shares {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: var(--sp-sm, 8px);
     width: 100%;
     padding: var(--sp-sm) var(--sp-sm);
@@ -650,8 +650,11 @@ type NavId = 'files' | 'photos' | 'favorites' | 'settings';
     display: flex;
     align-items: center;
     justify-content: center;
+    /* line-height:0 keeps the SVG from inheriting the surrounding
+       text line-box, which was padding the icon downward inside
+       the 24px square. */
+    line-height: 0;
     color: var(--accent, #2EB860);
-    margin-top: 2px;
   }
 
   .drawer-shares-body {

@@ -615,11 +615,13 @@ let draggedFileId: number | null = $state(null);
   }
 
   /* ── List View ──────────────────────────────────────────── */
-  .file-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-xs);
-  }
+  /* Base .file-list rules (display:flex, gap, ≥600px row grid, wide
+     2-column layout) live in component-classes.css. Don't redeclare
+     here — Svelte's scoped-class wrapping bumps specificity higher
+     than the global @media (min-width:1280px) override, so a duplicate
+     `display:flex` would clobber the 2-column grid on the Files screen
+     while folders (which render their .file-list inside ByoDashboard)
+     would still pick up the override. */
 
   .dragging {
     opacity: 0.5;

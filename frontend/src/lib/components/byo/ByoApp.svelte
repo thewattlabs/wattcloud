@@ -30,7 +30,7 @@
   import { setByoSearchDataProvider } from '../../byo/stores/byoSearch';
   import { setByoPhotosDataProvider, initByoPhotoFolderFilter } from '../../byo/stores/byoPhotos';
   import { setByoCollectionsDataProvider, resetByoCollections, initByoCollectionsOrder } from '../../byo/stores/byoCollections';
-  import { vaultStore } from '../../byo/stores/vaultStore';
+  import { vaultStore, sortedProviders } from '../../byo/stores/vaultStore';
   import {
     listPersistedVaults,
     loadProvidersForVault,
@@ -966,7 +966,7 @@
       shareCount={dataProvider ? $byoShareStats.count : null}
       shareBytes={dataProvider ? $byoShareStats.bytes : null}
       relayHeadroomFreeBytes={$byoRelayHeadroom?.freeBytes ?? null}
-      providers={$vaultStore.providers}
+      providers={$sortedProviders}
       activeProviderId={$vaultStore.activeProviderId ?? ''}
       onSelectProvider={(providerId) => vaultStore.setActiveProviderId(providerId)}
       onNavigate={handleDrawerNavigate}
