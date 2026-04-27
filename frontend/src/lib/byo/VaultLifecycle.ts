@@ -282,32 +282,55 @@ export async function unlockVault(
   // ── Step 2b: Acquire exclusive vault lock (C6) ────────────────────────
   // Prevents two tabs from concurrently unlocking/saving the same vault,
   // which would produce duplicate manifest_version values or lost writes.
+  //
+  // The lock is held inside a navigator.locks.request callback whose
+  // resolution we control via _lockRelease. Because await on the request
+  // would block until the lock is released, we signal acquisition through
+  // a side-channel Promise and only the holder side keeps the request
+  // open.
+  //
+  // Real-world races we have to tolerate:
+  //   - Hard reload: the previous page context is still tearing down
+  //     when the new context tries to grab the lock. The OS releases
+  //     the old holder within a few hundred ms but the gap is visible.
+  //   - bfcache return: the prior document was paused with the lock
+  //     held; coming back in the same tab grants it immediately, but
+  //     opening the app in a *fresh* tab while the bfcache copy still
+  //     lives loses the race.
+  // ifAvailable:true gives up instantly, so a one-shot attempt was
+  // surfacing as a hard "Another tab is already managing this vault"
+  // for what's actually a sub-second handoff. Retry with backoff
+  // before declaring contention.
   if (typeof navigator !== 'undefined' && 'locks' in navigator) {
     const lockName = `byo-vault-${vaultIdFromHeader}`;
 
-    // We need a side-channel to know if the lock was granted, because we cannot
-    // await navigator.locks.request itself (that would block until the lock is
-    // released). Instead we signal via lockSignal and keep the lock alive by
-    // holding the inner Promise open.
-    const lockSignal = new Promise<boolean>((signalResolve) => {
-      navigator.locks.request(
-        lockName,
-        { mode: 'exclusive', ifAvailable: true },
-        async (lock) => {
-          if (!lock) {
-            // Another tab holds the vault lock.
-            signalResolve(false);
-            return;
-          }
-          // Signal that we have the lock before proceeding.
-          signalResolve(true);
-          // Hold the lock until _lockRelease() is called (on vault lock).
-          await new Promise<void>((hold) => { _lockRelease = hold; });
-        },
-      ).catch(() => {});
-    });
+    const tryAcquire = (): Promise<boolean> =>
+      new Promise<boolean>((signalResolve) => {
+        navigator.locks.request(
+          lockName,
+          { mode: 'exclusive', ifAvailable: true },
+          async (lock) => {
+            if (!lock) {
+              signalResolve(false);
+              return;
+            }
+            signalResolve(true);
+            // Hold the lock until _lockRelease() fires on vault lock.
+            await new Promise<void>((hold) => { _lockRelease = hold; });
+          },
+        ).catch(() => signalResolve(false));
+      });
 
-    const acquired = await lockSignal;
+    // 5 attempts with backoff: 0ms, 200ms, 400ms, 800ms, 1600ms — total
+    // budget ~3s, which covers the unload + bfcache races without
+    // hanging the unlock UI on a genuinely contested vault.
+    const BACKOFFS_MS = [0, 200, 400, 800, 1600];
+    let acquired = false;
+    for (const delay of BACKOFFS_MS) {
+      if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+      acquired = await tryAcquire();
+      if (acquired) break;
+    }
     if (!acquired) {
       vaultStore.setStatus('idle');
       vaultStore.setTabOwnership('other');
