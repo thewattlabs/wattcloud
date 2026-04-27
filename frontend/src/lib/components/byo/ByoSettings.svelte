@@ -230,7 +230,14 @@
     if (!provider || vaultSessionId === null) { showGlobalError('Vault not unlocked'); return; }
 
     try {
-      const { data: vaultBytes } = await provider.download('WattcloudVault/vault_manifest.sc');
+      // Use the provider's own ref so we get the right path under
+      // sftpBasePath / s3BasePath and the canonical /data/ segment.
+      // The hardcoded 'WattcloudVault/vault_manifest.sc' from earlier missed
+      // both, so the download 404'd on every real provider and surfaced as
+      // the generic "Revoke failed" toast.
+      const manifestRef = provider.manifestRef();
+      const { data: vaultBytes, version: currentVersion } =
+        await provider.download(manifestRef);
       const header = new Uint8Array(vaultBytes.slice(0, HEADER_SIZE));
 
       for (let i = 0; i < SLOT_COUNT; i++) {
@@ -254,7 +261,10 @@
       const assembled = new Uint8Array(header.length + body.length);
       assembled.set(header, 0);
       assembled.set(body, header.length);
-      await provider.upload('WattcloudVault/vault_manifest.sc', 'vault_manifest.sc', assembled);
+      await provider.upload(manifestRef, 'vault_manifest.sc', assembled, {
+        mimeType: 'application/octet-stream',
+        expectedVersion: currentVersion,
+      });
 
       const db = getDb();
       if (db) {
@@ -267,7 +277,8 @@
         enrolledDevices = updated;
       }
     } catch (e: any) {
-      showGlobalError(e.message ?? 'Revoke failed');
+      console.error('[ByoSettings] revoke failed', e);
+      showGlobalError(e?.message ?? 'Revoke failed');
     }
   }
 

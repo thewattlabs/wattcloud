@@ -52,8 +52,9 @@
 <style>
   .argon2-progress {
     display: flex;
-    gap: var(--sp-md, 16px);
-    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--sp-sm, 8px);
+    align-items: center;
     padding: var(--sp-lg, 24px);
     background: var(--bg-surface-raised, #262626);
     border: 1px solid var(--border, #2E2E2E);
@@ -62,8 +63,8 @@
 
   .icon-wrap {
     flex-shrink: 0;
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -88,8 +89,9 @@
   }
 
   .content {
-    flex: 1;
+    width: 100%;
     min-width: 0;
+    text-align: center;
   }
 
   .label {
@@ -156,7 +158,7 @@
     margin: 0;
     font-size: var(--t-label-size, 0.75rem);
     color: var(--text-disabled, #616161);
-    text-align: right;
+    text-align: center;
     min-height: 1em;
   }
 </style>

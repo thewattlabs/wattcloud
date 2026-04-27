@@ -763,6 +763,11 @@ type EnrollStep =
       // that never persisted creds) still land in the store; they'll fall
       // through to the reauth sheet on next open like any legacy row.
       unlockPhase = 'Saving provider configurations…';
+      console.info('[DeviceEnrollment] beginning saveProviderConfig phase', {
+        hasReceivedConfig: !!receivedConfig,
+        manifestProviderCount: getManifest()?.providers.length ?? 0,
+      });
+      const tSaves = performance.now();
       const cfgLabel = receivedConfig
         ? (receivedLabel.trim().length > 0
             ? receivedLabel
@@ -818,6 +823,7 @@ type EnrollStep =
                 continue;
               }
               try {
+                const tSec = performance.now();
                 await saveProviderConfig(
                   {
                     provider_id: entry.provider_id,
@@ -829,6 +835,9 @@ type EnrollStep =
                     saved_at: new Date().toISOString(),
                   },
                   secondaryConfig,
+                );
+                console.info(
+                  `[DeviceEnrollment] saved secondary ${entry.provider_id} in ${Math.round(performance.now() - tSec)} ms`,
                 );
               } catch (persistErr) {
                 console.warn('[DeviceEnrollment] secondary saveProviderConfig failed', entry.provider_id, persistErr);
@@ -843,6 +852,9 @@ type EnrollStep =
       // ('done' was already sent and the WS cleaned up right after Step 9 —
       // see the block following setDeviceRecord above. No duplicate signal
       // here.)
+      console.info(
+        `[DeviceEnrollment] saveProviderConfig phase done in ${Math.round(performance.now() - tSaves)} ms`,
+      );
       console.info('[DeviceEnrollment] receiver flow complete, calling onEnrolled');
 
       // Close enrollment session (zeroizes remaining material in WASM)
