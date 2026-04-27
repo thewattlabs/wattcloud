@@ -908,13 +908,32 @@ async function _doSave(): Promise<void> {
     let primaryManifestUploaded = false;
     let manifestUploadedCount = 0;
     let primaryUploadErr: unknown = null;
+    console.info(
+      '[saveVault] phase4 plan: targets=',
+      savePlan.manifest_upload_targets,
+      'primaryId=', _primaryProviderId,
+      'providers map keys=', Array.from(_providers.keys()),
+    );
     for (const pid of savePlan.manifest_upload_targets) {
       const provInst = _providers.get(pid);
-      if (!provInst) continue;
+      if (!provInst) {
+        console.warn(
+          '[saveVault] phase4 skip: no provider instance for',
+          pid,
+          '(isPrimary=', pid === _primaryProviderId, ')',
+        );
+        continue;
+      }
+      console.info(
+        '[saveVault] phase4 upload start: pid=', pid,
+        'isPrimary=', pid === _primaryProviderId,
+        'ref=', provInst.manifestRef(),
+      );
       try {
         const { version: uploadedManifestVersion } = await provInst.upload(provInst.manifestRef(), 'vault_manifest.sc', manifestFile, {});
         manifestUploadedCount++;
         if (pid === _primaryProviderId) primaryManifestUploaded = true;
+        console.info('[saveVault] phase4 upload ok: pid=', pid, 'version=', uploadedManifestVersion);
         await storeCachedManifest(_vaultId, manifestBlobB64, uploadedManifestVersion, nextVersion).catch(() => {});
       } catch (err) {
         if (pid === _primaryProviderId) {
