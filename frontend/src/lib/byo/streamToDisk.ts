@@ -161,8 +161,26 @@ let swRegistrationPromise: Promise<ServiceWorkerRegistration> | null = null;
  * why install fails when it does — silent failure mode was hiding real
  * errors (parse/mime/scope rejection) behind the "Firefox is slow" story.
  */
+/** Subscribe once to broadcasts from the download Service Worker so its
+ *  diagnostic events land in this page's console (Firefox's about:debugging
+ *  hides the SW Inspect button outside the brief "Running" window). */
+let swDiagListenerInstalled = false;
+function installSwDiagListener(): void {
+  if (swDiagListenerInstalled) return;
+  if (!('serviceWorker' in navigator)) return;
+  swDiagListenerInstalled = true;
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    const data = event.data;
+    if (!data || data.type !== 'sw-dl-log') return;
+    const tag = `[sw-dl→page] ${data.tag ?? ''}`;
+    if (data.level === 'error') console.error(tag, data.payload);
+    else console.log(tag, data.payload);
+  });
+}
+
 export async function prewarmDownloadServiceWorker(): Promise<void> {
   if (!('serviceWorker' in navigator)) return;
+  installSwDiagListener();
   try {
     const existing = await navigator.serviceWorker.getRegistration('/dl/');
     if (existing) {

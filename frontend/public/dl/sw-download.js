@@ -36,6 +36,30 @@ const STREAMS = new Map();
 /** ms after register() before an orphan entry is GC'd. */
 const REGISTRATION_TTL_MS = 30_000;
 
+/**
+ * Diagnostic — also broadcast to every client so logs land in the
+ * regular page DevTools console (Firefox's about:debugging only shows
+ * the SW's Inspect button when the SW is in "Running" state, which is
+ * a brittle window during a download).
+ */
+async function logEvent(level, tag, payload) {
+  const line = ['[sw-dl]', tag, payload];
+  if (level === 'error') console.error(...line);
+  else console.log(...line);
+  try {
+    const clients = await self.clients.matchAll({ includeUncontrolled: true });
+    for (const c of clients) {
+      try {
+        c.postMessage({ type: 'sw-dl-log', level, tag, payload });
+      } catch (_) {
+        /* drop — client gone */
+      }
+    }
+  } catch (_) {
+    /* matchAll failed; in-SW console.log already fired */
+  }
+}
+
 self.addEventListener('install', (event) => {
   // Take over as soon as installed — no reload required for first use.
   self.skipWaiting();
@@ -137,7 +161,7 @@ self.addEventListener('message', (event) => {
     entry.bytes += buf.byteLength;
     entry.chunks++;
     if (entry.chunks <= 3 || entry.chunks % 100 === 0) {
-      console.log('[sw-dl]', 'chunk ingested', { id, chunks: entry.chunks, bytes: entry.bytes });
+      logEvent('log', 'chunk ingested', { id, chunks: entry.chunks, bytes: entry.bytes });
     }
     return;
   }
@@ -145,7 +169,7 @@ self.addEventListener('message', (event) => {
   if (data.type === 'done') {
     const entry = STREAMS.get(id);
     if (!entry) return;
-    console.log('[sw-dl]', 'done', { id, chunks: entry.chunks, bytes: entry.bytes });
+    logEvent('log', 'done', { id, chunks: entry.chunks, bytes: entry.bytes });
     entry.close();
     // Keep the entry around briefly so the iframe fetch still finds it.
     setTimeout(() => {
@@ -158,7 +182,7 @@ self.addEventListener('message', (event) => {
   if (data.type === 'error') {
     const entry = STREAMS.get(id);
     if (!entry) return;
-    console.error('[sw-dl]', 'error', { id, message: data.message });
+    logEvent('error', 'error', { id, message: data.message });
     entry.error(typeof data.message === 'string' ? data.message : 'stream error');
     setTimeout(() => {
       try { entry.releaseLifetime(); } catch (_) { /* drop */ }
@@ -206,7 +230,7 @@ self.addEventListener('fetch', (event) => {
   if (typeof contentLength === 'number' && contentLength >= 0) {
     headers.set('Content-Length', String(contentLength));
   }
-  console.log('[sw-dl] fetch intercepted', {
+  logEvent('log', 'fetch intercepted', {
     id,
     filename,
     contentLength,
@@ -230,7 +254,7 @@ self.addEventListener('fetch', (event) => {
       controller.enqueue(chunk);
     },
     flush() {
-      console.log('[sw-dl] response body fully drained', {
+      logEvent('log', 'response body fully drained', {
         id,
         bytes: drainBytes,
         chunks: drainChunks,
@@ -241,7 +265,7 @@ self.addEventListener('fetch', (event) => {
     },
   });
   stream.pipeTo(counter.writable).catch((err) => {
-    console.error('[sw-dl] response body pipe failed', {
+    logEvent('error', 'response body pipe failed', {
       id,
       bytes: drainBytes,
       chunks: drainChunks,
