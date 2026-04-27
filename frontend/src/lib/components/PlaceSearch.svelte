@@ -30,8 +30,13 @@ let query = $state('');
 
   $effect(() => {
     if (query.trim().length >= 1) {
-      results = searchIn($placesStore, query, 8);
-      open = results.length > 0;
+      // Compute into a local first, then assign — Svelte 5 tracks reads
+      // inside an effect as dependencies, so reading `results.length`
+      // immediately after writing `results` would treat the write as a
+      // dep of itself and trigger an infinite update-depth loop.
+      const found = searchIn($placesStore, query, 8);
+      results = found;
+      open = found.length > 0;
       activeIndex = -1;
     } else {
       results = [];
