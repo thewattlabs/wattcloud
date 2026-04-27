@@ -219,21 +219,18 @@ type EnrollStep =
         }
       };
 
+      // onerror runs BEFORE onclose, with no useful detail (browser opacity).
+      // We just record the fact so onclose can pick the right error string.
+      let sawError = false;
+      ws.onerror = () => { sawError = true; };
       ws.onclose = (ev) => {
         lastCloseEvent = { code: ev.code, reason: ev.reason, wasClean: ev.wasClean };
-        console.info('[enrollment-ws sender]', { step, code: ev.code, reason: ev.reason, wasClean: ev.wasClean });
-        // Surface unexpected closes that happen before `step === 'done'`.
-        if (step !== 'done' && step !== 'error' && !ev.wasClean) {
-          evictEnrollmentRelayCookieCache(channelIdB64).catch(() => {/* best-effort */});
-          error = `Relay channel closed unexpectedly${describeCloseEvent()}.`;
-          step = 'error';
-          cleanup();
-        }
-      };
-      ws.onerror = () => {
-        // Evict relay cookie so the next attempt re-acquires a fresh one.
+        console.info('[enrollment-ws sender]', { step, code: ev.code, reason: ev.reason, wasClean: ev.wasClean, sawError });
+        if (step === 'done' || step === 'error') return;
+        if (ev.wasClean && ev.code === 1000) return; // intentional cleanup
         evictEnrollmentRelayCookieCache(channelIdB64).catch(() => {/* best-effort */});
-        error = `Relay connection error${describeCloseEvent()}. Please try again.`;
+        const prefix = sawError ? 'Relay connection error' : 'Relay channel closed unexpectedly';
+        error = `${prefix}${describeCloseEvent()}.`;
         step = 'error';
         cleanup();
       };
@@ -336,25 +333,23 @@ type EnrollStep =
         }
       };
 
+      // onerror runs BEFORE onclose, with no useful detail. Defer the
+      // error UI to onclose so it can include the CloseEvent code/reason.
+      let sawError = false;
+      ws.onerror = () => { sawError = true; };
       ws.onclose = (ev) => {
         lastCloseEvent = { code: ev.code, reason: ev.reason, wasClean: ev.wasClean };
-        console.info('[enrollment-ws receiver]', { step, code: ev.code, reason: ev.reason, wasClean: ev.wasClean });
-        // The receiver should never see a close before it's reached
-        // 'passphrase'/'unlocking' (where the WS is intentionally cleaned up).
-        // Surface anything earlier so we can tell whether the relay is
-        // closing the channel on us vs. some local bug closing it.
+        console.info('[enrollment-ws receiver]', { step, code: ev.code, reason: ev.reason, wasClean: ev.wasClean, sawError });
+        if (step === 'error' || step === 'done') return;
+        // 'passphrase'/'unlocking'/'hydrating'/'provider-reauth' come after
+        // the receiver intentionally closed the WS (see 'encrypted_shard'
+        // handler) — leave those alone.
         const stillLive = step === 'sas' || step === 'sas-confirmed' || step === 'waiting-peer';
-        if (stillLive && !ev.wasClean) {
-          evictEnrollmentRelayCookieCache(typedPayload.ch).catch(() => {/* best-effort */});
-          error = `Relay channel closed unexpectedly${describeCloseEvent()}.`;
-          step = 'error';
-          cleanup();
-        }
-      };
-      ws.onerror = () => {
-        // Evict relay cookie so the next attempt re-acquires a fresh one.
+        if (!stillLive) return;
+        if (ev.wasClean && ev.code === 1000) return; // intentional clean close
         evictEnrollmentRelayCookieCache(typedPayload.ch).catch(() => {/* best-effort */});
-        error = `Relay connection error${describeCloseEvent()}.`;
+        const prefix = sawError ? 'Relay connection error' : 'Relay channel closed unexpectedly';
+        error = `${prefix}${describeCloseEvent()}.`;
         step = 'error';
         cleanup();
       };
