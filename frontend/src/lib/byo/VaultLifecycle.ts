@@ -1636,7 +1636,21 @@ function getVaultSchema(): string {
       -- decryption key + (optional) bundle name; never sent to the relay.
       -- Vault SQLite is wrapped under vault_key (SECURITY.md §4), same
       -- threat model as every other secret in the vault.
-      fragment TEXT
+      fragment TEXT,
+      -- Finer-grained classification than 'kind' for the Settings UI.
+      -- The relay schema is closed at file/folder/collection so multi-
+      -- file and mixed bundles ride 'folder' there; this column lets the
+      -- creator UI show the right badges (e.g. Folder + Files for a
+      -- mixed bundle) without changing the wire protocol. Values:
+      -- 'file' | 'folder' | 'collection' | 'multi-files' | 'mixed'.
+      -- Vault-only; never sent anywhere.
+      bundle_kind TEXT,
+      -- Optional user-supplied display name for this share. Surfaces
+      -- both in Settings → Active shares AND on the recipient's landing
+      -- page (carried in the fragment as &n=<percent-encoded>) so the
+      -- two ends agree. NULL → both ends fall back to the inferred
+      -- name (folder name, "N items", filename, etc.).
+      label TEXT
     );
     CREATE TABLE IF NOT EXISTS collections (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

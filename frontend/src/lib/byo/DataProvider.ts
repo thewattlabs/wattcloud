@@ -118,6 +118,14 @@ export interface ShareEntry {
    *  created before the recoverable-link change shipped — those remain
    *  copy-once. Never POSTed; vault SQLite is wrapped under vault_key. */
   fragment: string | null;
+  /** Finer-grained classification than `kind` for UI badges. Values:
+   *  'file' | 'folder' | 'collection' | 'multi-files' | 'mixed'.
+   *  NULL for legacy rows — UI falls back to `kind`. */
+  bundle_kind: string | null;
+  /** Optional user-supplied display name. Same value surfaces on the
+   *  recipient's landing page (via fragment) so the two ends agree.
+   *  NULL → both ends fall back to the inferred name. */
+  label: string | null;
 }
 
 export interface TrashEntry {
@@ -282,6 +290,10 @@ export interface DataProvider {
        *  and saves the download under that name instead of a generic
        *  sentinel. Fragment never reaches the relay. */
       filename?: string;
+      /** Optional user-supplied display name. When set, OVERRIDES `filename`
+       *  on the recipient's landing page and is persisted to share_tokens
+       *  so Settings shows the same name. */
+      label?: string;
     },
   ): Promise<{ entry: ShareEntry; fragment: string }>;
 
@@ -294,13 +306,13 @@ export interface DataProvider {
    */
   createFolderShare(
     folderId: number,
-    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void },
+    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void; label?: string },
   ): Promise<{ entry: ShareEntry; fragment: string }>;
 
   /** Same as `createFolderShare` but for a photo collection. */
   createCollectionShare(
     collectionId: number,
-    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void },
+    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void; label?: string },
   ): Promise<{ entry: ShareEntry; fragment: string }>;
 
   /**
@@ -311,7 +323,7 @@ export interface DataProvider {
    */
   createFilesShare(
     fileIds: number[],
-    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void },
+    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void; label?: string },
   ): Promise<{ entry: ShareEntry; fragment: string }>;
 
   /**
@@ -324,7 +336,7 @@ export interface DataProvider {
    */
   createMixedShare(
     args: { folderIds: number[]; fileIds: number[] },
-    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void },
+    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void; label?: string },
   ): Promise<{ entry: ShareEntry; fragment: string }>;
 
   /** Revoke a share link by share_id. */

@@ -78,6 +78,11 @@
   let password = $state('');
   let confirmPassword = $state('');
   let ttlChoice: Ttl = $state(86400);
+  /** User-supplied display name. Surfaces both in Settings → Active
+   *  shares (creator side) and on the recipient's landing page (carried
+   *  in the fragment as &n=). When blank, both ends fall back to the
+   *  inferred default (filename, folder name, "N items", etc.). */
+  let shareLabel = $state('');
 
   let generating = $state(false);
   let generatedFragment = $state('');
@@ -185,9 +190,11 @@
     progressDone = 0;
     progressTotal = 0;
     try {
+      const trimmedLabel = shareLabel.trim();
       const commonOpts = {
         password: passwordOn ? password : undefined,
         ttlSeconds: ttlChoice,
+        label: trimmedLabel || undefined,
       };
       let result: { entry: ShareEntry; fragment: string };
       if (source.kind === 'file') {
@@ -369,6 +376,24 @@
 
     {#if !generatedEntry}
       <div class="form">
+        <div class="field">
+          <label for="share-label-input" class="field-label">Share name <span class="field-label-optional">(optional)</span></label>
+          <input
+            id="share-label-input"
+            class="field-input"
+            type="text"
+            bind:value={shareLabel}
+            placeholder={sourceName}
+            maxlength="120"
+            autocomplete="off"
+          />
+          <p class="field-hint">
+            Surfaces in Settings → Active shares and on the recipient's
+            landing page. Leave blank to use the default
+            (<span class="mono-text">{sourceName}</span>).
+          </p>
+        </div>
+
         <div class="field">
           <p class="field-label">Link expires after</p>
           <div class="ttl-chips" role="group" aria-label="Link expiry">
@@ -724,6 +749,29 @@
   .form { display: flex; flex-direction: column; gap: var(--sp-sm, 8px); }
   .field { display: flex; flex-direction: column; gap: 6px; }
   .field-label { font-size: var(--t-body-sm-size, 0.8125rem); color: var(--text-secondary, #999); margin: 0; }
+  .field-label-optional { color: var(--text-disabled, #616161); font-weight: 400; }
+  .field-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    background: var(--bg-surface, #1C1C1C);
+    border: 1px solid var(--border, #2E2E2E);
+    border-radius: var(--r-input, 12px);
+    color: var(--text-primary, #ededed);
+    font-size: var(--t-body-size, 0.9375rem);
+  }
+  .field-input::placeholder { color: var(--text-disabled, #616161); }
+  .field-input:focus {
+    outline: none;
+    border-color: var(--accent, #2EB860);
+  }
+  .field-hint {
+    margin: 0;
+    font-size: 0.6875rem;
+    color: var(--text-disabled, #616161);
+    line-height: 1.4;
+  }
+  .field-hint .mono-text { font-family: var(--font-mono, ui-monospace, monospace); color: var(--text-secondary, #999); }
 
   .toggle-row {
     display: flex;

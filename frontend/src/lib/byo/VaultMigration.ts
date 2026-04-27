@@ -114,6 +114,16 @@ export function runMigrations(db: Database): void {
   // shares created before this column existed don't have the key
   // anymore (it was zeroized on create), so they remain copy-only-once.
   addColumn(db, 'share_tokens', 'fragment', `TEXT`);
+
+  // Display surface for the share row in Settings:
+  //   - bundle_kind   — finer than `kind`; lets the UI render Folder+File
+  //                     badges for mixed bundles which ride the 'folder'
+  //                     wire kind.
+  //   - label         — user-supplied display name; same on both ends
+  //                     (creator's Settings + recipient's landing page).
+  // Vault-only columns; never sent to the relay.
+  addColumn(db, 'share_tokens', 'bundle_kind', `TEXT`);
+  addColumn(db, 'share_tokens', 'label', `TEXT`);
 }
 
 export function providerDisplayName(type: ProviderType): string {

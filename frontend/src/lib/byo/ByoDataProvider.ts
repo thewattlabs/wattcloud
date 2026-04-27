@@ -1054,7 +1054,7 @@ export class ByoDataProvider implements DataProvider {
    */
   async createShareLink(
     fileId: number,
-    options?: { password?: string; ttlSeconds?: number; filename?: string },
+    options?: { password?: string; ttlSeconds?: number; filename?: string; label?: string },
   ): Promise<{ entry: ShareEntry; fragment: string }> {
     // 1. Fetch file row from SQLite.
     const rows = queryRows(this.db, 'SELECT * FROM files WHERE id = ?', [fileId]);
@@ -1154,12 +1154,16 @@ export class ByoDataProvider implements DataProvider {
       fragmentVariant,
       options?.password,
     );
-    // Append the original filename so the recipient can save as the real
-    // name. Plain percent-encoded — the fragment never reaches a server;
-    // anyone who has the link can already decrypt the content, so the
-    // filename being readable alongside the key adds no privacy surface.
-    const fragment = options?.filename
-      ? `${fragmentKey}&n=${encodeURIComponent(options.filename)}`
+    // Append the recipient-facing display name so the recipient lands on
+    // a page titled with something meaningful and saves the download
+    // under that name. Prefer the user-supplied label over the original
+    // filename so the two ends of the share agree on the title. Plain
+    // percent-encoded — the fragment never reaches a server; anyone who
+    // has the link can already decrypt the content, so the name being
+    // readable alongside the key adds no privacy surface.
+    const recipientName = options?.label?.trim() || options?.filename;
+    const fragment = recipientName
+      ? `${fragmentKey}&n=${encodeURIComponent(recipientName)}`
       : fragmentKey;
 
     addShareRelayBandwidth(ciphertextSize + respText.length);
@@ -1183,6 +1187,8 @@ export class ByoDataProvider implements DataProvider {
       blobCount: 1,
       plaintextSize,
       fragment,
+      bundleKind: 'file',
+      label: options?.label?.trim() || null,
     });
 
     recordEvent('share_create', { share_variant: 'B2' });
@@ -1192,7 +1198,7 @@ export class ByoDataProvider implements DataProvider {
 
   async createFolderShare(
     folderId: number,
-    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void },
+    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void; label?: string },
   ): Promise<{ entry: ShareEntry; fragment: string }> {
     // Collect folder + descendants; build rel_path for each file relative
     // to the folder root so the recipient reconstructs the tree.
@@ -1220,6 +1226,7 @@ export class ByoDataProvider implements DataProvider {
 
     const { entry, fragment } = await this.createBundleShare({
       kind: 'folder',
+      bundleKind: 'folder',
       folderId,
       collectionId: null,
       files: files.map((f) => ({ file: f, relPath: `${rootName}/${relPathForFile(f)}` })),
@@ -1231,7 +1238,7 @@ export class ByoDataProvider implements DataProvider {
 
   async createCollectionShare(
     collectionId: number,
-    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void },
+    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void; label?: string },
   ): Promise<{ entry: ShareEntry; fragment: string }> {
     const files = await this.listCollectionFiles(collectionId);
     if (files.length === 0) throw new Error('This collection is empty; nothing to share.');
@@ -1239,6 +1246,7 @@ export class ByoDataProvider implements DataProvider {
 
     const { entry, fragment } = await this.createBundleShare({
       kind: 'collection',
+      bundleKind: 'collection',
       folderId: null,
       collectionId,
       files: files.map((f) => ({ file: f, relPath: f.decrypted_name })),
@@ -1250,7 +1258,7 @@ export class ByoDataProvider implements DataProvider {
 
   async createFilesShare(
     fileIds: number[],
-    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void },
+    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void; label?: string },
   ): Promise<{ entry: ShareEntry; fragment: string }> {
     if (fileIds.length === 0) throw new Error('No files selected for share.');
 
@@ -1284,6 +1292,7 @@ export class ByoDataProvider implements DataProvider {
     const bundleName = `${files.length} files`;
     const { entry, fragment } = await this.createBundleShare({
       kind: 'folder',
+      bundleKind: 'multi-files',
       folderId: null,
       collectionId: null,
       files: files.map((f) => ({ file: f, relPath: uniq(f.decrypted_name) })),
@@ -1307,7 +1316,7 @@ export class ByoDataProvider implements DataProvider {
    */
   async createMixedShare(
     args: { folderIds: number[]; fileIds: number[] },
-    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void },
+    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void; label?: string },
   ): Promise<{ entry: ShareEntry; fragment: string }> {
     const folderIds = [...new Set(args.folderIds)];
     const fileIds = [...new Set(args.fileIds)];
@@ -1390,6 +1399,7 @@ export class ByoDataProvider implements DataProvider {
 
     return await this.createBundleShare({
       kind: 'folder',
+      bundleKind: 'mixed',
       folderId: null,
       collectionId: null,
       files: items,
@@ -1411,15 +1421,20 @@ export class ByoDataProvider implements DataProvider {
    */
   private async createBundleShare(args: {
     kind: 'folder' | 'collection';
+    /** Finer-grained UI classification — what kind of bundle this row is
+     *  in the creator's Settings view (Folder / Collection / Files / Mixed). */
+    bundleKind: 'folder' | 'collection' | 'multi-files' | 'mixed';
     folderId: number | null;
     collectionId: number | null;
     files: Array<{ file: FileEntry; relPath: string }>;
     /** Display name for the recipient landing page (folder or collection
      *  name). Rides in the URL fragment as &n=<percent-encoded>; the
      *  fragment never reaches the server, so exposing the name there is
-     *  no weaker than the decryption key that already sits alongside it. */
+     *  no weaker than the decryption key that already sits alongside it.
+     *  When `options.label` is set, that wins — otherwise this default
+     *  carries through. */
     bundleName?: string;
-    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void };
+    options?: { password?: string; ttlSeconds?: number; onProgress?: (done: number, total: number) => void; label?: string };
   }): Promise<{ entry: ShareEntry; fragment: string }> {
     const HEADER_SIZE = 1709;
     const ttl = args.options?.ttlSeconds ?? 86400;
@@ -1437,6 +1452,9 @@ export class ByoDataProvider implements DataProvider {
     //    "Folder" placeholder. The fragment is client-only — never sent
     //    to the relay — so exposing the name there is no weaker than
     //    the key that already rides alongside it.
+    // User-supplied label wins over the inferred bundleName. Both ends
+    // of the share will then read the same string from the fragment.
+    const recipientName = args.options?.label?.trim() || args.bundleName;
     let fragment: string;
     try {
       if (args.options?.password) {
@@ -1445,8 +1463,8 @@ export class ByoDataProvider implements DataProvider {
       } else {
         fragment = await byoWorker.Worker.byoShareEncodeVariantA(bundleKeyB64);
       }
-      if (args.bundleName) {
-        fragment = `${fragment}&n=${encodeURIComponent(args.bundleName)}`;
+      if (recipientName) {
+        fragment = `${fragment}&n=${encodeURIComponent(recipientName)}`;
       }
     } finally {
       bundleKey.fill(0);
@@ -1643,6 +1661,8 @@ export class ByoDataProvider implements DataProvider {
       blobCount: entries.length + 1, // +1 for _manifest
       plaintextSize: 0,
       fragment,
+      bundleKind: args.bundleKind,
+      label: args.options?.label?.trim() || null,
     });
     recordEvent('share_create', { share_variant: 'B2' });
     refreshShareStats(this);
@@ -1668,12 +1688,17 @@ export class ByoDataProvider implements DataProvider {
      *  the user can copy the share link again from Settings later. Never
      *  reaches the relay. */
     fragment: string;
+    /** Finer-grained classification than `kind` for UI badges. */
+    bundleKind: 'file' | 'folder' | 'collection' | 'multi-files' | 'mixed';
+    /** Optional user-supplied display name. NULL → UI infers from kind. */
+    label: string | null;
   }): Promise<ShareEntry> {
     const sql = `INSERT INTO share_tokens
          (share_id, kind, file_id, folder_id, collection_id, provider_id,
           provider_ref, public_link, presigned_expires_at,
-          owner_token, total_bytes, blob_count, created_at, revoked, fragment)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, 0, ?)`;
+          owner_token, total_bytes, blob_count, created_at, revoked,
+          fragment, bundle_kind, label)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, 0, ?, ?, ?)`;
     const params = [
       row.shareId,
       row.kind,
@@ -1688,6 +1713,8 @@ export class ByoDataProvider implements DataProvider {
       row.blobCount,
       row.createdAt,
       row.fragment,
+      row.bundleKind,
+      row.label,
     ];
     await this.onMutate(sql, params);
     this.db.run(sql, params as import('sql.js').BindParams);
@@ -1707,6 +1734,8 @@ export class ByoDataProvider implements DataProvider {
       created_at: row.createdAt,
       revoked: false,
       fragment: row.fragment,
+      bundle_kind: row.bundleKind,
+      label: row.label,
     };
   }
 
@@ -1842,6 +1871,8 @@ export class ByoDataProvider implements DataProvider {
         created_at: row['created_at'] as number,
         revoked: false,
         fragment: (row['fragment'] as string | null) ?? null,
+        bundle_kind: (row['bundle_kind'] as string | null) ?? null,
+        label: (row['label'] as string | null) ?? null,
       };
     });
   }

@@ -73,6 +73,23 @@
     const next = new Map<string, string>();
     await Promise.all(
       shares.map(async (s) => {
+        // Prefer the user-supplied label so the creator sees the same
+        // string the recipient sees on the landing page.
+        if (s.label && s.label.trim().length > 0) {
+          next.set(s.share_id, s.label);
+          return;
+        }
+        // Multi-source bundles never had a single source row to decrypt
+        // a name from — fall back to a generic count derived from the
+        // bundle_kind + blob_count.
+        const bundleKind = s.bundle_kind ?? s.kind;
+        if (bundleKind === 'mixed' || bundleKind === 'multi-files') {
+          const fileCount = s.blob_count !== null && s.blob_count > 1
+            ? s.blob_count - 1
+            : 0;
+          next.set(s.share_id, fileCount > 0 ? `${fileCount} items` : 'Share');
+          return;
+        }
         let name = 'Share';
         if (s.kind === 'file' && s.file_id !== null) {
           name = await dataProvider.getDecryptedFileName(s.file_id);
@@ -116,16 +133,36 @@
     }
   }
 
-  function kindIcon(kind: string) {
-    if (kind === 'folder') return FolderSimple;
-    if (kind === 'collection') return ImageSquare;
+  function kindIcon(entry: ShareEntry) {
+    const k = entry.bundle_kind ?? entry.kind;
+    if (k === 'folder' || k === 'mixed') return FolderSimple;
+    if (k === 'collection') return ImageSquare;
     return UploadSimple;
   }
 
-  function kindLabel(kind: string) {
-    if (kind === 'folder') return 'Folder';
-    if (kind === 'collection') return 'Collection';
-    return 'File';
+  /** Badges shown on the share row. Mixed bundles get TWO badges so the
+   *  user sees at a glance that the share contains both kinds. Legacy
+   *  rows without bundle_kind fall back to the 'kind' column. */
+  function kindBadges(entry: ShareEntry): string[] {
+    const k = entry.bundle_kind ?? entry.kind;
+    switch (k) {
+      case 'mixed':       return ['Folder', 'Files'];
+      case 'multi-files': return ['Files'];
+      case 'folder':      return ['Folder'];
+      case 'collection':  return ['Collection'];
+      default:            return ['File'];
+    }
+  }
+
+  /** Full timestamp shown as a tooltip on the timeAgo label so the user
+   *  can see exactly when each share was created. Locale-formatted via
+   *  the user's browser settings. */
+  function fullTimestamp(ms: number): string {
+    try {
+      return new Date(ms).toLocaleString();
+    } catch {
+      return new Date(ms).toString();
+    }
   }
 
   const UNITS = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -194,7 +231,8 @@
   {:else}
     <ul class="shares-items" aria-label="Active share links">
       {#each shares as share (share.share_id)}
-        {@const SvelteComponent = kindIcon(share.kind)}
+        {@const SvelteComponent = kindIcon(share)}
+        {@const badges = kindBadges(share)}
         <li class="share-item">
           <div class="share-item-icon" aria-hidden="true">
             <SvelteComponent size={20} />
@@ -202,12 +240,18 @@
           <div class="share-item-body">
             <div class="share-item-top">
               <span class="share-filename">{displayNames.get(share.share_id) ?? '…'}</span>
-              <span class="kind-pill">{kindLabel(share.kind)}</span>
+              {#each badges as badge}
+                <span class="kind-pill">{badge}</span>
+              {/each}
             </div>
             <div class="share-item-meta">
               {#each metaParts(share) as part, i}
                 {#if i > 0}<span class="meta-dot" aria-hidden="true">·</span>{/if}
-                <span>{part}</span>
+                {#if i === 0}
+                  <span title={fullTimestamp(share.created_at)}>{part}</span>
+                {:else}
+                  <span>{part}</span>
+                {/if}
               {/each}
               {#if expiryLabel(share)}
                 <span class="meta-dot" aria-hidden="true">·</span>
