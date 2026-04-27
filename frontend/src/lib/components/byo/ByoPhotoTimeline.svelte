@@ -1014,11 +1014,19 @@ function toggleSelection(fileId: number) {
   .folder-picker-item.sub { padding-left: 24px; font-size: var(--t-label-size); color: var(--text-secondary); }
   .folder-picker-item.sub.selected { color: var(--accent-text); }
   .folder-picker-divider { height: 1px; background: var(--border); margin: 4px 0; }
-  /* Place menu houses the PlaceSearch component whose own results dropdown
-     can show up to 8 items (~420px) — the parent's 320px cap clipped it.
-     Override here so only this variant grows; the plain folder pickers
-     above stay compact. */
-  .folder-picker-menu.place-menu { min-width: 320px; max-height: 560px; padding: var(--sp-sm); }
+  /* Place menu houses PlaceSearch whose own results dropdown is
+     absolute-positioned. The parent's overflow-y:auto would clip it
+     regardless of max-height (absolute children don't contribute to
+     content height, so the scroll trigger never fires for the dropdown
+     overflow). Drop overflow on this variant and remove max-height —
+     the static rows here (Any location / Located only / search input /
+     Re-scan) are bounded; the dropdown spills below them naturally. */
+  .folder-picker-menu.place-menu {
+    min-width: 320px;
+    max-height: none;
+    overflow: visible;
+    padding: var(--sp-sm);
+  }
 
   .toggle-btn {
     display: inline-flex;
