@@ -1069,16 +1069,29 @@ function toggleSelection(fileId: number) {
      content height, so the scroll trigger never fires for the dropdown
      overflow). Drop overflow on this variant and remove max-height —
      the static rows here (Any location / Located only / search input /
-     Re-scan) are bounded; the dropdown spills below them naturally.
-     Width clamps to the viewport minus a small inset so on narrow
-     phones (≤340px) the menu doesn't extend past the left edge and
-     clip its content under the screen. */
+     Re-scan) are bounded; the dropdown spills below them naturally. */
   .folder-picker-menu.place-menu {
     width: min(320px, calc(100vw - 24px));
     max-width: calc(100vw - 24px);
     max-height: none;
     overflow: visible;
     padding: var(--sp-sm);
+  }
+  /* Narrow viewport CSS fallback — the chip lives near the right of
+     the toolbar on phones, so right:0 anchoring + a 320px-wide menu
+     pushes the left edge off-screen. Pin to viewport directly. The
+     $effect in the script also refines `top` from the chip's actual
+     bottom; this CSS handles the case where JS hasn't measured yet
+     (or fails to run) so the menu is at least readable. */
+  @media (max-width: 480px) {
+    .folder-picker-menu.place-menu {
+      position: fixed;
+      top: 120px;
+      left: 12px;
+      right: 12px;
+      width: auto;
+      max-width: none;
+    }
   }
 
   .toggle-btn {
