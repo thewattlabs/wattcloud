@@ -1473,14 +1473,20 @@ function findPrimaryEntry(manifest: ManifestJson): ManifestProviderEntry | undef
 
 /**
  * Initialize a StorageProvider instance from a manifest entry's config_json.
+ *
+ * Routes through `hydrateProvider` so SFTP secondaries get their credential
+ * handle set up before init() (the bare `initializeProvider` factory creates
+ * an empty SftpProvider and init() throws "credHandle + credUsername must be
+ * set before init()" — which is why pre-fix unlocks left every SFTP
+ * secondary "offline" until the user manually re-entered creds).
  */
 async function initializeProviderFromConfig(
   entry: ManifestProviderEntry,
 ): Promise<StorageProvider | null> {
   try {
     const config = JSON.parse(entry.config_json) as ProviderConfig;
-    const { initializeProvider } = await import('@wattcloud/sdk');
-    return await initializeProvider(entry.provider_type as any, { ...config, providerId: entry.provider_id } as any);
+    const { hydrateProvider } = await import('./ProviderHydrate');
+    return await hydrateProvider({ ...config, providerId: entry.provider_id });
   } catch {
     return null;
   }

@@ -9,15 +9,36 @@
   import SignOut from 'phosphor-svelte/lib/SignOut';
   import LinkIcon from 'phosphor-svelte/lib/Link';
   import CloudBadge from './CloudBadge.svelte';
+  import HardDrives from 'phosphor-svelte/lib/HardDrives';
+  import Terminal from 'phosphor-svelte/lib/Terminal';
+  import Database from 'phosphor-svelte/lib/Database';
+  import GoogleDriveLogo from 'phosphor-svelte/lib/GoogleDriveLogo';
+  import DropboxLogo from 'phosphor-svelte/lib/DropboxLogo';
+  import Cloud from 'phosphor-svelte/lib/Cloud';
+  import Package from 'phosphor-svelte/lib/Package';
+  import CloudCheck from 'phosphor-svelte/lib/CloudCheck';
+  import type { ComponentType } from 'svelte';
 
   /** Minimal shape of a provider entry for the switcher — kept loose so this
    *  component doesn't reach into byo store types from the shared Drawer. */
   interface DrawerProviderMeta {
     providerId: string;
     displayName: string;
+    type?: string;
     isPrimary?: boolean;
     status?: 'connected' | 'syncing' | 'offline' | 'offline_os' | 'error' | 'unauthorized' | string;
   }
+
+  const PROVIDER_ICONS: Record<string, ComponentType> = {
+    sftp: Terminal,
+    webdav: HardDrives,
+    s3: Database,
+    gdrive: GoogleDriveLogo,
+    dropbox: DropboxLogo,
+    onedrive: Cloud,
+    box: Package,
+    pcloud: CloudCheck,
+  } as unknown as Record<string, ComponentType>;
 
 type NavId = 'files' | 'photos' | 'favorites' | 'settings';
 
@@ -223,38 +244,44 @@ type NavId = 'files' | 'photos' | 'favorites' | 'settings';
     {/if}
 
     <!-- Providers — switcher for the active vault's storage backends.
-         Shown above storage so the active backend is visually anchored
-         next to the usage figure. Hidden when ≤1 provider (nothing to
-         switch). -->
+         Expanded mirrors the nav-link visual (type icon + name); collapsed
+         drops to a P / 1 / 2 / … badge so the active provider is still
+         identifiable at the narrow rail. Hidden when ≤1 provider. -->
     {#if providers.length > 1}
-      <div class="drawer-section drawer-providers">
+      <div class="drawer-section">
         {#if !collapsed}
           <span class="drawer-section-title">Providers</span>
         {/if}
-        <div class="providers-list" class:providers-collapsed={collapsed}>
-          {#each providers as p (p.providerId)}
-            <button
-              class="provider-row"
-              class:active={p.providerId === activeProviderId}
-              type="button"
-              title={collapsed ? p.displayName : ''}
-              aria-label="Switch to {p.displayName}"
-              aria-pressed={p.providerId === activeProviderId}
-              onclick={() => selectProvider(p.providerId)}
-            >
-              {#if collapsed}
-                <span class="provider-tag">{providerLabels.get(p.providerId) ?? '?'}</span>
-                {#if p.status && p.status !== 'connected'}
-                  <span class="provider-dot" style:background-color={providerStatusColor(p.status)} aria-hidden="true"></span>
-                {/if}
-              {:else}
-                <span class="provider-tag">{providerLabels.get(p.providerId) ?? '?'}</span>
-                <span class="provider-name">{p.displayName}</span>
-                <span class="provider-dot" style:background-color={providerStatusColor(p.status)} aria-hidden="true"></span>
+        {#each providers as p (p.providerId)}
+          {@const TypeIcon = (p.type && PROVIDER_ICONS[p.type]) || Cloud}
+          <button
+            class="drawer-link"
+            class:active={p.providerId === activeProviderId}
+            type="button"
+            title={collapsed ? p.displayName : ''}
+            aria-label="Switch to {p.displayName}"
+            aria-pressed={p.providerId === activeProviderId}
+            onclick={() => selectProvider(p.providerId)}
+          >
+            {#if collapsed}
+              <span class="provider-badge" class:active={p.providerId === activeProviderId}>
+                {providerLabels.get(p.providerId) ?? '?'}
+              </span>
+              {#if p.status && p.status !== 'connected' && p.status !== 'syncing'}
+                <span class="provider-link-dot" style:background-color={providerStatusColor(p.status)} aria-hidden="true"></span>
               {/if}
-            </button>
-          {/each}
-        </div>
+            {:else}
+              <TypeIcon size={18} weight={p.providerId === activeProviderId ? 'fill' : 'regular'} />
+              <span class="provider-link-name">{p.displayName}</span>
+              {#if p.isPrimary}
+                <span class="provider-link-badge">Primary</span>
+              {/if}
+              {#if p.status && p.status !== 'connected' && p.status !== 'syncing'}
+                <span class="provider-link-dot" style:background-color={providerStatusColor(p.status)} title={p.status} aria-hidden="true"></span>
+              {/if}
+            {/if}
+          </button>
+        {/each}
       </div>
     {/if}
 
@@ -376,24 +403,28 @@ type NavId = 'files' | 'photos' | 'favorites' | 'settings';
 
       <!-- Providers (mobile overlay) — same layout as desktop expanded. -->
       {#if providers.length > 1}
-        <div class="drawer-section drawer-providers">
+        <div class="drawer-section">
           <span class="drawer-section-title">Providers</span>
-          <div class="providers-list">
-            {#each providers as p (p.providerId)}
-              <button
-                class="provider-row"
-                class:active={p.providerId === activeProviderId}
-                type="button"
-                aria-label="Switch to {p.displayName}"
-                aria-pressed={p.providerId === activeProviderId}
-                onclick={() => selectProvider(p.providerId)}
-              >
-                <span class="provider-tag">{providerLabels.get(p.providerId) ?? '?'}</span>
-                <span class="provider-name">{p.displayName}</span>
-                <span class="provider-dot" style:background-color={providerStatusColor(p.status)} aria-hidden="true"></span>
-              </button>
-            {/each}
-          </div>
+          {#each providers as p (p.providerId)}
+            {@const TypeIcon = (p.type && PROVIDER_ICONS[p.type]) || Cloud}
+            <button
+              class="drawer-link"
+              class:active={p.providerId === activeProviderId}
+              type="button"
+              aria-label="Switch to {p.displayName}"
+              aria-pressed={p.providerId === activeProviderId}
+              onclick={() => selectProvider(p.providerId)}
+            >
+              <TypeIcon size={18} weight={p.providerId === activeProviderId ? 'fill' : 'regular'} />
+              <span class="provider-link-name">{p.displayName}</span>
+              {#if p.isPrimary}
+                <span class="provider-link-badge">Primary</span>
+              {/if}
+              {#if p.status && p.status !== 'connected' && p.status !== 'syncing'}
+                <span class="provider-link-dot" style:background-color={providerStatusColor(p.status)} title={p.status} aria-hidden="true"></span>
+              {/if}
+            </button>
+          {/each}
         </div>
       {/if}
 
@@ -526,82 +557,54 @@ type NavId = 'files' | 'photos' | 'favorites' | 'settings';
     color: var(--text-primary);
   }
 
-  /* ── Provider switcher inside drawer ───────────────────────────── */
-  .drawer-providers {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-xs, 4px);
-  }
-  .providers-list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .providers-list.providers-collapsed {
-    align-items: center;
-  }
-  .provider-row {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-sm, 8px);
-    width: 100%;
-    padding: 6px 8px;
-    border: 1px solid transparent;
-    border-radius: var(--r-input, 12px);
-    background: transparent;
-    color: var(--text-primary, #EDEDED);
-    font-size: var(--t-body-sm-size, 0.875rem);
-    cursor: pointer;
-    text-align: left;
-    transition: background 120ms ease, border-color 120ms ease;
-  }
-  .provider-row:hover {
-    background: var(--hover-bg, rgba(255, 255, 255, 0.04));
-  }
-  .provider-row.active {
-    background: var(--accent-muted, #1B3627);
-    border-color: var(--accent, #2EB860);
-  }
-  .providers-list.providers-collapsed .provider-row {
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    justify-content: center;
-    position: relative;
-  }
-  .provider-tag {
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 6px;
-    background: var(--bg-surface, rgba(255,255,255,0.06));
-    color: var(--text-secondary, #999);
-    font-size: 0.6875rem;
-    font-weight: 700;
-  }
-  .provider-row.active .provider-tag {
-    background: var(--accent, #2EB860);
-    color: #0F0F0F;
-  }
-  .provider-name {
+  /* ── Provider switcher (drawer) ───────────────────────────────────
+   * Reuses the .drawer-link visual so providers feel like nav targets
+   * (because they ARE — switching active provider re-routes the file
+   * list). Two minor adornments on top: a small "Primary" pill on the
+   * primary, and a status dot at the right edge when the provider is
+   * NOT 'connected' / 'syncing'.
+   * Collapsed mode swaps the type icon for a P / 1 / 2 / … badge so
+   * the active provider stays identifiable on the narrow rail. */
+  .provider-link-name {
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .provider-dot {
+  .provider-link-badge {
+    flex-shrink: 0;
+    font-size: var(--t-label-size, 0.75rem);
+    padding: 1px 6px;
+    border-radius: var(--r-pill, 9999px);
+    background: var(--accent-muted, #1B3627);
+    border: 1px solid var(--accent, #2EB860);
+    color: var(--accent-text, #5FDB8A);
+  }
+  .provider-link-dot {
     flex-shrink: 0;
     width: 7px;
     height: 7px;
     border-radius: 50%;
   }
-  .providers-list.providers-collapsed .provider-dot {
-    position: absolute;
-    top: 4px;
-    right: 4px;
+  .provider-badge {
+    /* Collapsed (rail) badge — circular initial. Replaces the type
+       icon when there's no room for a name. */
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--bg-surface, rgba(255,255,255,0.06));
+    color: var(--text-secondary, #999);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .provider-badge.active {
+    background: var(--accent, #2EB860);
+    color: #0F0F0F;
   }
 
   .drawer-shares {
