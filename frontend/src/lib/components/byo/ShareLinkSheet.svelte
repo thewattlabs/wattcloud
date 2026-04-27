@@ -37,7 +37,6 @@
   import QrCode from 'phosphor-svelte/lib/QrCode';
   import Warning from 'phosphor-svelte/lib/Warning';
   import QrDisplay from './QrDisplay.svelte';
-  import ConfirmModal from '../ConfirmModal.svelte';
 /**
    * One of four mutually exclusive sources:
    *   - { kind: 'file', file }              — single-blob share
@@ -529,88 +528,112 @@
   </div>
 </div>
 
-<ConfirmModal
-  isOpen={streamingHintOpen}
-  title="Streaming uploads are off in this browser"
-  confirmText="Continue anyway"
-  confirmClass="btn-primary"
-  onConfirm={handleStreamingHintConfirm}
-  onCancel={handleStreamingHintCancel}
->
-  <div class="streaming-hint">
-    <div class="streaming-hint-callout" role="note">
-      <span class="streaming-hint-icon" aria-hidden="true">
-        <Warning size={18} weight="regular" />
-      </span>
-      <p>
-        The share will work, but the encrypted ciphertext sits in this tab's
-        memory while it uploads. For shares of a few hundred MB or less, you
-        won't notice. Larger shares may use significant RAM until the
-        upload finishes.
-      </p>
+{#if streamingHintOpen}
+  <!-- Sits on top of ShareLinkSheet's z-index:500 overlay. Hard-coded
+       z-index because the design-system tokens (z-overlay/z-sheet) cap
+       at 60 — ConfirmModal/BottomSheet would render behind. -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <div
+    class="streaming-hint-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="streaming-hint-title"
+    onclick={(e) => { if (e.target === e.currentTarget) handleStreamingHintCancel(); }}
+    onkeydown={(e) => { if (e.key === 'Escape') handleStreamingHintCancel(); }}
+    tabindex="-1"
+    transition:fade={{ duration: 150 }}
+  >
+    <div
+      class="streaming-hint-sheet"
+      transition:fly={{ y: 40, duration: 220, easing: quintOut }}
+    >
+      <h3 class="streaming-hint-title" id="streaming-hint-title">
+        Streaming uploads are off in this browser
+      </h3>
+
+      <div class="streaming-hint-callout" role="note">
+        <span class="streaming-hint-icon" aria-hidden="true">
+          <Warning size={18} weight="regular" />
+        </span>
+        <p>
+          The share will work, but the encrypted ciphertext sits in this tab's
+          memory while it uploads. For shares of a few hundred MB or less, you
+          won't notice. Larger shares may use significant RAM until the
+          upload finishes.
+        </p>
+      </div>
+
+      <details class="streaming-hint-details">
+        <summary>Make Firefox stream uploads instead</summary>
+        <p class="streaming-hint-explainer">
+          Firefox supports streaming uploads but ships with the feature off
+          by default. Browsers can't open <code>about:</code> pages from a
+          regular tab — copy the values below and paste them in:
+        </p>
+        <ol class="streaming-hint-steps">
+          <li>
+            Open a new tab and paste:
+            <button
+              type="button"
+              class="streaming-hint-copy"
+              onclick={async () => {
+                streamingHintAboutCopied = await copyToClipboard('about:config');
+                if (streamingHintAboutCopied) {
+                  setTimeout(() => { streamingHintAboutCopied = false; }, 2000);
+                }
+              }}
+            >
+              <code>about:config</code>
+              <Copy size={14} weight="regular" />
+              {#if streamingHintAboutCopied}
+                <span class="streaming-hint-copied">Copied</span>
+              {/if}
+            </button>
+          </li>
+          <li>
+            Accept the warning, then search for:
+            <button
+              type="button"
+              class="streaming-hint-copy"
+              onclick={async () => {
+                streamingHintFlagCopied = await copyToClipboard('network.fetch.upload_streams');
+                if (streamingHintFlagCopied) {
+                  setTimeout(() => { streamingHintFlagCopied = false; }, 2000);
+                }
+              }}
+            >
+              <code>network.fetch.upload_streams</code>
+              <Copy size={14} weight="regular" />
+              {#if streamingHintFlagCopied}
+                <span class="streaming-hint-copied">Copied</span>
+              {/if}
+            </button>
+          </li>
+          <li>Toggle the value to <strong>true</strong>.</li>
+          <li>Reload this page and create your share.</li>
+        </ol>
+        <p class="streaming-hint-note">
+          Other browsers (Chrome, Edge, Safari 17.4+) ship streaming on by
+          default — no flag needed.
+        </p>
+      </details>
+
+      <label class="streaming-hint-dontshow">
+        <input type="checkbox" bind:checked={streamingHintDontShowAgain} />
+        <span>Don't show this again on this device</span>
+      </label>
+
+      <div class="streaming-hint-actions">
+        <button type="button" class="btn btn-ghost" onclick={handleStreamingHintCancel}>
+          Cancel
+        </button>
+        <button type="button" class="btn btn-primary" onclick={handleStreamingHintConfirm}>
+          Continue anyway
+        </button>
+      </div>
     </div>
-
-    <details class="streaming-hint-details">
-      <summary>Make Firefox stream uploads instead</summary>
-      <p class="streaming-hint-explainer">
-        Firefox supports streaming uploads but ships with the feature off
-        by default. Browsers can't open <code>about:</code> pages from a
-        regular tab — copy the values below and paste them in:
-      </p>
-      <ol class="streaming-hint-steps">
-        <li>
-          <span class="step-text">Open a new tab and paste:</span>
-          <button
-            type="button"
-            class="streaming-hint-copy"
-            onclick={async () => {
-              streamingHintAboutCopied = await copyToClipboard('about:config');
-              if (streamingHintAboutCopied) {
-                setTimeout(() => { streamingHintAboutCopied = false; }, 2000);
-              }
-            }}
-          >
-            <code>about:config</code>
-            <Copy size={14} weight="regular" />
-            {#if streamingHintAboutCopied}
-              <span class="streaming-hint-copied">Copied</span>
-            {/if}
-          </button>
-        </li>
-        <li>
-          Accept the warning, then search for:
-          <button
-            type="button"
-            class="streaming-hint-copy"
-            onclick={async () => {
-              streamingHintFlagCopied = await copyToClipboard('network.fetch.upload_streams');
-              if (streamingHintFlagCopied) {
-                setTimeout(() => { streamingHintFlagCopied = false; }, 2000);
-              }
-            }}
-          >
-            <code>network.fetch.upload_streams</code>
-            <Copy size={14} weight="regular" />
-            {#if streamingHintFlagCopied}
-              <span class="streaming-hint-copied">Copied</span>
-            {/if}
-          </button>
-        </li>
-        <li>Toggle the value to <strong>true</strong>.</li>
-        <li>Reload this page and create your share.</li>
-      </ol>
-      <p class="streaming-hint-note">
-        Other browsers (Chrome, Edge, Safari 17.4+) ship streaming on by
-        default — no flag needed.
-      </p>
-    </details>
-
-    <label class="streaming-hint-dontshow">
-      <input type="checkbox" bind:checked={streamingHintDontShowAgain} />
-      <span>Don't show this again on this device</span>
-    </label>
   </div>
-</ConfirmModal>
+{/if}
 
 <style>
   .overlay {
@@ -857,7 +880,28 @@
   }
 
   /* ── Streaming-fallback hint modal ─────────────────────────────────── */
-  .streaming-hint {
+  .streaming-hint-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Must clear ShareLinkSheet's z-index:500 — the hint is launched
+       *from inside* that sheet so it has to render above it. */
+    z-index: 600;
+    padding: var(--sp-md, 16px);
+  }
+  .streaming-hint-sheet {
+    background: var(--bg-surface-raised, #262626);
+    border: 1px solid var(--border, #2E2E2E);
+    border-radius: var(--r-card, 16px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    max-width: 520px;
+    max-height: calc(100vh - var(--sp-xl, 32px));
+    overflow-y: auto;
+    padding: var(--sp-lg, 24px);
     display: flex;
     flex-direction: column;
     gap: var(--sp-md, 16px);
@@ -865,7 +909,13 @@
     line-height: 1.5;
     font-size: var(--t-body-sm-size, 0.8125rem);
   }
-  .streaming-hint p { margin: 0; }
+  .streaming-hint-title {
+    margin: 0;
+    font-size: var(--t-title-size, 1.0625rem);
+    font-weight: 600;
+    color: var(--text-primary, #EDEDED);
+  }
+  .streaming-hint-sheet p { margin: 0; }
   .streaming-hint-callout {
     display: flex;
     gap: var(--sp-sm, 8px);
@@ -949,4 +999,11 @@
     cursor: pointer;
   }
   .streaming-hint-dontshow input { cursor: pointer; }
+  .streaming-hint-actions {
+    display: flex;
+    gap: var(--sp-sm, 8px);
+    justify-content: flex-end;
+    margin-top: var(--sp-sm, 8px);
+  }
+  .streaming-hint-actions .btn { min-width: 110px; }
 </style>
