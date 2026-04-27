@@ -115,6 +115,39 @@ type EnrollStep =
   // Opaque enrollment session ID — eph_sk, enc_key, mac_key stored in WASM heap
   let enrollmentSessionId: number | null = null;
 
+  // Sender-side stall timer. Once we've handed the shard + primary config
+  // off, the sender has nothing else to do but wait for the receiver's
+  // `done` ack. Without a deadline the existing-device UI sits on
+  // "Sending credentials…" forever if the receiver hits any error
+  // downstream (SFTP connect failure, Argon2id, slot-write conflict,
+  // manifest upload denial). 90 s comfortably covers Argon2id on a slow
+  // device + a manifest upload; longer than that almost always means the
+  // receiver bailed silently.
+  const SENDER_STALL_TIMEOUT_MS = 90_000;
+  let senderStallTimer: ReturnType<typeof setTimeout> | null = null;
+  function clearSenderStallTimer() {
+    if (senderStallTimer !== null) {
+      clearTimeout(senderStallTimer);
+      senderStallTimer = null;
+    }
+  }
+  function armSenderStallTimer() {
+    clearSenderStallTimer();
+    senderStallTimer = setTimeout(() => {
+      senderStallTimer = null;
+      // Only flip to error if we're still waiting — a late `done` after
+      // a real failure would otherwise overwrite the UI. The sender
+      // stays in 'sas-confirmed' the whole time it's waiting, so this
+      // check is the natural guard.
+      if (step === 'sas-confirmed') {
+        error = 'The other device didn\'t finish enrollment in time. ' +
+          'Check the receiving screen — it usually surfaces the underlying error there.';
+        step = 'error';
+        cleanup();
+      }
+    }, SENDER_STALL_TIMEOUT_MS);
+  }
+
   // ── Existing device: initiate enrollment ───────────────────────────────────
 
   async function startExistingDeviceEnrollment() {
@@ -165,6 +198,7 @@ type EnrollStep =
         }
 
         if (msg.type === 'done') {
+          clearSenderStallTimer();
           step = 'done';
           cleanup();
           onComplete?.();
@@ -447,6 +481,7 @@ type EnrollStep =
           shard,
         );
         ws?.send(JSON.stringify({ type: 'encrypted_shard', envelope: envelopeB64 }));
+        armSenderStallTimer();
       } catch (e: any) {
         error = e.message || 'Failed to send shard';
         step = 'error';
@@ -749,6 +784,7 @@ type EnrollStep =
   // ── Cleanup ────────────────────────────────────────────────────────────────
 
   function cleanup() {
+    clearSenderStallTimer();
     if (ws && ws.readyState !== WebSocket.CLOSED) {
       ws.close();
     }

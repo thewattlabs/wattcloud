@@ -117,43 +117,81 @@ export class SftpProvider implements StorageProvider {
 
     const wsUrl = `/relay/ws?mode=sftp&host=${encodeURIComponent(this.host)}&port=${encodeURIComponent(String(this.port))}`;
 
-    await new Promise<void>((resolve, reject) => {
-      this.ws = new WebSocket(wsUrl);
-      this.ws.binaryType = 'arraybuffer';
+    // WebSocket upgrade can fail intermittently — transient relay
+    // back-pressure, fleeting network blip, or a stale single-use cookie
+    // racing with eviction. The browser API doesn't expose the upgrade
+    // HTTP status, so the onerror handler can't distinguish "definitive
+    // 4xx" from "retry-worthy". Try twice before giving up: re-acquire
+    // a fresh cookie between attempts (the previous one may have been
+    // consumed) and surface host:port in the final error so the user
+    // can see which target failed instead of a generic "connection
+    // failed". This is the path device-enrollment hits on the receiver
+    // side when the just-handed-over SFTP config has its first connect
+    // attempt swallowed by a transient.
+    const MAX_ATTEMPTS = 2;
+    let lastErr: Error | null = null;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      if (attempt > 1) {
+        // Backoff + cookie refresh — the previous attempt's cookie may
+        // already be consumed server-side and the cache eviction in
+        // onerror only drops our local entry. Re-running acquire ensures
+        // the next WS upgrade carries a fresh jti.
+        await new Promise((r) => setTimeout(r, 500));
+        await acquireSftpRelayCookie(this.host, this.port);
+      }
+      try {
+        await new Promise<void>((resolve, reject) => {
+          this.ws = new WebSocket(wsUrl);
+          this.ws.binaryType = 'arraybuffer';
 
-      this.session = new SftpSessionWasm(
-        (text: string) => this.ws?.send(text),
-        (text: string, bin: Uint8Array) => { this.ws?.send(text); this.ws?.send(bin); },
-        () => this.ws?.close(),
-        this.basePath || undefined,
+          this.session = new SftpSessionWasm(
+            (text: string) => this.ws?.send(text),
+            (text: string, bin: Uint8Array) => { this.ws?.send(text); this.ws?.send(bin); },
+            () => this.ws?.close(),
+            this.basePath || undefined,
+          );
+
+          this.ws.onmessage = (e: MessageEvent) => {
+            if (typeof e.data === 'string') this.session.on_recv_text(e.data);
+            else this.session.on_recv_binary(new Uint8Array(e.data as ArrayBuffer));
+          };
+
+          this.ws.onclose = () => {
+            this.session.on_close();
+            this._drainRejecters(new ProviderError('NETWORK_ERROR', 'SFTP WebSocket closed during operation', 'sftp'));
+          };
+
+          this.ws.onerror = () => {
+            evictSftpRelayCookieCache(this.host, this.port).catch(() => {});
+            this._drainRejecters(new ProviderError('NETWORK_ERROR', 'SFTP WebSocket error during operation', 'sftp'));
+            reject(new Error('SFTP relay WebSocket connection failed'));
+          };
+
+          this.ws.onopen = () => {
+            // The server consumes the cookie's JTI on a successful upgrade
+            // (single-use enforcement). Keeping the per-purpose cache entry would
+            // re-offer the same consumed cookie on the next reconnect and earn a
+            // 403 "jti already consumed (replay)". Drop it now so the next init()
+            // runs a fresh PoW handshake.
+            evictSftpRelayCookieCache(this.host, this.port).catch(() => {});
+            resolve();
+          };
+        });
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e instanceof Error ? e : new Error(String(e));
+        // Tear down the half-open socket so the next attempt's onclose
+        // handler doesn't fire against a stale session.
+        try { this.ws?.close(); } catch { /* ignore */ }
+        this.ws = null;
+      }
+    }
+    if (lastErr) {
+      throw new Error(
+        `SFTP relay WebSocket connection failed (${this.host}:${this.port}) after ${MAX_ATTEMPTS} attempts: ${lastErr.message}`,
       );
-
-      this.ws.onmessage = (e: MessageEvent) => {
-        if (typeof e.data === 'string') this.session.on_recv_text(e.data);
-        else this.session.on_recv_binary(new Uint8Array(e.data as ArrayBuffer));
-      };
-
-      this.ws.onclose = () => {
-        this.session.on_close();
-        this._drainRejecters(new ProviderError('NETWORK_ERROR', 'SFTP WebSocket closed during operation', 'sftp'));
-      };
-
-      this.ws.onerror = () => {
-        evictSftpRelayCookieCache(this.host, this.port).catch(() => {});
-        this._drainRejecters(new ProviderError('NETWORK_ERROR', 'SFTP WebSocket error during operation', 'sftp'));
-        reject(new Error('SFTP relay WebSocket connection failed'));
-      };
-
-      this.ws.onopen = () => {
-        // The server consumes the cookie's JTI on a successful upgrade
-        // (single-use enforcement). Keeping the per-purpose cache entry would
-        // re-offer the same consumed cookie on the next reconnect and earn a
-        // 403 "jti already consumed (replay)". Drop it now so the next init()
-        // runs a fresh PoW handshake.
-        evictSftpRelayCookieCache(this.host, this.port).catch(() => {});
-        resolve();
-      };
-    });
+    }
 
     // Handshake (TOFU + relay_version negotiation).
     const storedFp = savedConfig.sftpHostKeyFingerprint ?? null;
