@@ -100,6 +100,7 @@ type EnrollStep =
   let sasCode = $state('');
   let error = $state('');
   let argon2Done = $state(false);
+  let unlockPhase = $state('');
 
   // ── Receiver-side state for the received primary config ────────────────────
   /** Decrypted primary ProviderConfig received from the existing device. */
@@ -665,6 +666,7 @@ type EnrollStep =
       const newManifest = new Uint8Array(HEADER_SIZE + manifestBody.length);
       newManifest.set(headerBytes, 0);
       newManifest.set(manifestBody, HEADER_SIZE);
+      unlockPhase = 'Writing device slot to vault…';
       await provider.upload(provider.manifestRef(), 'vault_manifest.sc', newManifest, {
         mimeType: 'application/octet-stream',
         expectedVersion: currentVersion,
@@ -682,19 +684,38 @@ type EnrollStep =
         last_seen_manifest_version: 0,
         last_backup_prompt_at: null,
       });
+      console.info('[DeviceEnrollment] step 9 done — manifest uploaded, device record persisted');
+
+      // The receiver is now functionally enrolled (slot in manifest header +
+      // device key in IDB). Tell the sender so its UI can transition to
+      // "Done" without waiting through Step 10 (unlockVault hydrates every
+      // secondary provider over SFTP — easily 30 s+ on a multi-provider
+      // vault, way past the 90 s stall but well past the user's patience).
+      // The remaining steps below are local persistence that doesn't change
+      // enrollment success: a refresh always recovers them.
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'done' }));
+        // Let the WS flush before any further awaits steal the event loop.
+        await new Promise((r) => setTimeout(r, 50));
+        cleanup();
+      }
 
       // ── Step 10: hand the preopened WASM session to unlockVault ──────────
       // unlockVault's `preopenedSessionId` path skips Argon2id AND the
       // device-shard-from-slot derivation (we already loaded the KEK at
       // step 4), so it goes straight to manifest decode + secondary-provider
       // hydration.
+      unlockPhase = 'Connecting to your storage providers…';
       const vaultKeySessionId = crypto.randomUUID();
+      console.info('[DeviceEnrollment] step 10 begin — unlockVault hydrating secondaries');
+      const t10 = performance.now();
       const db = await unlockVault(provider, {
         passphrase: '',
         keySessionId: vaultKeySessionId,
         preopenedSessionId,
       });
       preopenedSessionId = null; // ownership transferred to unlockVault
+      console.info(`[DeviceEnrollment] step 10 done in ${Math.round(performance.now() - t10)} ms`);
 
       // ── Step 9b: append this device to vault_meta.enrolled_devices ───────
       // The slot table in the manifest header proves this device CAN unlock,
@@ -741,6 +762,7 @@ type EnrollStep =
       // secondary by hand. Configs whose secret is missing (legacy vaults
       // that never persisted creds) still land in the store; they'll fall
       // through to the reauth sheet on next open like any legacy row.
+      unlockPhase = 'Saving provider configurations…';
       const cfgLabel = receivedConfig
         ? (receivedLabel.trim().length > 0
             ? receivedLabel
@@ -818,16 +840,10 @@ type EnrollStep =
         }
       }
 
-      // Signal existing device that enrollment is done. We hand the message
-      // off to the relay before closing — the relay then forwards to the
-      // sender's slot. Give the framing a tick to flush before cleanup()
-      // tears the WS down, otherwise a fast cleanup() can race the send and
-      // the sender hits its 90 s stall timer despite a successful enrollment.
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'done' }));
-        await new Promise((r) => setTimeout(r, 50));
-      }
-      cleanup();
+      // ('done' was already sent and the WS cleaned up right after Step 9 —
+      // see the block following setDeviceRecord above. No duplicate signal
+      // here.)
+      console.info('[DeviceEnrollment] receiver flow complete, calling onEnrolled');
 
       // Close enrollment session (zeroizes remaining material in WASM)
       byoWorker.Worker.byoEnrollmentClose(enrollmentSessionId).catch(() => {/* best-effort */});
@@ -949,7 +965,7 @@ type EnrollStep =
 
   {:else if step === 'unlocking'}
     <h2 class="title">Unlocking vault…</h2>
-    <Argon2Progress done={argon2Done} />
+    <Argon2Progress done={argon2Done} phase={unlockPhase} />
 
   {:else if step === 'done'}
     <div class="success">
