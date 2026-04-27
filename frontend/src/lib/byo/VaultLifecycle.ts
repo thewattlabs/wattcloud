@@ -924,10 +924,19 @@ async function _doSave(): Promise<void> {
         );
         continue;
       }
+      // Inspect the actual SFTP host + WebSocket readyState behind this
+      // instance — phase 4 is reporting "upload ok 2255" for the primary
+      // even though the relay's primary session shows no write traffic.
+      // If host/readyState don't match what we expect, the upload is
+      // somehow going through a different session.
+      const anyInst = provInst as unknown as { host?: string; ws?: WebSocket | null };
+      const wsState = anyInst.ws ? anyInst.ws.readyState : 'no-ws';
       console.info(
         '[saveVault] phase4 upload start: pid=', pid,
         'isPrimary=', pid === _primaryProviderId,
         'ref=', provInst.manifestRef(),
+        'instance.host=', anyInst.host,
+        'ws.readyState=', wsState,
       );
       try {
         const { version: uploadedManifestVersion } = await provInst.upload(provInst.manifestRef(), 'vault_manifest.sc', manifestFile, {});
