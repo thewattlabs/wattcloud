@@ -123,7 +123,7 @@ let showSheet = $state(false);
         <Info size={20} />
       </button>
     {/if}
-    {#if canShare && singleSelection}
+    {#if canShare}
       <button class="btn-icon" onclick={() => emit('share')} aria-label="Share link" title="Share link">
         <ShareNetwork size={20} />
       </button>
@@ -232,7 +232,7 @@ let showSheet = $state(false);
             <span>Details</span>
           </button>
         {/if}
-        {#if canShare && singleSelection}
+        {#if canShare}
           <button class="sheet-option" onclick={() => emit('share')}>
             <span class="sheet-option-icon"><ShareNetwork size={20} /></span>
             <span>Share link</span>
