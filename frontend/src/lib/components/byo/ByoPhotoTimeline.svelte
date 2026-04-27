@@ -223,25 +223,44 @@ function toggleSelection(fileId: number) {
   let placeChipEl = $state<HTMLDivElement | undefined>(undefined);
   let placeMenuEl = $state<HTMLDivElement | undefined>(undefined);
 
+  /** Width below which we abandon chip-relative anchoring and pin the
+   *  menu to the viewport instead. Above this, the chip has enough
+   *  horizontal space to its left for the default right:0 anchor to
+   *  fit a 320px-wide menu without clipping. */
+  const NARROW_VIEWPORT_PX = 480;
+
   $effect(() => {
-    // Re-clamp every time the menu opens (or the toolbar layout shifts
-    // it). Reading these state vars makes the effect re-run.
     if (!placeSheetOpen) return;
     if (!placeChipEl || !placeMenuEl) return;
     const chipEl = placeChipEl;
     const menuEl = placeMenuEl;
-    // Reset before measuring so we don't compound a previous shift.
+    // Reset every overridable property — narrow viewport gets fixed
+    // positioning, wide viewport reverts to the CSS default. We always
+    // start from a clean slate so a viewport that's resized while the
+    // menu is open ends up consistent.
+    menuEl.style.position = '';
+    menuEl.style.top = '';
+    menuEl.style.left = '';
     menuEl.style.right = '';
+    menuEl.style.width = '';
+    menuEl.style.maxWidth = '';
+
+    const viewportWidth = document.documentElement.clientWidth;
+    if (viewportWidth >= NARROW_VIEWPORT_PX) return;
+
+    // Pin to viewport — chip-relative right:0 + width:min(...) still
+    // clips the menu's left edge when the chip lives near the right of
+    // a narrow toolbar. Position fixed escapes the chip's containing
+    // block; top tracks the chip so the visual link is preserved.
     requestAnimationFrame(() => {
       if (!menuEl.isConnected || !chipEl.isConnected) return;
       const chipRect = chipEl.getBoundingClientRect();
-      const menuWidth = menuEl.offsetWidth;
-      const naturalLeft = chipRect.right - menuWidth;
-      const desiredLeft = Math.max(12, naturalLeft);
-      const shift = desiredLeft - naturalLeft;
-      // Negative `right` pushes the menu rightward (so its left edge
-      // lands at desiredLeft instead of naturalLeft).
-      if (shift > 0) menuEl.style.right = `${-shift}px`;
+      menuEl.style.position = 'fixed';
+      menuEl.style.top = `${chipRect.bottom + 4}px`;
+      menuEl.style.left = '12px';
+      menuEl.style.right = '12px';
+      menuEl.style.width = 'auto';
+      menuEl.style.maxWidth = 'none';
     });
   });
 
