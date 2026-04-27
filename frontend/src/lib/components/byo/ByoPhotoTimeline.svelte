@@ -1077,20 +1077,22 @@ function toggleSelection(fileId: number) {
     overflow: visible;
     padding: var(--sp-sm);
   }
-  /* Narrow viewport CSS fallback — the chip lives near the right of
-     the toolbar on phones, so right:0 anchoring + a 320px-wide menu
-     pushes the left edge off-screen. Pin to viewport directly. The
-     $effect in the script also refines `top` from the chip's actual
-     bottom; this CSS handles the case where JS hasn't measured yet
-     (or fails to run) so the menu is at least readable. */
+  /* Narrow viewport CSS fallback for ALL filter dropdowns (folder,
+     date, place). The chips live near the right of the toolbar on
+     phones, so right:0 anchoring + any meaningful menu width pushes
+     the left edge off-screen. Pin to viewport directly. For the
+     place menu, the $effect in the script also refines `top` from
+     the chip's actual bottom; the other two rely on this static
+     120px which lands just below the toolbar in practice. */
   @media (max-width: 480px) {
-    .folder-picker-menu.place-menu {
+    .folder-picker-menu {
       position: fixed;
       top: 120px;
       left: 12px;
       right: 12px;
       width: auto;
       max-width: none;
+      min-width: 0;
     }
   }
 
