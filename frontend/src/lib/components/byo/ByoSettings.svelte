@@ -1345,6 +1345,7 @@
     border-radius: var(--r-pill, 9999px);
     color: var(--accent-text, #5FDB8A);
     padding: 1px 6px;
+    margin-left: 4px;
   }
 
   .device-meta {
