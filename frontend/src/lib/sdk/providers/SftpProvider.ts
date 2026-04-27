@@ -207,14 +207,46 @@ export class SftpProvider implements StorageProvider {
       const current = await this.getVersion(ref || `${this.vaultRoot()}/data/${name}`).catch(() => null);
       if (current !== null && current !== options.expectedVersion) throw new ConflictError('sftp', current);
     }
-    const streamId: string = await this._rpc(() => this.session.upload_open(name, data.length));
-    if (streamId.startsWith('v2:')) {
-      for (let pos = 0; pos < data.length; pos += UPLOAD_CHUNK_SIZE) {
-        await this._rpc(() => this.session.upload_write_chunk(streamId, data.subarray(pos, pos + UPLOAD_CHUNK_SIZE)));
+    return this._uploadWithDirRecover(name, data, async () => {
+      const streamId: string = await this._rpc(() => this.session.upload_open(name, data.length));
+      if (streamId.startsWith('v2:')) {
+        for (let pos = 0; pos < data.length; pos += UPLOAD_CHUNK_SIZE) {
+          await this._rpc(() => this.session.upload_write_chunk(streamId, data.subarray(pos, pos + UPLOAD_CHUNK_SIZE)));
+        }
+        return JSON.parse(await this._rpc(() => this.session.upload_close_v2(streamId)));
       }
-      return JSON.parse(await this._rpc(() => this.session.upload_close_v2(streamId)));
+      return JSON.parse(await this._rpc(() => this.session.upload_close_v1(streamId, data)));
+    });
+  }
+
+  /** Wrap an upload attempt with one auto-retry after ensure_root_folders.
+   *  init() already calls ensure_root_folders — but if a remote operator
+   *  prunes the vault directory between sessions, or if a future code
+   *  path skips the init mkdir for any reason, the first write hits a
+   *  "No such file" from CREATE|WRITE|TRUNCATE on a missing parent dir.
+   *  Re-running the mkdir-p chain and retrying once is cheap, idempotent,
+   *  and avoids the "Debounced save failed: No such file" loop the user
+   *  hit when adding a second SFTP provider. */
+  private async _uploadWithDirRecover<T>(
+    name: string,
+    _data: Uint8Array,
+    attempt: () => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await attempt();
+    } catch (e: any) {
+      const msg = String(e?.message ?? e ?? '');
+      if (!/no such file|nosuchfile/i.test(msg)) throw e;
+      // Best-effort dir reconciliation. ensure_root_folders is idempotent
+      // (each step stat's first, only mkdir's on miss).
+      try {
+        await this._rpc(() => this.session.ensure_root_folders());
+      } catch (mkdirErr) {
+        console.warn(`[SftpProvider] ensure_root_folders during upload retry failed for ${name}`, mkdirErr);
+        throw e; // Surface the original error rather than the mkdir error.
+      }
+      return await attempt();
     }
-    return JSON.parse(await this._rpc(() => this.session.upload_close_v1(streamId, data)));
   }
 
   async download(ref: string): Promise<{ data: Uint8Array; version: string }> {
