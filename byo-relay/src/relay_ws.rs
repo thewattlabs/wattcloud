@@ -61,7 +61,15 @@ pub async fn ws_handler(
     };
     let claims = match verify_relay_cookie(&cookies, cookie_name, &state.config.relay_signing_key) {
         Ok(c) => c,
-        Err(_) => return StatusCode::UNAUTHORIZED.into_response(),
+        Err(e) => {
+            tracing::warn!(
+                mode = mode,
+                cookie = cookie_name,
+                error = %e,
+                "ws upgrade denied: relay_auth cookie missing or invalid",
+            );
+            return StatusCode::UNAUTHORIZED.into_response();
+        }
     };
 
     let client_ip = extract_client_ip(addr.ip(), &headers, &state.config.trusted_proxies);
@@ -118,13 +126,24 @@ pub async fn ws_handler(
 
             // Check if IP is blocked by auth-failure or spray tracker.
             if state.sftp_auth_tracker.is_blocked(client_ip) {
+                tracing::warn!(
+                    %client_ip,
+                    "sftp relay denied: client IP is in auth-failure block window",
+                );
                 return StatusCode::TOO_MANY_REQUESTS.into_response();
             }
 
             // Per-IP concurrent SFTP connection limit.
             let _guard = match state.sftp_tracker.try_acquire(client_ip) {
                 Some(g) => g,
-                None => return StatusCode::TOO_MANY_REQUESTS.into_response(),
+                None => {
+                    tracing::warn!(
+                        %client_ip,
+                        max = state.config.sftp_max_concurrent_per_ip,
+                        "sftp relay denied: per-IP concurrent connection limit reached",
+                    );
+                    return StatusCode::TOO_MANY_REQUESTS.into_response();
+                }
             };
 
             // DNS resolution + SSRF protection — must happen before upgrade.
