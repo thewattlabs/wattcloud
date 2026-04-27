@@ -497,13 +497,13 @@
   .file-list .list-item-col-size {
     font-variant-numeric: tabular-nums;
   }
+  /* The outer .file-list-header is now a 1-col grid; row-groups own the
+     5-column header-cell layout so the 2-col-viewport rule below can
+     trivially flip the outer to two columns and reveal the second row. */
   .file-list-header {
     display: grid;
-    grid-template-columns: 40px minmax(0, 1fr) 120px 80px 32px;
-    column-gap: var(--sp-sm);
+    grid-template-columns: 1fr;
     align-items: center;
-    height: 28px;
-    padding: 0 var(--sp-sm);
     margin-bottom: var(--sp-xs);
     border-bottom: 1px solid var(--border);
     font-size: var(--t-label-size);
@@ -511,6 +511,17 @@
     letter-spacing: var(--t-label-ls);
     text-transform: uppercase;
     color: var(--text-secondary);
+  }
+  .file-list-header-row {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) 120px 80px 32px;
+    column-gap: var(--sp-sm);
+    align-items: center;
+    height: 28px;
+    padding: 0 var(--sp-sm);
+  }
+  .file-list-header-row.file-list-header-row-extra {
+    display: none;
   }
   .file-list-header-cell-right {
     text-align: right;
@@ -526,10 +537,9 @@
    list rows (~360px each + gap). Below that we stay single-column so rows
    keep room for the Modified/Size columns.
 
-   The single-column header row above can't visually align with two
-   parallel rows beneath without either duplicating it or splitting it
-   across columns — both look fussy. Hide it instead; the per-row meta
-   slots are self-labeled by position. */
+   The header above is also flipped to two columns; the .file-list-header-
+   row-extra duplicate inside the markup becomes visible so each list
+   column gets its own Name/Modified/Size labels. */
 @media (min-width: 1280px) {
   .file-list {
     display: grid;
@@ -538,7 +548,11 @@
     row-gap: var(--sp-xs);
   }
   .file-list-header {
-    display: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--sp-md);
+  }
+  .file-list-header-row.file-list-header-row-extra {
+    display: grid;
   }
 }
 

@@ -710,19 +710,32 @@
     // Persist the provider config on this device. Belt-and-braces: covers
     // the case where the user connected a provider whose vault already
     // existed (second-device flow) — ByoSetup wouldn't have run, so the
-    // save hook there didn't fire. Skipped on hydrate-from-IDB because the
-    // row already exists (saveProviderConfig is an upsert).
+    // save hook there didn't fire. saveProviderConfig is an upsert, so
+    // call it unconditionally; the catch is that we mustn't clobber the
+    // user-chosen display_name in the process.
+    //
+    // provider.displayName is a hardcoded class constant ('SFTP', 'WebDAV',
+    // 'S3'…) — using it here used to wipe any rename the user had done
+    // from Settings → Providers on the previous session, because the
+    // manifest's display_name (which renameProvider mutates) never made
+    // it back into IDB. Pull the post-unlock vaultStore entry instead;
+    // it's seeded from the manifest by VaultLifecycle, so it reflects
+    // the latest rename.
     const vaultId = get(vaultStore).vaultId ?? null;
     if (vaultId && provider && providerConfig) {
       try {
         const { saveProviderConfig } = await import('../../byo/ProviderConfigStore');
+        const manifestEntry = get(vaultStore).providers.find(
+          (p) => p.providerId === activeProviderId,
+        );
+        const displayName = manifestEntry?.displayName ?? provider.displayName;
         await saveProviderConfig(
           {
             provider_id: activeProviderId,
             vault_id: vaultId,
-            vault_label: provider.displayName,
+            vault_label: displayName,
             type: provider.type,
-            display_name: provider.displayName,
+            display_name: displayName,
             is_primary: true,
             saved_at: new Date().toISOString(),
           },

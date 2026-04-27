@@ -390,12 +390,24 @@ let draggedFileId: number | null = $state(null);
        600px each row stays as the stacked icon + name + inline meta
        layout. The header row below is hidden on mobile via CSS. -->
   {#if files.length > 0}
+    <!-- The header is wrapped in two row-groups so the 2-col viewport
+         (≥1280px) can repeat the labels across both columns. The second
+         row stays display:none below that breakpoint. -->
     <div class="file-list-header" aria-hidden="true">
-      <span class="file-list-header-icon"></span>
-      <span class="file-list-header-cell">Name</span>
-      <span class="file-list-header-cell file-list-header-cell-right">Modified</span>
-      <span class="file-list-header-cell file-list-header-cell-right">Size</span>
-      <span class="file-list-header-actions"></span>
+      <div class="file-list-header-row">
+        <span class="file-list-header-icon"></span>
+        <span class="file-list-header-cell">Name</span>
+        <span class="file-list-header-cell file-list-header-cell-right">Modified</span>
+        <span class="file-list-header-cell file-list-header-cell-right">Size</span>
+        <span class="file-list-header-actions"></span>
+      </div>
+      <div class="file-list-header-row file-list-header-row-extra">
+        <span class="file-list-header-icon"></span>
+        <span class="file-list-header-cell">Name</span>
+        <span class="file-list-header-cell file-list-header-cell-right">Modified</span>
+        <span class="file-list-header-cell file-list-header-cell-right">Size</span>
+        <span class="file-list-header-actions"></span>
+      </div>
     </div>
   {/if}
   <div class="file-list" role="list">
