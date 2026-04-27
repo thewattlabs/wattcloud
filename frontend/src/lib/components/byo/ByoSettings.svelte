@@ -426,15 +426,38 @@
   async function retryOrphan(o: HydratedProviderConfig) {
     retryingOrphanId = o.provider_id;
     try {
-      // Reuse the saved providerId so the orphaned vault_<id>.sc body on the
-      // remote (uploaded by the original failed attempt) gets reused instead
-      // of leaving a second copy behind. hydrateProvider runs init() which
-      // will re-create vault directories if needed, then addProvider re-adds
-      // the manifest entry and triggers a save.
-      const instance = await hydrateProvider(o.config);
+      // Pin providerId to the orphan row's id so addProvider re-adds the
+      // manifest entry under the SAME id the IDB row carries. Without this
+      // pin, configs persisted by older code paths (no providerId in the
+      // encrypted blob) cause addProvider to mint a fresh UUID — manifest
+      // gets the new id, IDB keeps the old id, and the row stays orphaned
+      // forever despite the toast saying "reconnected". Also reuses the
+      // existing vault_<id>.sc body on the remote instead of leaving a
+      // second copy behind.
+      const cfgWithId = { ...o.config, providerId: o.provider_id };
+      const instance = await hydrateProvider(cfgWithId);
       // addProvider force-saves inline so the new manifest entry survives
       // an immediate reload — no need to await saveVault separately here.
-      await addProvider(instance, o.config, o.display_name);
+      await addProvider(instance, cfgWithId, o.display_name);
+      // Re-persist the IDB row with the (now guaranteed) providerId in the
+      // encrypted config too, so future reloads / device-enrollments don't
+      // hit the same legacy gap.
+      const vid = getVaultId();
+      if (vid) {
+        const { saveProviderConfig } = await import('../../byo/ProviderConfigStore');
+        await saveProviderConfig(
+          {
+            provider_id: o.provider_id,
+            vault_id: vid,
+            vault_label: o.vault_label,
+            type: o.type,
+            display_name: o.display_name,
+            is_primary: o.is_primary,
+            saved_at: new Date().toISOString(),
+          },
+          cfgWithId,
+        );
+      }
       byoToast.show(`${o.display_name} reconnected.`, { icon: 'seal' });
       await loadOrphans();
     } catch (e: any) {
