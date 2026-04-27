@@ -311,7 +311,12 @@ export function resetByoPhotos(): void {
   byoThumbnailCache.set(new Map());
   byoPhotoTimeline.set([]);
   byoPhotosLoading.set(false);
-  _dataProvider = null;
+  // _dataProvider intentionally NOT cleared here — it's app-scoped (set
+  // by ByoApp on unlock, set to null on lock). The dashboard's onDestroy
+  // also calls this fn on tab-switch remounts (Settings → Photos), and
+  // wiping the provider mid-session would race ByoPhotoTimeline.onMount
+  // (which fires before the parent dashboard's onMount can re-wire it),
+  // leaving the timeline empty until a manual reload.
 }
 
 // ── Derived ────────────────────────────────────────────────────────────────
