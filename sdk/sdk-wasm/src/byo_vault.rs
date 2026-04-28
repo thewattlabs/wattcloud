@@ -270,7 +270,8 @@ pub fn byo_manifest_update_provider_config(
         Err(e) => return js_error(&format!("manifest parse error: {e}")),
     };
     let now = now_unix_secs as u64;
-    if let Err(e) = manifest_update_provider_config(&mut manifest, provider_id, new_config_json, now)
+    if let Err(e) =
+        manifest_update_provider_config(&mut manifest, provider_id, new_config_json, now)
     {
         return js_error(&e.to_string());
     }

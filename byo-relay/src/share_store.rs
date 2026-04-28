@@ -702,7 +702,11 @@ mod tests {
         fs::set_permissions(&parent, original).unwrap();
 
         let (removed, freed) = result.unwrap();
-        assert_eq!(removed.len(), 0, "fs-failed share must NOT be reported as removed");
+        assert_eq!(
+            removed.len(),
+            0,
+            "fs-failed share must NOT be reported as removed"
+        );
         assert_eq!(freed, 0);
         assert!(
             store.get_meta("stuck").unwrap().is_some(),

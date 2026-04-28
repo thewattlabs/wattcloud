@@ -1090,7 +1090,10 @@ mod tests {
         manifest_update_provider_config(&mut m, "a", r#"{"type":"sftp","sftpHost":"new"}"#, 2000)
             .unwrap();
         let entry = m.providers.iter().find(|p| p.provider_id == "a").unwrap();
-        assert_eq!(entry.config_json.as_str(), r#"{"type":"sftp","sftpHost":"new"}"#);
+        assert_eq!(
+            entry.config_json.as_str(),
+            r#"{"type":"sftp","sftpHost":"new"}"#
+        );
         assert_eq!(entry.updated_at, 2000);
     }
 
