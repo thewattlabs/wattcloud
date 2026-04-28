@@ -76,7 +76,7 @@ base64 = "0.21"
 
 # SHA-256 for PoW verification and HMAC for share ownership tokens + stats device hashing
 sha2 = "0.10"
-hmac = "0.12"
+hmac = "0.13"
 hex = "0.4"
 
 # statvfs() for the /relay/share/headroom endpoint
