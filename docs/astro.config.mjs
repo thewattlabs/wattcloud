@@ -13,6 +13,18 @@ export default defineConfig({
       description:
         'Operator handbook for self-hosting Wattcloud — a zero-knowledge, bring-your-own-storage cloud file manager.',
       favicon: '/favicon.svg',
+      // Wattcloud docs are dark-only by design (DESIGN.md §1). Force the
+      // `data-theme="dark"` attribute on <html> before the Starlight theme
+      // provider boots — otherwise visitors with system-light preference
+      // get Expressive Code's light-mode token colors (low contrast on
+      // our forced-dark surfaces). Inline-string only; no untrusted input.
+      head: [
+        {
+          tag: 'script',
+          content:
+            "document.documentElement.dataset.theme='dark';try{localStorage.setItem('starlight-theme','dark')}catch(e){}",
+        },
+      ],
       customCss: [
         './src/styles/design-system.css',
         './src/styles/docs-overrides.css',
