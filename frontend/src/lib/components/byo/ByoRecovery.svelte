@@ -251,7 +251,7 @@ const STEPS = ['Recovery Key', 'New Passphrase', 'Re-keying', 'New Key'];
 </script>
 
 <div class="byo-recovery">
-  <StepIndicator steps={STEPS} currentStep={stepIndex} {completedSteps} />
+  <StepIndicator steps={STEPS} currentStep={stepIndex} {completedSteps} showLabels={false} />
 
   {#if step === 'enter-key' || step === 'verifying'}
     <div class="step-content">
