@@ -11,7 +11,8 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use std::hint::black_box;
 use sdk_core::byo::argon2id_derive_byo;
 use sdk_core::crypto::hashing::{blake2b_256, hmac_sha256};
 use sdk_core::crypto::kdf::argon2id_derive;
