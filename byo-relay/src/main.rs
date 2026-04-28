@@ -303,7 +303,10 @@ async fn main() -> anyhow::Result<()> {
         // handlers return in milliseconds so the wider budget doesn't
         // relax the DoS posture — stalled connections are still rate- and
         // byte-budget gated.
-        .layer(TimeoutLayer::new(Duration::from_secs(4 * 3600)))
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::GATEWAY_TIMEOUT,
+            Duration::from_secs(4 * 3600),
+        ))
         .layer(CookieManagerLayer::new())
         .layer(axum::Extension(Domain(domain)))
         .with_state(state);
