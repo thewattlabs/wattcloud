@@ -101,6 +101,20 @@ pre.astro-code,
   border-radius: 6px;
   padding: 0.1em 0.4em;
   font-size: 0.9em;
+  /* Force readable contrast: inline code inherits paragraph color by default,
+     but Expressive Code's inline theme can dim it. Pin to primary text. */
+  color: var(--text-primary);
+}
+
+/* Plaintext / no-language code blocks render with Expressive Code's
+   default token color, which is lower-contrast than our background warrants.
+   This rule sets the parent color to primary text. Token spans in
+   syntax-highlighted blocks keep their per-token color via inline styles;
+   plaintext lines (no token spans) inherit from this rule. */
+.expressive-code pre,
+.expressive-code pre > code,
+.expressive-code .ec-line {
+  color: var(--text-primary);
 }
 
 /* Asides — bind to Wattcloud accents

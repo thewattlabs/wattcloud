@@ -1,7 +1,14 @@
 name: CI
 
-# Runs on every push and every PR into main. Full BYO pipeline (lint + test +
-# build). No deploy side-effects.
+# Runs on push to main (post-merge verification) and every PR into main.
+# Full BYO pipeline (lint + test + build). No deploy side-effects.
+#
+# Why `push: branches: [main]` and not `['**']`: feature-branch pushes are
+# already covered by `pull_request` once a PR is open, so listening on every
+# branch would fire the same job twice (push + pull_request) for the same
+# SHA. Restricting push to `main` dedupes without losing post-merge
+# verification on the protected branch. To CI a feature branch before
+# opening a PR, open it as a draft.
 #
 # Security: `run:` steps use only trusted inputs (no issue titles, PR bodies,
 # or comment bodies). `github.ref` is the only context expression and it's
@@ -11,7 +18,7 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    branches: [main]
     paths-ignore:
       - '**/*.md'
       - 'LICENSE'

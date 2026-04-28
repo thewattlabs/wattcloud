@@ -20,13 +20,15 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    branches: [main]
     paths:
       - '**/*.md'
       - 'LICENSE'
       - 'NOTICE'
       - '.gitignore'
       - '.github/dependabot.yml'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'docs/**'
   pull_request:
     branches: [main]
     paths:
@@ -35,6 +37,8 @@ on:
       - 'NOTICE'
       - '.gitignore'
       - '.github/dependabot.yml'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'docs/**'
 
 permissions:
   contents: read
