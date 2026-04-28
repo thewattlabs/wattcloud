@@ -787,7 +787,7 @@ type EnrollStep =
       // not strand the UI. On timeout the entries land on the next reload
       // by re-hydrating from the manifest, and the user just goes to the
       // dashboard.
-      async function persistProviderConfigs(): Promise<void> {
+      const persistProviderConfigs = async (): Promise<void> => {
         if (!receivedConfig) return;
         // After unlockVault returns, VaultLifecycle has parsed the manifest
         // and populated _primaryProviderId with the authoritative UUID.
@@ -858,7 +858,7 @@ type EnrollStep =
         } catch (manifestErr) {
           console.warn('[DeviceEnrollment] manifest secondaries persist failed', manifestErr);
         }
-      }
+      };
 
       const SAVE_PHASE_TIMEOUT_MS = 8_000;
       const timedOut = await Promise.race([

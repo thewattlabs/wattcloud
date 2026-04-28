@@ -1026,15 +1026,9 @@
   .tile:disabled { opacity: 0.5; cursor: not-allowed; }
   .tile.active { border-color: var(--accent, #2EB860); }
 
-  /* Coming-soon variant: dim less than full-disabled (we want users to
-     read the pill, not just see a greyed-out blob), and keep the cursor
-     not-allowed so the affordance is clear. */
-  .tile.coming-soon {
-    opacity: 0.7;
-    position: relative;
-  }
-  .tile.coming-soon:disabled { opacity: 0.7; }
-  .tile-pill,
+  /* Coming-soon dimming was moved off .tile after the visual polish that
+     turned coming-soon into a banner-row affordance — keep the .provider-btn
+     variant below for the Settings list, but the .tile rules are dropped. */
   .provider-pill {
     font-size: 0.6875rem;
     font-weight: 500;

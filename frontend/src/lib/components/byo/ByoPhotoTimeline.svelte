@@ -106,7 +106,7 @@
       catch { /* storage blocked */ }
     }
   }
-  let densityIcon = $derived(photoDensity === 'small' ? GridNine
+  let DensityIcon = $derived(photoDensity === 'small' ? GridNine
     : photoDensity === 'medium' ? GridFour
     : SquaresFour);
   let densityLabel = $derived(
@@ -668,7 +668,7 @@ function toggleSelection(fileId: number) {
             aria-label={densityLabel}
             title={densityLabel}
           >
-            <svelte:component this={densityIcon} size={14} />
+            <DensityIcon size={14} />
           </button>
 
           <button
