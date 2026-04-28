@@ -21,7 +21,7 @@ blake2 = "0.10"
 sha2 = "0.10"
 sha3 = "0.11"
 hmac = "0.12"
-hkdf = "0.12"
+hkdf = "0.13"
 subtle = "2.5"
 typenum = "1.17"
 rand = { version = "0.8", features = ["getrandom"] }
