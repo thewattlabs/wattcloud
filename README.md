@@ -1,6 +1,8 @@
 <p align="center">
-  <img src=".github/assets/wattcloud-hero.svg" width="280" alt="Wattcloud" />
+  <img src=".github/assets/wattcloud-hero.svg" width="96" alt="Wattcloud cloud icon" />
 </p>
+
+<h1 align="center">Wattcloud</h1>
 
 <p align="center">
   <strong>Post-quantum, end-to-end-encrypted file manager for storage you already own.</strong><br/>
