@@ -773,7 +773,17 @@ type EnrollStep =
             ? receivedLabel
             : (provider?.displayName ?? receivedConfig.type))
         : '';
-      if (receivedConfig) {
+
+      // Race the whole phase against an 8 s timeout. The device is already
+      // functionally enrolled by this point — slot in manifest header, key
+      // in IDB, 'done' shipped to the sender — so a hang here (we've seen
+      // saveProviderConfig sit indefinitely on some receivers, suspected
+      // IDB lock contention with the markDirty-triggered saveVault) must
+      // not strand the UI. On timeout the entries land on the next reload
+      // by re-hydrating from the manifest, and the user just goes to the
+      // dashboard.
+      async function persistProviderConfigs(): Promise<void> {
+        if (!receivedConfig) return;
         // After unlockVault returns, VaultLifecycle has parsed the manifest
         // and populated _primaryProviderId with the authoritative UUID.
         // Reusing that UUID keeps this device's ProviderConfigStore row in
@@ -799,54 +809,63 @@ type EnrollStep =
             receivedConfig,
           );
         } catch (persistErr) {
-          // Non-fatal: the vault is unlocked and usable; the user will just
-          // have to re-add the provider on next reload. Log for diagnostics.
           console.warn('[DeviceEnrollment] saveProviderConfig failed', persistErr);
         }
 
         // Mirror every non-tombstoned, non-primary manifest entry into the
         // per-device store so reload uses the local IDB hydrate path
-        // instead of re-reading config_json. Each row carries the same
-        // creds the source has on its end (post the credential-persistence
-        // change). One bad entry doesn't block the others.
+        // instead of re-reading config_json. One bad entry doesn't block
+        // the others.
         try {
           const manifest = getManifest();
-          if (manifest) {
-            for (const entry of manifest.providers) {
-              if (entry.tombstone) continue;
-              if (entry.provider_id === providerIdForLink) continue;
-              let secondaryConfig: ProviderConfig;
-              try {
-                secondaryConfig = JSON.parse(entry.config_json) as ProviderConfig;
-              } catch (parseErr) {
-                console.warn('[DeviceEnrollment] secondary config_json parse failed', entry.provider_id, parseErr);
-                continue;
-              }
-              try {
-                const tSec = performance.now();
-                await saveProviderConfig(
-                  {
-                    provider_id: entry.provider_id,
-                    vault_id: vaultId,
-                    vault_label: cfgLabel,
-                    type: secondaryConfig.type,
-                    display_name: entry.display_name,
-                    is_primary: false,
-                    saved_at: new Date().toISOString(),
-                  },
-                  secondaryConfig,
-                );
-                console.info(
-                  `[DeviceEnrollment] saved secondary ${entry.provider_id} in ${Math.round(performance.now() - tSec)} ms`,
-                );
-              } catch (persistErr) {
-                console.warn('[DeviceEnrollment] secondary saveProviderConfig failed', entry.provider_id, persistErr);
-              }
+          if (!manifest) return;
+          for (const entry of manifest.providers) {
+            if (entry.tombstone) continue;
+            if (entry.provider_id === providerIdForLink) continue;
+            let secondaryConfig: ProviderConfig;
+            try {
+              secondaryConfig = JSON.parse(entry.config_json) as ProviderConfig;
+            } catch (parseErr) {
+              console.warn('[DeviceEnrollment] secondary config_json parse failed', entry.provider_id, parseErr);
+              continue;
+            }
+            try {
+              const tSec = performance.now();
+              await saveProviderConfig(
+                {
+                  provider_id: entry.provider_id,
+                  vault_id: vaultId,
+                  vault_label: cfgLabel,
+                  type: secondaryConfig.type,
+                  display_name: entry.display_name,
+                  is_primary: false,
+                  saved_at: new Date().toISOString(),
+                },
+                secondaryConfig,
+              );
+              console.info(
+                `[DeviceEnrollment] saved secondary ${entry.provider_id} in ${Math.round(performance.now() - tSec)} ms`,
+              );
+            } catch (persistErr) {
+              console.warn('[DeviceEnrollment] secondary saveProviderConfig failed', entry.provider_id, persistErr);
             }
           }
         } catch (manifestErr) {
           console.warn('[DeviceEnrollment] manifest secondaries persist failed', manifestErr);
         }
+      }
+
+      const SAVE_PHASE_TIMEOUT_MS = 8_000;
+      const timedOut = await Promise.race([
+        persistProviderConfigs().then(() => false),
+        new Promise<true>((r) => setTimeout(() => r(true), SAVE_PHASE_TIMEOUT_MS)),
+      ]);
+      if (timedOut) {
+        console.warn(
+          '[DeviceEnrollment] saveProviderConfig phase timed out after',
+          SAVE_PHASE_TIMEOUT_MS,
+          'ms — proceeding to onEnrolled. Configs will be re-derived from the manifest on next load.',
+        );
       }
 
       // ('done' was already sent and the WS cleaned up right after Step 9 —
