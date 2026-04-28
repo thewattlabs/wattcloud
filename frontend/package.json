@@ -9,8 +9,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --headed",
-    "lint": "eslint src --ext .ts,.svelte",
-    "lint:fix": "eslint src --ext .ts,.svelte --fix"
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
