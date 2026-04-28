@@ -72,7 +72,7 @@ russh = "0.60"
 russh-sftp = "2.1"
 
 # Base64 decoding for channel ID
-base64 = "0.21"
+base64 = "0.22"
 
 # SHA-256 for PoW verification and HMAC for share ownership tokens + stats device hashing
 sha2 = "0.11"
