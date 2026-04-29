@@ -1,0 +1,62 @@
+# Advanced CodeQL setup. Replaces GitHub's "Default setup" so that the
+# `paths-ignore` rules in `.github/codeql-config.yml` actually take
+# effect — Default setup ignores config files and rescans every path
+# every run, which is why the security-alerts surface was drowning in
+# test-fixture noise before this workflow existed.
+#
+# Before merging this file, the operator MUST disable Default setup at:
+#   Settings → Code security → Code scanning → Default setup → Disable
+# Otherwise both setups race and every alert gets refiled by Default.
+#
+# Workflow inputs are restricted to push/pull_request/schedule events on
+# the main branch. Matrix values are repo-controlled enums; no run:
+# command interpolates untrusted context. No injection surface.
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly cadence to match the prior Default-setup schedule.
+    - cron: '15 6 * * 1'
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    # All three languages use `build-mode: none`. CodeQL 2.25's Rust
+    # extractor rejects `manual` mode and walks the .rs sources directly
+    # without a cargo build, same as the JS/TS and Actions extractors.
+    # Net effect: no toolchain or build step needed in this workflow,
+    # which also keeps it well under the 30-minute timeout.
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [rust, javascript-typescript, actions]
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          config-file: ./.github/codeql-config.yml
+          # The `security-extended` suite matches the prior Default-setup
+          # configuration ("extended"). Going back to the default suite
+          # would silently drop detections we previously had.
+          queries: security-extended
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a
+        with:
+          category: "/language:${{ matrix.language }}"
