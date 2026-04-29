@@ -91,7 +91,14 @@ const fileTypes = [
 <header class="header-wrapper" class:hidden={!headerVisible}>
   <!-- ===== DESKTOP: Top Nav Bar (>= 600px) ===== -->
   <div class="top-nav">
-    <button class="btn-icon" onclick={handleToggleDrawer} aria-label="Toggle sidebar">
+    <!-- The drawer auto-collapses to rail mode at viewport widths
+         ≤1023px (Drawer.svelte's `effectiveCollapsed`). Manual toggling
+         is only meaningful when the user actually has the choice
+         between expanded and rail; below that breakpoint the toggle
+         flipped the chevron icon but the drawer width stayed pinned
+         at rail, which read as a broken control. Hide the button in
+         that band so the affordance only appears when it works. -->
+    <button class="btn-icon drawer-toggle-btn" onclick={handleToggleDrawer} aria-label="Toggle sidebar">
       {#if $drawerCollapsed}<ArrowLineRight size={20} weight="regular" />{:else}<ArrowLineLeft size={20} weight="regular" />{/if}
     </button>
     <div class="top-nav-spacer"></div>
@@ -202,6 +209,18 @@ const fileTypes = [
   .header-wrapper.hidden {
     transform: translateY(-100%);
     opacity: 0;
+  }
+
+  /* Hide the manual drawer toggle in the band where the drawer is
+     auto-collapsed (≤1023px). The toggle is only meaningful at widths
+     where the user can actually switch between expanded and rail —
+     keeping it visible inside the auto-rail band would re-introduce
+     the "chevron flips, drawer stays" regression. Mirrors Drawer.svelte's
+     viewportNarrow breakpoint exactly so the two pieces stay in sync. */
+  @media (max-width: 1023px) {
+    .drawer-toggle-btn {
+      display: none;
+    }
   }
 
   /* Desktop: offset header for sidebar */
