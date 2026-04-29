@@ -797,7 +797,15 @@ type NavId = 'files' | 'photos' | 'favorites' | 'settings';
     }
   }
 
-  @media (min-width: 600px) {
+  /* Hide the mobile-overlay drawer at ≥1024px, where the desktop
+     top-nav exposes the collapse/expand toggle instead of a
+     hamburger. Two entry points drive the overlay: the mobile-top-bar
+     (<600px) and the auto-rail-band hamburger in DashboardHeader
+     (600-1023px). Above 1024px the toggle is the sole affordance,
+     so the overlay should never appear there even if $drawerOpen
+     somehow ended up true (defensive guard against stale state when
+     the user resizes across the breakpoint mid-session). */
+  @media (min-width: 1024px) {
     .drawer-overlay-mobile,
     .drawer-mobile {
       display: none !important;

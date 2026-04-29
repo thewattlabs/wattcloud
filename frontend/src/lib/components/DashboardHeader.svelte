@@ -91,8 +91,20 @@ const fileTypes = [
 <header class="header-wrapper" class:hidden={!headerVisible}>
   <!-- ===== DESKTOP: Top Nav Bar (>= 600px) ===== -->
   <div class="top-nav">
-    <button class="btn-icon" onclick={handleToggleDrawer} aria-label="Toggle sidebar">
+    <!-- Two buttons in the same slot, swapped at the auto-rail
+         breakpoint:
+         - ≥1024px → collapse/expand toggle (works as before;
+           drives Drawer.svelte's `collapsed`).
+         - 600-1023px → hamburger that opens the drawer as a
+           mobile-style overlay. Verbatim copy of the mobile-top-bar's
+           button (same icon, aria-label, handler). The toggle would
+           be a no-op here because Drawer's auto-rail forces
+           effectiveCollapsed=true regardless of the user's choice. -->
+    <button class="btn-icon drawer-toggle-btn" onclick={handleToggleDrawer} aria-label="Toggle sidebar">
       {#if $drawerCollapsed}<ArrowLineRight size={20} weight="regular" />{:else}<ArrowLineLeft size={20} weight="regular" />{/if}
+    </button>
+    <button class="btn-icon drawer-rail-open-btn" onclick={handleOpenDrawer} aria-label="Open menu">
+      <List size={24} weight="regular" />
     </button>
     <div class="top-nav-spacer"></div>
     {#if $vaultStore.status === 'saving'}
@@ -202,6 +214,23 @@ const fileTypes = [
   .header-wrapper.hidden {
     transform: translateY(-100%);
     opacity: 0;
+  }
+
+  /* Two-button swap at the rail breakpoint. ≥1024px keeps the
+     collapse/expand toggle (matches Drawer.svelte's manual-toggle
+     band); 600-1023px replaces it with an "Open menu" hamburger
+     because the toggle is a no-op there (auto-rail forces collapsed).
+     Both buttons live in the same slot so the header layout is
+     stable across the breakpoint. */
+  @media (max-width: 1023px) {
+    .drawer-toggle-btn {
+      display: none;
+    }
+  }
+  @media (min-width: 1024px) {
+    .drawer-rail-open-btn {
+      display: none;
+    }
   }
 
   /* Desktop: offset header for sidebar */
