@@ -53,6 +53,7 @@
   } from '../../byo/iosSave';
   import { byoToast } from '../../byo/stores/byoToasts';
   import { byoCapabilities } from '../../byo/stores/byoCapabilities';
+  import { recordEvent } from '@wattcloud/sdk';
 
   // Reused managed components
   import DashboardHeader from '../DashboardHeader.svelte';
@@ -1027,6 +1028,10 @@
       // Audit each share, fire-and-forget. A failure here doesn't
       // affect the user-visible outcome — the share already happened.
       void recordOutboundAudit(rows.map((r) => r.id));
+      // One stats event per share gesture, regardless of file count.
+      // We don't disclose the picked target app (navigator.share doesn't
+      // tell us) or the file count (would leak vault topology).
+      recordEvent('share_os_outbound');
     }
   }
 
