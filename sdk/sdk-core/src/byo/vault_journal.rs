@@ -37,6 +37,7 @@ pub const ALLOWED_JOURNAL_TABLES: &[&str] = &[
     "key_versions",
     "collections",
     "collection_files",
+    "share_audit",
 ];
 
 #[derive(Debug)]

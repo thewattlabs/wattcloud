@@ -835,6 +835,57 @@ pub fn byo_journal_append(
     }
 }
 
+/// Build the JSON payload bytes for a share-audit journal entry.
+///
+/// The result is the value the JS caller passes as `data_json` to a
+/// subsequent `byo_journal_append` call against table
+/// `share_audit`. The schema lives in
+/// `sdk_core::byo::share_audit::ShareAuditPayload`.
+///
+/// Arguments:
+/// - `direction_str`: "outbound" | "inbound"
+/// - `file_ref`: opaque vault file row id (e.g. SQLite primary key as string)
+/// - `counterparty_hint`: optional hint (e.g. inbound `url` field). Pass `""`
+///   for none — empty string is treated as `None` so JS callers don't need
+///   to fiddle with `undefined` vs `null`.
+/// - `ts_ms`: unix milliseconds of the event
+///
+/// Returns `{ data_json: "<utf-8 JSON string>" }` or `{ error }`.
+#[wasm_bindgen]
+pub fn byo_share_audit_payload(
+    direction_str: &str,
+    file_ref: &str,
+    counterparty_hint: &str,
+    ts_ms: f64,
+) -> JsValue {
+    use sdk_core::byo::share_audit::{build_share_audit_payload, ShareDirection};
+
+    let direction = match direction_str {
+        "outbound" => ShareDirection::Outbound,
+        "inbound" => ShareDirection::Inbound,
+        other => return js_error(&format!("unknown direction: {other}")),
+    };
+    if !ts_ms.is_finite() || ts_ms < 0.0 {
+        return js_error("ts_ms must be a non-negative finite number");
+    }
+    let hint = if counterparty_hint.is_empty() {
+        None
+    } else {
+        Some(counterparty_hint)
+    };
+    match build_share_audit_payload(direction, file_ref, hint, ts_ms as u64) {
+        Ok(bytes) => match std::str::from_utf8(&bytes) {
+            Ok(s) => {
+                let obj = js_sys::Object::new();
+                js_set(&obj, "data_json", &JsValue::from_str(s));
+                obj.into()
+            }
+            Err(e) => js_error(&format!("share_audit payload not utf-8: {e}")),
+        },
+        Err(e) => js_error(&e.to_string()),
+    }
+}
+
 /// Parse and verify a vault journal file.
 ///
 /// Arguments:
