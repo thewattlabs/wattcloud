@@ -5,7 +5,7 @@
   import X from 'phosphor-svelte/lib/X';
   import ShareNetwork from 'phosphor-svelte/lib/ShareNetwork';
   import PaperPlaneTilt from 'phosphor-svelte/lib/PaperPlaneTilt';
-  import ArrowRight from 'phosphor-svelte/lib/ArrowRight';
+  import ArrowSquareIn from 'phosphor-svelte/lib/ArrowSquareIn';
   import ArrowsLeftRight from 'phosphor-svelte/lib/ArrowsLeftRight';
   import Trash from 'phosphor-svelte/lib/Trash';
   import DotsThreeVertical from 'phosphor-svelte/lib/DotsThreeVertical';
@@ -125,7 +125,15 @@ let showSheet = $state(false);
 
 <svelte:window onkeydown={handleSheetKeydown} />
 
-<!-- Desktop: top bar (DESIGN.md 15) -->
+<!-- Desktop: top bar (DESIGN.md 15)
+     Header carries only the high-frequency primary actions
+     (Share / Send to… / Download) plus a clearly-separated Delete and
+     the More button. Everything else (Details, Rename, Move, Copy,
+     Favorite, Add to collection, Transfer to another provider) lives
+     in the More sheet below. This eliminates the prior duplication
+     where every header icon also appeared in the sheet, and it gives
+     destructive Delete its own zone instead of sitting flush against
+     neutral icons. -->
 <div class="selection-top-bar top-bar top-bar-selection desktop-bar" role="toolbar" aria-label="Selection actions">
   <button class="btn-icon" onclick={() => emit('clear')} aria-label="Exit selection">
     <X size={20} />
@@ -134,46 +142,29 @@ let showSheet = $state(false);
   <span class="selection-title">{selectedCount} selected</span>
 
   <div class="selection-actions">
-    {#if canDetails && singleSelection}
-      <button class="btn-icon" onclick={() => emit('details')} aria-label="Details" title="Details">
-        <Info size={20} />
-      </button>
-    {/if}
     {#if canShare}
-      <button class="btn-icon" onclick={() => emit('share')} aria-label="Share link" title="Share link">
-        <ShareNetwork size={20} />
+      <button class="btn-icon btn-icon-labeled" onclick={() => emit('share')} aria-label="Share link" title="Share link">
+        <ShareNetwork size={20} /><span class="btn-label">Share</span>
       </button>
     {/if}
     {#if canSendToOS}
-      <button class="btn-icon" onclick={() => emit('sendToOS')} aria-label="Send to..." title="Send to...">
-        <PaperPlaneTilt size={20} />
-      </button>
-    {/if}
-    {#if canRename && singleSelection}
-      <button class="btn-icon" onclick={() => emit('rename')} aria-label="Rename" title="Rename">
-        <PencilSimple size={20} />
+      <button class="btn-icon btn-icon-labeled" onclick={() => emit('sendToOS')} aria-label="Send to..." title="Send to...">
+        <PaperPlaneTilt size={20} /><span class="btn-label">Send</span>
       </button>
     {/if}
     {#if canDownload}
-      <button class="btn-icon" onclick={() => emit('download')} aria-label="Download" title="Download">
-        <DownloadSimple size={20} />
+      <button class="btn-icon btn-icon-labeled" onclick={() => emit('download')} aria-label="Download" title="Download">
+        <DownloadSimple size={20} /><span class="btn-label">Download</span>
       </button>
     {/if}
-    {#if canMove}
-      <button class="btn-icon" onclick={() => emit('move')} aria-label="Move" title="Move">
-        <ArrowRight size={20} />
-      </button>
-    {/if}
-    {#if canAddToCollection}
-      <button class="btn-icon" onclick={() => emit('addToCollection')} aria-label="Add to collection" title="Add to collection">
-        <Stack size={20} />
-      </button>
-    {/if}
+
     {#if canDelete}
-      <button class="btn-icon action-danger" onclick={() => emit('delete')} aria-label="Delete" title="Delete">
-        <Trash size={20} />
+      <span class="action-divider" aria-hidden="true"></span>
+      <button class="btn-icon btn-icon-labeled action-danger" onclick={() => emit('delete')} aria-label="Delete" title="Delete">
+        <Trash size={20} /><span class="btn-label">Delete</span>
       </button>
     {/if}
+
     <button class="btn-icon" onclick={() => showSheet = true} aria-label="More actions" title="More">
       <DotsThreeVertical size={20} />
     </button>
@@ -238,20 +229,26 @@ let showSheet = $state(false);
         {/if}
         {#if canMove}
           <button class="sheet-option" onclick={() => emit('move')}>
-            <span class="sheet-option-icon"><ArrowRight size={20} /></span>
+            <span class="sheet-option-icon"><ArrowSquareIn size={20} /></span>
             <span>Move</span>
           </button>
         {/if}
         {#if canMoveToProvider}
           <button class="sheet-option" onclick={() => emit('moveToProvider')}>
             <span class="sheet-option-icon"><ArrowsLeftRight size={20} /></span>
-            <span>Move to another provider</span>
+            <span>Transfer to another provider…</span>
           </button>
         {/if}
         {#if canCopy}
           <button class="sheet-option" onclick={() => emit('copy')}>
             <span class="sheet-option-icon"><Copy size={20} /></span>
             <span>Copy</span>
+          </button>
+        {/if}
+        {#if canAddToCollection}
+          <button class="sheet-option" onclick={() => emit('addToCollection')}>
+            <span class="sheet-option-icon"><Stack size={20} /></span>
+            <span>Add to collection</span>
           </button>
         {/if}
         {#if canFavorite}
@@ -319,6 +316,36 @@ let showSheet = $state(false);
 
   .action-danger {
     color: var(--danger) !important;
+  }
+
+  /* Vertical separator that fences Delete off from the neutral
+     actions. Keeps destructive intent distinct without exiling
+     Delete to a second tap inside More. */
+  .action-divider {
+    width: 1px;
+    height: 20px;
+    background-color: var(--border, #30363d);
+    margin: 0 var(--sp-xs);
+  }
+
+  /* Labeled icon button — icon-only by default (touch-target square),
+     expands to icon + text on wide desktop (≥900px) for discoverability.
+     Mirrors how Files/Photos/Mail surface primary actions on desktop. */
+  .btn-icon-labeled .btn-label {
+    display: none;
+  }
+  @media (min-width: 900px) {
+    .btn-icon-labeled {
+      width: auto;
+      padding: 0 12px;
+      gap: 6px;
+      border-radius: var(--r-md, 6px);
+      font-size: var(--t-body-sm-size);
+      font-weight: 600;
+    }
+    .btn-icon-labeled .btn-label {
+      display: inline;
+    }
   }
 
   /* ── Desktop: full top bar with inline actions ─────────── */
