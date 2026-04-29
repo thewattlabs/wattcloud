@@ -32,6 +32,11 @@
   import { byoUploadQueue } from '../../byo/stores/byoUploadQueue';
   import { byoToast } from '../../byo/stores/byoToasts';
   import { shareReceiveCleanupSession } from '../../byo/shareReceiveSW';
+  import {
+    loadStagedShareSession,
+    runShareReceiveUploads,
+    type ShareSessionMeta,
+  } from '../../byo/shareReceiveUpload';
   import { recordEvent } from '@wattcloud/sdk';
   import type { DataProvider, FolderEntry } from '../../byo/DataProvider';
   import BottomSheet from '../BottomSheet.svelte';
@@ -41,21 +46,7 @@
   import CloudArrowUp from 'phosphor-svelte/lib/CloudArrowUp';
   import Trash from 'phosphor-svelte/lib/Trash';
 
-  interface StagedFileMeta {
-    name: string;
-    type: string;
-    size: number;
-    stagedAs: string;
-  }
-
-  interface ShareMeta {
-    schema: number;
-    createdAt: number;
-    title: string;
-    text: string;
-    url: string;
-    files: StagedFileMeta[];
-  }
+  type ShareMeta = ShareSessionMeta;
 
   interface Props {
     open: boolean;
@@ -121,25 +112,9 @@
         return;
       }
       const root = await navigator.storage.getDirectory();
-      const stage = await root.getDirectoryHandle('share-staging');
-      const dir = await stage.getDirectoryHandle(id);
-      const metaHandle = await dir.getFileHandle('meta.json');
-      const metaFile = await metaHandle.getFile();
-      const parsed = JSON.parse(await metaFile.text()) as ShareMeta;
-
-      const files: File[] = [];
-      for (const entry of parsed.files) {
-        const fh = await dir.getFileHandle(entry.stagedAs);
-        const raw = await fh.getFile();
-        // Replace the OPFS-sanitized name with the original filename so
-        // the uploaded vault row reads naturally.
-        files.push(new File([raw], entry.name || entry.stagedAs, {
-          type: entry.type || raw.type || 'application/octet-stream',
-          lastModified: raw.lastModified,
-        }));
-      }
-      meta = parsed;
-      stagedFiles = files;
+      const loaded = await loadStagedShareSession(root, id);
+      meta = loaded.meta;
+      stagedFiles = loaded.files;
     } catch (e: any) {
       console.warn('[share-receive-sheet] could not load session', id, e);
       loadError = 'This share has already been processed or expired.';
@@ -175,45 +150,37 @@
     const folderId = selectRoot ? null : selectedFolderId;
     uploading = true;
 
-    let successes = 0;
-    let failures = 0;
-    for (const file of stagedFiles) {
-      const itemId = byoUploadQueue.addFile(file, folderId);
-      byoUploadQueue.setStatus(itemId, 'encrypting');
-      byoUploadQueue.setPhase(itemId, 'encrypting');
-      try {
-        const row = await dataProvider.uploadFile(
-          folderId,
-          file,
-          (bytes) => {
-            const progress = file.size > 0 ? Math.round((bytes / file.size) * 90) : 45;
-            byoUploadQueue.updateProgress(itemId, progress);
-            byoUploadQueue.updateBytes(itemId, bytes, file.size);
-            byoUploadQueue.setStatus(itemId, 'uploading');
-            byoUploadQueue.setPhase(itemId, 'uploading');
-          },
-          { pauseSignal: byoUploadQueue.getPauseSignal(itemId) },
-        );
-        byoUploadQueue.updateProgress(itemId, 100);
-        byoUploadQueue.updateBytes(itemId, file.size, file.size);
-        byoUploadQueue.setStatus(itemId, 'completed');
-        byoUploadQueue.setPhase(itemId, 'idle');
-        successes += 1;
-        // Audit + stats per uploaded file. The hint carries the source
-        // app's optional `url` field if present (chat apps often pass
-        // a deeplink there); otherwise null. Fire-and-forget — neither
-        // path should block the next upload on failure.
-        const hint = meta?.url ? meta.url.slice(0, 256) : null;
-        dataProvider
-          .recordShareAudit('inbound', String(row.id), hint)
-          .catch((e) => console.warn('[share-receive-sheet] audit failed', e));
-        recordEvent('share_os_inbound');
-      } catch (e: any) {
-        byoUploadQueue.setStatus(itemId, 'error', e?.message ?? 'Upload failed');
-        byoUploadQueue.setPhase(itemId, 'idle');
-        failures += 1;
-      }
-    }
+    const { successes, failures } = await runShareReceiveUploads(
+      stagedFiles,
+      folderId,
+      dataProvider,
+      meta,
+      {
+        enqueue: (file, fid) => byoUploadQueue.addFile(file, fid),
+        setEncrypting: (id) => {
+          byoUploadQueue.setStatus(id, 'encrypting');
+          byoUploadQueue.setPhase(id, 'encrypting');
+        },
+        setUploading: (id, bytesDone, bytesTotal, pct) => {
+          byoUploadQueue.updateProgress(id, pct);
+          byoUploadQueue.updateBytes(id, bytesDone, bytesTotal);
+          byoUploadQueue.setStatus(id, 'uploading');
+          byoUploadQueue.setPhase(id, 'uploading');
+        },
+        setCompleted: (id, bytesTotal) => {
+          byoUploadQueue.updateProgress(id, 100);
+          byoUploadQueue.updateBytes(id, bytesTotal, bytesTotal);
+          byoUploadQueue.setStatus(id, 'completed');
+          byoUploadQueue.setPhase(id, 'idle');
+        },
+        setError: (id, message) => {
+          byoUploadQueue.setStatus(id, 'error', message);
+          byoUploadQueue.setPhase(id, 'idle');
+        },
+        getPauseSignal: (id) => byoUploadQueue.getPauseSignal(id),
+        recordInboundStat: () => recordEvent('share_os_inbound'),
+      },
+    );
 
     uploading = false;
     if (failures === 0) {
