@@ -790,15 +790,22 @@ export async function bufferStreamToFile(
  * share call). Callers should not hold their own references either.
  *
  * Errors:
- *   - `WebShareUnsupportedError` — the API itself is missing. Caller
+ *   - `WebShareUnsupportedError` — `navigator.share` is missing. Caller
  *     should hide the affordance via `byoCapabilities` rather than
  *     reach this path.
- *   - `WebShareUnsupportedForFilesError` — `canShare({files})` returned
- *     false (Safari MIME gate, Firefox Linux, etc.). Caller surfaces a
- *     toast explaining the feature is unavailable for this file.
+ *   - `WebShareUnsupportedForFilesError` — `canShare({files})` exists
+ *     and returned false (Safari MIME gate, Firefox Linux, etc.).
+ *     Caller surfaces a toast explaining the feature is unavailable
+ *     for this file.
  *   - `DOMException('AbortError')` — user dismissed the OS sheet. Caller
  *     treats as silent no-op (no toast).
  *   - Any other Error — unexpected failure; surface a generic error toast.
+ *
+ * Note: when `navigator.canShare` is absent (older Safari, Firefox iOS,
+ * some WebViews) we skip the pre-check and call `share()` directly — if
+ * the browser refuses we surface the rejection through the normal error
+ * path instead of hiding the button at boot. Capability detection in
+ * `byoCapabilities` therefore only requires `navigator.share`.
  */
 export async function shareFilesViaOS(
   files: File[],
@@ -806,14 +813,16 @@ export async function shareFilesViaOS(
 ): Promise<void> {
   if (
     typeof navigator === 'undefined' ||
-    typeof navigator.share !== 'function' ||
-    typeof navigator.canShare !== 'function'
+    typeof navigator.share !== 'function'
   ) {
     throw new WebShareUnsupportedError();
   }
   // Reference held on the stack for the duration of the share() call only.
   const payload: ShareData = { files, title: prompt.title, text: prompt.text };
-  if (!navigator.canShare(payload)) {
+  if (
+    typeof navigator.canShare === 'function' &&
+    !navigator.canShare(payload)
+  ) {
     throw new WebShareUnsupportedForFilesError();
   }
   try {

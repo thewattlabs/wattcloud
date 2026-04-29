@@ -14,10 +14,14 @@
 import { writable, type Readable } from 'svelte/store';
 
 export interface ByoCapabilities {
-  /** Web Share API with file support is at least theoretically available
-   *  in this browser — `navigator.share` and `navigator.canShare` both
-   *  exist. The actual per-share `canShare({files})` check still runs at
-   *  click time because some browsers (Safari) gate by MIME. */
+  /** Web Share API is at least theoretically available in this browser —
+   *  `navigator.share` exists. We deliberately do NOT require
+   *  `navigator.canShare` here: older Safari, Firefox iOS, and a few
+   *  WebView contexts ship `share` without `canShare`, and our click-
+   *  time helper degrades gracefully (uses `canShare` as a pre-check
+   *  when present, otherwise calls `share` directly and lets the
+   *  browser reject if files aren't supported). The per-share gate is
+   *  the right place for MIME-specific decisions, not the boot probe. */
   webShareFiles: boolean;
 }
 
@@ -34,8 +38,7 @@ export function detectByoCapabilities(): ByoCapabilities {
   const caps: ByoCapabilities = {
     webShareFiles:
       typeof navigator !== 'undefined' &&
-      typeof navigator.share === 'function' &&
-      typeof navigator.canShare === 'function',
+      typeof navigator.share === 'function',
   };
   INTERNAL.set(caps);
   return caps;

@@ -127,11 +127,14 @@ describe('shareFilesViaOS', () => {
     ).rejects.toBeInstanceOf(WebShareUnsupportedError);
   });
 
-  it('throws WebShareUnsupportedError when navigator.canShare is missing', async () => {
-    installNavigator({ share: vi.fn() });
-    await expect(
-      shareFilesViaOS([makeFile()], { title: 't', text: '' }),
-    ).rejects.toBeInstanceOf(WebShareUnsupportedError);
+  it('falls back to direct share() when navigator.canShare is missing', async () => {
+    // Older Safari / Firefox iOS / some WebViews ship `share` without
+    // `canShare`. We skip the pre-check and let the browser reject if
+    // files aren't supported.
+    const share = vi.fn(async () => {});
+    installNavigator({ share });
+    await shareFilesViaOS([makeFile()], { title: 't', text: '' });
+    expect(share).toHaveBeenCalledTimes(1);
   });
 
   it('throws WebShareUnsupportedForFilesError when canShare returns false', async () => {
@@ -247,9 +250,11 @@ describe('detectByoCapabilities', () => {
     expect(get(byoCapabilities).webShareFiles).toBe(true);
   });
 
-  it('reports webShareFiles=false when canShare is missing', () => {
+  it('reports webShareFiles=true when only share exists (canShare missing)', () => {
+    // Older Safari / Firefox iOS / some WebViews. Click-time helper
+    // skips the canShare pre-check and calls share() directly.
     (globalThis as any).navigator = { share: () => {} };
-    expect(detectByoCapabilities().webShareFiles).toBe(false);
+    expect(detectByoCapabilities().webShareFiles).toBe(true);
   });
 
   it('reports webShareFiles=false when share is missing', () => {
