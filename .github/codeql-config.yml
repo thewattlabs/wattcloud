@@ -1,0 +1,39 @@
+# CodeQL configuration — paths-ignore for code-scanning.
+#
+# Filters out test fixtures, generated test vectors, and example
+# binaries. CodeQL's default queries (and the "extended" suite this
+# repo uses) heuristically flag any byte-array literal that looks like
+# a key, salt, or nonce — which is the entire point of the test vectors
+# in `tests/`, `examples/`, and the `#[cfg(test)] mod tests` blocks
+# inside production source files.
+#
+# Without this config those flags pile up by the dozen on every push
+# and the security alerts surface stops being useful: 28+
+# rust/hard-coded-cryptographic-value alerts existed at the time this
+# config was added, all of them either inside test/example trees or
+# inside #[cfg(test)] blocks. See PR introducing this file for the
+# full triage notes.
+#
+# Limitation: paths-ignore filters file-level alerts. It does NOT
+# filter alerts that originate inside a #[cfg(test)] block of a
+# production-source file (e.g. `sdk/sdk-core/src/crypto/auth.rs`'s
+# inline tests). Those are dismissed individually with reason
+# "used in tests" in the same PR. CodeQL does not yet expose a
+# "skip cfg(test)" filter — track upstream issue github/codeql#…
+# if/when that lands.
+name: "Wattcloud CodeQL"
+
+paths-ignore:
+  # Top-level test/example trees per crate.
+  - "**/tests/**"
+  - "**/examples/**"
+  - "**/benches/**"
+  # Frontend test files.
+  - "frontend/tests/**"
+  - "frontend/**/*.test.ts"
+  - "frontend/**/*.spec.ts"
+  # Generated artifacts that occasionally end up in checked-in trees.
+  - "**/target/**"
+  - "**/node_modules/**"
+  - "**/dist/**"
+  - "**/pkg/**"
