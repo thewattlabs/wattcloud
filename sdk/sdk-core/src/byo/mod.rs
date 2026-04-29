@@ -17,6 +17,7 @@ pub mod provider;
 pub mod relay_auth;
 pub mod sftp;
 pub mod share;
+pub mod share_audit;
 #[cfg(feature = "providers")]
 pub mod share_relay_client;
 pub mod stats;
@@ -55,6 +56,9 @@ pub use relay_auth::{
 pub use share::{
     decode_variant_a, encode_variant_a, unwrap_key_with_password, wrap_key_with_password,
     ShareError,
+};
+pub use share_audit::{
+    build_share_audit_payload, ShareAuditPayload, ShareDirection, SHARE_AUDIT_TABLE,
 };
 #[cfg(feature = "providers")]
 pub use share_relay_client::{B1GetResponse, ShareCreateResponse, ShareRelayClient};

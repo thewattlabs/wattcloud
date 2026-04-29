@@ -4,6 +4,7 @@
   // Phosphor icons (v2.x imports)
   import X from 'phosphor-svelte/lib/X';
   import ShareNetwork from 'phosphor-svelte/lib/ShareNetwork';
+  import PaperPlaneTilt from 'phosphor-svelte/lib/PaperPlaneTilt';
   import ArrowRight from 'phosphor-svelte/lib/ArrowRight';
   import ArrowsLeftRight from 'phosphor-svelte/lib/ArrowsLeftRight';
   import Trash from 'phosphor-svelte/lib/Trash';
@@ -29,6 +30,9 @@
     canDetails?: boolean;
     /** Show share link button — only active when exactly one file is selected. */
     canShare?: boolean;
+    /** Show "Send to..." (OS share-sheet) button. Files-only; folder
+     *  selections hide it. Available for both single and multi-select. */
+    canSendToOS?: boolean;
     /** Show "Add to collection" button (Photos view). */
     canAddToCollection?: boolean;
     /** Show "Move to another provider" — only when the open vault has
@@ -39,6 +43,7 @@
     onClear?: () => void;
     onDetails?: () => void;
     onShare?: () => void;
+    onSendToOS?: () => void;
     onRename?: () => void;
     onDownload?: () => void;
     onMove?: () => void;
@@ -60,12 +65,14 @@
     canDownload = true,
     canDetails = false,
     canShare = false,
+    canSendToOS = false,
     canAddToCollection = false,
     canMoveToProvider = false,
     favoriteState = 'none',
     onClear,
     onDetails,
     onShare,
+    onSendToOS,
     onRename,
     onDownload,
     onMove,
@@ -86,6 +93,7 @@ let showSheet = $state(false);
       case 'clear':            onClear?.(); break;
       case 'details':          onDetails?.(); break;
       case 'share':            onShare?.(); break;
+      case 'sendToOS':         onSendToOS?.(); break;
       case 'rename':           onRename?.(); break;
       case 'download':         onDownload?.(); break;
       case 'move':             onMove?.(); break;
@@ -136,6 +144,11 @@ let showSheet = $state(false);
         <ShareNetwork size={20} />
       </button>
     {/if}
+    {#if canSendToOS}
+      <button class="btn-icon" onclick={() => emit('sendToOS')} aria-label="Send to..." title="Send to...">
+        <PaperPlaneTilt size={20} />
+      </button>
+    {/if}
     {#if canRename && singleSelection}
       <button class="btn-icon" onclick={() => emit('rename')} aria-label="Rename" title="Rename">
         <PencilSimple size={20} />
@@ -167,51 +180,16 @@ let showSheet = $state(false);
   </div>
 </div>
 
-<!-- Mobile: top bar + bottom action toolbar (DESIGN.md 15) -->
+<!-- Mobile: top bar only (DESIGN.md §15). Actions reach via the More
+     button → bottom sheet. The earlier dedicated bottom action bar
+     duplicated the desktop top-bar's actions and competed with the
+     bottom navigation for space — collapsed in favor of the sheet. -->
 <div class="selection-top-bar top-bar top-bar-selection mobile-top" role="toolbar" aria-label="Selection mode">
   <button class="btn-icon" onclick={() => emit('clear')} aria-label="Exit selection">
     <X size={20} />
   </button>
   <span class="selection-title">{selectedCount} selected</span>
   <div class="selection-spacer"></div>
-  <button class="btn-icon" onclick={() => showSheet = true} aria-label="More actions" title="More">
-    <DotsThreeVertical size={20} />
-  </button>
-</div>
-
-<div class="mobile-action-bar" role="toolbar" aria-label="Selection actions">
-  {#if canDownload}
-    <button class="btn-icon" onclick={() => emit('download')} aria-label="Download" title="Download">
-      <DownloadSimple size={20} />
-    </button>
-  {/if}
-  {#if canMove}
-    <button class="btn-icon" onclick={() => emit('move')} aria-label="Move" title="Move">
-      <ArrowRight size={20} />
-    </button>
-  {/if}
-  {#if canAddToCollection}
-    <button class="btn-icon" onclick={() => emit('addToCollection')} aria-label="Add to collection" title="Add to collection">
-      <Stack size={20} />
-    </button>
-  {/if}
-  {#if canFavorite}
-    <button class="btn-icon" onclick={handleFavorite} aria-label={favoriteLabel} title={favoriteLabel}>
-      <span class="star-wrap" class:bursting={favBurstActive}>
-        <Star size={20} weight={favoriteState === 'all' ? 'fill' : 'regular'} />
-        {#if favBurstActive}
-          {#each [0, 60, 120, 180, 240, 300] as angle}
-            <span class="burst-dot" style="--angle: {angle}deg"></span>
-          {/each}
-        {/if}
-      </span>
-    </button>
-  {/if}
-  {#if canDelete}
-    <button class="btn-icon action-danger" onclick={() => emit('delete')} aria-label="Delete" title="Delete">
-      <Trash size={20} />
-    </button>
-  {/if}
   <button class="btn-icon" onclick={() => showSheet = true} aria-label="More actions" title="More">
     <DotsThreeVertical size={20} />
   </button>
@@ -244,6 +222,12 @@ let showSheet = $state(false);
           <button class="sheet-option" onclick={() => emit('share')}>
             <span class="sheet-option-icon"><ShareNetwork size={20} /></span>
             <span>Share link</span>
+          </button>
+        {/if}
+        {#if canSendToOS}
+          <button class="sheet-option" onclick={() => emit('sendToOS')}>
+            <span class="sheet-option-icon"><PaperPlaneTilt size={20} /></span>
+            <span>Send to...</span>
           </button>
         {/if}
         {#if canRename && singleSelection}
@@ -352,11 +336,7 @@ let showSheet = $state(false);
     display: none;
   }
 
-  .mobile-action-bar {
-    display: none;
-  }
-
-  /* ── Mobile: top bar + bottom action bar ───────────────── */
+  /* ── Mobile: top bar only (actions via More → sheet) ───── */
   @media (max-width: 599px) {
     .desktop-bar {
       display: none;
@@ -364,29 +344,6 @@ let showSheet = $state(false);
 
     .mobile-top {
       display: flex;
-    }
-
-    .mobile-action-bar {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: var(--bottom-nav-height);
-      background: var(--glass-bg);
-      backdrop-filter: var(--glass-blur);
-      -webkit-backdrop-filter: var(--glass-blur);
-      border-top: var(--glass-border);
-      display: flex;
-      align-items: center;
-      justify-content: space-around;
-      z-index: var(--z-bottomnav);
-      padding-bottom: env(safe-area-inset-bottom);
-    }
-    @supports not (backdrop-filter: blur(1px)) {
-      .mobile-action-bar {
-        background: var(--bg-surface-raised);
-        border-top: 1px solid var(--border);
-      }
     }
   }
 

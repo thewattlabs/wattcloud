@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS counters (
   event_kind    TEXT    NOT NULL,        -- vault_unlock|vault_lock|vault_save|
                                          -- upload|download|error|
                                          -- share_create|share_resolve|share_revoke|
+                                         -- share_os_outbound|share_os_inbound|
                                          -- relay_bandwidth_sftp|relay_bandwidth_share
   provider_type TEXT    NOT NULL DEFAULT '',
   error_class   TEXT    NOT NULL DEFAULT '',

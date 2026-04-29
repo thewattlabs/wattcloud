@@ -36,7 +36,13 @@
   import Rows from 'phosphor-svelte/lib/Rows';
   import SquaresFour from 'phosphor-svelte/lib/SquaresFour';
   import OfflineBanner from './OfflineBanner.svelte';
-  import { streamToDisk } from '../../byo/streamToDisk';
+  import {
+    streamToDisk,
+    bufferStreamToFile,
+    shareFilesViaOS,
+    WebShareUnsupportedError,
+    WebShareUnsupportedForFilesError,
+  } from '../../byo/streamToDisk';
   import {
     isIOSDevice,
     bufferForIOSSave,
@@ -46,6 +52,8 @@
     type IOSPathDecision,
   } from '../../byo/iosSave';
   import { byoToast } from '../../byo/stores/byoToasts';
+  import { byoCapabilities } from '../../byo/stores/byoCapabilities';
+  import { recordEvent } from '@wattcloud/sdk';
 
   // Reused managed components
   import DashboardHeader from '../DashboardHeader.svelte';
@@ -56,6 +64,8 @@
   import FolderTile from '../FolderTile.svelte';
   import ConfirmModal from '../ConfirmModal.svelte';
   import MoveCopyDialog from '../MoveCopyDialog.svelte';
+  import ShareReceiveSheet from './ShareReceiveSheet.svelte';
+  import ShareUnsupportedSheet from './ShareUnsupportedSheet.svelte';
 
   // Components with BYO callbacks
   import FileListSvelte from '../FileList.svelte';
@@ -76,9 +86,19 @@
     /** Bound by ByoApp so the shared Drawer can highlight the right link
       and navigation from Settings → Dashboard lands on the chosen tab. */
     view?: 'files' | 'photos' | 'favorites';
+    /** Set when the user landed on /share-receive and tapped "Open
+     *  Wattcloud". The dashboard pops a destination-picker sheet on
+     *  mount, then notifies the parent via `onShareReceiveConsumed`
+     *  so the URL is cleaned up. */
+    shareReceiveSessionId?: string | null;
+    onShareReceiveConsumed?: (() => void) | null;
   }
 
-  let { view = $bindable('files') }: Props = $props();
+  let {
+    view = $bindable('files'),
+    shareReceiveSessionId = null,
+    onShareReceiveConsumed = null,
+  }: Props = $props();
 
 
   const dataProvider = getContext<{ current: DataProvider }>('byo:dataProvider').current;
@@ -168,6 +188,34 @@
 
   let showMoveCopyDialog = $state(false);
   let moveCopyMode: 'move' | 'copy' = $state('move');
+
+  // Inbound Web Share Target sheet — opened automatically when ByoApp
+  // hands us a `shareReceiveSessionId` after the vault has unlocked.
+  // The reactive open trigger flips once we observe a non-null id; the
+  // `onShareReceiveConsumed` callback fires when the sheet closes so
+  // ByoApp can clear the URL param and not re-open on a future mount.
+  let shareReceiveSheetOpen = $state(false);
+  $effect(() => {
+    if (shareReceiveSessionId && !shareReceiveSheetOpen) {
+      shareReceiveSheetOpen = true;
+    }
+  });
+
+  // OS-share unsupported explainer — opened from handleSendToOS when
+  // navigator.share is missing or canShare({files}) refuses the payload.
+  // The "Send to..." button is shown unconditionally; this sheet does
+  // the educating instead of hiding the affordance.
+  let shareUnsupportedOpen = $state(false);
+  let shareUnsupportedReason = $state<'missing-api' | 'files-rejected'>('missing-api');
+  function handleShareReceiveClosed() {
+    shareReceiveSheetOpen = false;
+    onShareReceiveConsumed?.();
+    // The sheet drops uploaded files into byoUploadQueue, which may
+    // already have completed by now if the share was small. Refresh the
+    // current folder either way so freshly-uploaded inbound files
+    // appear if the user happened to land on the matching folder.
+    void loadCurrentFolder();
+  }
   /** Flat list of every folder in the active provider — sourced from
       listAllFolders() and refreshed before opening the MoveCopyDialog so
       the tree isn't empty (the $byoFolders store only holds the *current*
@@ -936,6 +984,128 @@
     }
   }
 
+  /** Outbound OS share-sheet invocation. Single ceiling enforced before
+   *  any decrypt: 20 files OR 200 MB total plaintext. Folder selections
+   *  are rejected (use the share-link flow for those). On success, an
+   *  `outbound` row is recorded in `share_audit` per file. The OS does
+   *  not disclose the receiving app, so `counterparty_hint` stays null. */
+  const SHARE_OS_FILE_CEILING = 20;
+  const SHARE_OS_BYTES_CEILING = 200 * 1024 * 1024;
+
+  async function handleSendToOS(explicitFileIds?: number[]) {
+    const folderIds = [...get(byoSelectedFolders)];
+    if (folderIds.length > 0 && !explicitFileIds) {
+      byoToast.show('Folder shares use the link option, not the OS share sheet.', { icon: 'warn' });
+      return;
+    }
+    const fileIds = explicitFileIds ?? [...get(byoSelectedFiles)];
+    if (fileIds.length === 0) return;
+
+    if (!get(byoCapabilities).webShareFiles) {
+      // Button is shown unconditionally so self-hosters with hardened
+      // browsers (RFP, fingerprint protection, ad-blocker overrides) get
+      // a discoverable affordance — open the explainer sheet instead of
+      // a one-line toast that points nowhere.
+      shareUnsupportedReason = 'missing-api';
+      shareUnsupportedOpen = true;
+      return;
+    }
+
+    const rows = fileIds
+      .map((id) => currentFiles.find((x) => x.id === id) ?? sortedFiles.find((x) => x.id === id))
+      .filter((r): r is FileEntry => !!r);
+    if (rows.length === 0) return;
+
+    if (rows.length > SHARE_OS_FILE_CEILING) {
+      byoToast.show(`Send up to ${SHARE_OS_FILE_CEILING} files or 200 MB at a time.`, { icon: 'warn' });
+      return;
+    }
+    const totalBytes = rows.reduce((acc, f) => acc + (f.size ?? 0), 0);
+    if (totalBytes > SHARE_OS_BYTES_CEILING) {
+      byoToast.show(`Send up to ${SHARE_OS_FILE_CEILING} files or 200 MB at a time.`, { icon: 'warn' });
+      return;
+    }
+
+    // Preparing the payload (download + decrypt + buffer) takes O(seconds)
+    // for non-trivial files; without a cue the user is staring at a frozen
+    // toolbar between the click and the OS sheet popping. Persist a toast
+    // for the duration and update its body per file for multi-selects.
+    const total = rows.length;
+    const prepLabel = (idx: number) =>
+      total === 1 ? 'Preparing file…' : `Preparing ${idx + 1} of ${total}…`;
+    byoToast.show(prepLabel(0), { icon: 'info', durationMs: Infinity });
+
+    let files: File[] = [];
+    try {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        if (i > 0) byoToast.show(prepLabel(i), { icon: 'info', durationMs: Infinity });
+        const stream = await dataProvider.downloadFile(row.id);
+        const filename = (row as any).decrypted_name || row.name || `file_${row.id}`;
+        const mime = (row as any).mime_type || 'application/octet-stream';
+        const file = await bufferStreamToFile(stream, filename, mime);
+        files.push(file);
+      }
+    } catch (err: any) {
+      console.warn('[share-os] decrypt failed', err);
+      byoToast.show(`Couldn’t prepare files to share: ${err?.message ?? 'unknown error'}`, { icon: 'danger' });
+      files = [];
+      return;
+    }
+    // Hand off to the OS — dismiss the prep toast; the native share sheet
+    // is the visual feedback from here on.
+    byoToast.dismiss();
+
+    const title = files.length === 1 ? files[0].name : `${files.length} files from Wattcloud`;
+    let shared = false;
+    try {
+      await shareFilesViaOS(files, { title, text: '' });
+      shared = true;
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        // User dismissed the OS sheet — silent.
+        return;
+      }
+      if (err instanceof WebShareUnsupportedForFilesError) {
+        shareUnsupportedReason = 'files-rejected';
+        shareUnsupportedOpen = true;
+        return;
+      }
+      if (err instanceof WebShareUnsupportedError) {
+        shareUnsupportedReason = 'missing-api';
+        shareUnsupportedOpen = true;
+        return;
+      }
+      console.warn('[share-os] share failed', err);
+      byoToast.show(`Share failed: ${err?.message ?? 'unknown error'}`, { icon: 'danger' });
+      return;
+    } finally {
+      // Drop our refs to the buffered Files so the GC can reclaim the
+      // plaintext. The OS sheet has already taken its own reference.
+      files.length = 0;
+    }
+
+    if (shared) {
+      // Audit each share, fire-and-forget. A failure here doesn't
+      // affect the user-visible outcome — the share already happened.
+      void recordOutboundAudit(rows.map((r) => r.id));
+      // One stats event per share gesture, regardless of file count.
+      // We don't disclose the picked target app (navigator.share doesn't
+      // tell us) or the file count (would leak vault topology).
+      recordEvent('share_os_outbound');
+    }
+  }
+
+  async function recordOutboundAudit(fileIds: number[]) {
+    try {
+      for (const id of fileIds) {
+        await dataProvider.recordShareAudit('outbound', String(id), null);
+      }
+    } catch (err) {
+      console.warn('[share-os] audit emit failed', err);
+    }
+  }
+
   /**
    * Pipe a pre-built zip ReadableStream to disk through the download
    * queue, so pause / cancel / progress stay consistent with the
@@ -1410,10 +1580,14 @@
     {@const canRenameSelection =
       ($byoSelectedFiles.size === 1 && $byoSelectedFolders.size === 0) ||
       ($byoSelectedFolders.size === 1 && $byoSelectedFiles.size === 0)}
+    {@const canSendToOSSelection =
+      $byoSelectedFiles.size > 0 &&
+      $byoSelectedFolders.size === 0}
     <SelectionToolbar
       selectedCount={totalSel}
       canDetails={true}
       canShare={canShareSelection}
+      canSendToOS={canSendToOSSelection}
       canRename={canRenameSelection}
       canAddToCollection={view === 'photos' && $byoSelectedFiles.size > 0}
       canMoveToProvider={$vaultStore.providers.length > 1 && $byoSelectedFiles.size > 0 && $byoSelectedFolders.size === 0}
@@ -1452,6 +1626,7 @@
           openMixedShareSheet(folderIds, fileIds);
         }
       }}
+      onSendToOS={() => handleSendToOS()}
       onDelete={() => {
         const ids = [...get(byoSelectedFiles)];
         if (ids.length > 0) promptDelete('file', ids[0], `${ids.length} file${ids.length !== 1 ? 's' : ''}`);
@@ -1877,8 +2052,31 @@
       isOpen={previewOpen}
       {loadFileData}
       onClose={() => { previewOpen = false; previewFile = null; }}
+      onSendToOS={previewFile
+        ? () => handleSendToOS([previewFile!.id])
+        : null}
     />
   {/if}
+
+  <!-- Web Share Target inbound sheet — opens once per inbound session
+       after the vault is unlocked, reads the OPFS staging, lets the
+       user pick a destination, and drops uploads into byoUploadQueue. -->
+  <ShareReceiveSheet
+    open={shareReceiveSheetOpen}
+    sessionId={shareReceiveSessionId}
+    dataProvider={dataProvider}
+    onClose={handleShareReceiveClosed}
+  />
+
+  <!-- "Send to…" failure explainer (Web Share API missing or
+       canShare({files}) refused the selection). Shown instead of a
+       toast so self-hosters with hardened browsers get actionable
+       remediation steps rather than a dead-end message. -->
+  <ShareUnsupportedSheet
+    open={shareUnsupportedOpen}
+    reason={shareUnsupportedReason}
+    onClose={() => { shareUnsupportedOpen = false; }}
+  />
 
   <!-- Move/copy dialog (scoped to active provider's folders only) -->
   <MoveCopyDialog

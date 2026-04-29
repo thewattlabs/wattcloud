@@ -12,7 +12,13 @@ import ByoApp from './lib/components/byo/ByoApp.svelte';
 import BootstrapClaim from './lib/components/byo/BootstrapClaim.svelte';
 import InviteEntry from './lib/components/byo/InviteEntry.svelte';
 import ShareRecipient from './lib/components/share/ShareRecipient.svelte';
+import ShareReceive from './lib/components/byo/ShareReceive.svelte';
 import { prewarmDownloadServiceWorker, sweepOPFSPending } from './lib/byo/streamToDisk';
+import { detectByoCapabilities } from './lib/byo/stores/byoCapabilities';
+import {
+  registerShareReceiveSW,
+  shareReceiveSweepStale,
+} from './lib/byo/shareReceiveSW';
 import { fetchMe, fetchRelayInfo, hasEnrolledHint } from './lib/byo/accessControl';
 import { mount } from "svelte";
 
@@ -50,6 +56,20 @@ async function boot(): Promise<void> {
       // OPFS. Leftover entries lie outside our per-flow cleanup, so
       // sweep on every boot — TTL-gated, no-op on non-OPFS platforms.
       void sweepOPFSPending();
+      return;
+    }
+
+    // /share-receive = Web Share Target landing page. The
+    // share-receive Service Worker accepted a multipart POST from
+    // another app, staged the files into OPFS, and 303-redirected
+    // here with ?session=<id>. Until the full PR-5 flow lands the
+    // page just reports the session id and provides cleanup so the
+    // staged data does not linger on the device.
+    if (window.location.pathname === '/share-receive') {
+      const session = new URLSearchParams(window.location.search).get('session') ?? '';
+      mount(ShareReceive, { target: appElement, props: { session } });
+      void registerShareReceiveSW();
+      void shareReceiveSweepStale();
       return;
     }
     // Fail-closed runtime config load. Any validation error aborts mount.
@@ -97,8 +117,11 @@ async function boot(): Promise<void> {
     if (gated) return;
 
     mount(ByoApp, { target: appElement });
+    detectByoCapabilities();
     void prewarmDownloadServiceWorker();
     void sweepOPFSPending();
+    void registerShareReceiveSW();
+    void shareReceiveSweepStale();
   } catch (e) {
     console.error('Failed to mount Wattcloud app:', e);
     showError(appElement, e instanceof Error ? e.message : String(e));

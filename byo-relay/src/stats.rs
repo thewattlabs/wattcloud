@@ -33,6 +33,8 @@ const KNOWN_KINDS: &[&str] = &[
     "share_create",
     "share_resolve",
     "share_revoke",
+    "share_os_outbound",
+    "share_os_inbound",
     "relay_bandwidth_sftp",
     "relay_bandwidth_share",
     "device_size_snapshot",

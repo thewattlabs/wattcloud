@@ -79,6 +79,19 @@ pub enum StatsEvent {
         share_variant: ShareVariant,
     },
 
+    /// User invoked an outbound OS share-sheet send. Recorded after
+    /// `navigator.share` resolves successfully. No counterparty —
+    /// `navigator.share` does not disclose the picked target app.
+    ShareOsOutbound {
+        ts: u64,
+    },
+    /// PWA accepted an inbound Web Share Target payload that the user
+    /// chose to upload. Recorded once per successfully-uploaded file
+    /// after the destination-picker flow completes.
+    ShareOsInbound {
+        ts: u64,
+    },
+
     /// Bytes transferred through the SFTP relay (ciphertext). Cumulative
     /// since last vault lock / periodic flush; supplied by the WASM layer.
     RelayBandwidthSftp {
@@ -210,6 +223,30 @@ mod tests {
         };
         let json = serde_json::to_string(&ev).unwrap();
         assert!(json.contains(r#""kind":"relay_bandwidth_sftp""#));
+    }
+
+    #[test]
+    fn share_os_outbound_roundtrip() {
+        let ev = StatsEvent::ShareOsOutbound { ts: 1_713_283_200 };
+        let json = serde_json::to_string(&ev).unwrap();
+        assert!(
+            json.contains(r#""kind":"share_os_outbound""#),
+            "got: {json}"
+        );
+        let back: StatsEvent = serde_json::from_str(&json).unwrap();
+        assert!(matches!(
+            back,
+            StatsEvent::ShareOsOutbound { ts: 1_713_283_200 }
+        ));
+    }
+
+    #[test]
+    fn share_os_inbound_roundtrip() {
+        let ev = StatsEvent::ShareOsInbound { ts: 42 };
+        let json = serde_json::to_string(&ev).unwrap();
+        assert!(json.contains(r#""kind":"share_os_inbound""#), "got: {json}");
+        let back: StatsEvent = serde_json::from_str(&json).unwrap();
+        assert!(matches!(back, StatsEvent::ShareOsInbound { ts: 42 }));
     }
 
     #[test]
