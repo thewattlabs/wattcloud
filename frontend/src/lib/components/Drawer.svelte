@@ -797,10 +797,12 @@ type NavId = 'files' | 'photos' | 'favorites' | 'settings';
     }
   }
 
-  @media (min-width: 600px) {
-    .drawer-overlay-mobile,
-    .drawer-mobile {
-      display: none !important;
-    }
-  }
+  /* The mobile-overlay drawer used to be desktop-hidden via
+     `display: none !important` at ≥600px because the only entry
+     point was the mobile-top-bar's hamburger. The desktop top-nav
+     now also drives this overlay (DashboardHeader's hamburger →
+     handleOpenDrawer → $drawerOpen=true), so the overlay must
+     render at every viewport when `open` is true. The persistent
+     desktop drawer (rail or expanded) sits underneath the overlay
+     and remains visible after the overlay closes. */
 </style>
