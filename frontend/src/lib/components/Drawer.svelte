@@ -797,12 +797,18 @@ type NavId = 'files' | 'photos' | 'favorites' | 'settings';
     }
   }
 
-  /* The mobile-overlay drawer used to be desktop-hidden via
-     `display: none !important` at ≥600px because the only entry
-     point was the mobile-top-bar's hamburger. The desktop top-nav
-     now also drives this overlay (DashboardHeader's hamburger →
-     handleOpenDrawer → $drawerOpen=true), so the overlay must
-     render at every viewport when `open` is true. The persistent
-     desktop drawer (rail or expanded) sits underneath the overlay
-     and remains visible after the overlay closes. */
+  /* Hide the mobile-overlay drawer at ≥1024px, where the desktop
+     top-nav exposes the collapse/expand toggle instead of a
+     hamburger. Two entry points drive the overlay: the mobile-top-bar
+     (<600px) and the auto-rail-band hamburger in DashboardHeader
+     (600-1023px). Above 1024px the toggle is the sole affordance,
+     so the overlay should never appear there even if $drawerOpen
+     somehow ended up true (defensive guard against stale state when
+     the user resizes across the breakpoint mid-session). */
+  @media (min-width: 1024px) {
+    .drawer-overlay-mobile,
+    .drawer-mobile {
+      display: none !important;
+    }
+  }
 </style>

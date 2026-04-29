@@ -1,10 +1,12 @@
 <script lang="ts">
   import { slide } from 'svelte/transition';
   import List from 'phosphor-svelte/lib/List';
+  import ArrowLineLeft from 'phosphor-svelte/lib/ArrowLineLeft';
+  import ArrowLineRight from 'phosphor-svelte/lib/ArrowLineRight';
   import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass';
   import X from 'phosphor-svelte/lib/X';
   import Icon from './Icons.svelte';
-  import { drawerOpen } from '../stores/drawer';
+  import { drawerCollapsed, drawerOpen } from '../stores/drawer';
   import { vaultStore, isVaultDirty } from '../byo/stores/vaultStore';
   import CloudCheck from 'phosphor-svelte/lib/CloudCheck';
   import CloudArrowUp from 'phosphor-svelte/lib/CloudArrowUp';
@@ -80,20 +82,28 @@ const fileTypes = [
   function handleOpenDrawer() {
     $drawerOpen = true;
   }
+
+  function handleToggleDrawer() {
+    $drawerCollapsed = !$drawerCollapsed;
+  }
 </script>
 
 <header class="header-wrapper" class:hidden={!headerVisible}>
   <!-- ===== DESKTOP: Top Nav Bar (>= 600px) ===== -->
   <div class="top-nav">
-    <!-- Hamburger that opens the drawer as an overlay — verbatim copy
-         of the mobile-top-bar's "Open menu" button below. The
-         collapse/expand chevron toggle that used to live here was
-         removed because it became a no-op in the auto-rail band
-         (Drawer.svelte's effectiveCollapsed pins to true at ≤1023px),
-         and even at ≥1024px it duplicated functionality the user
-         can drive from the drawer overlay itself. Single button,
-         single behavior, matches mobile. -->
-    <button class="btn-icon" onclick={handleOpenDrawer} aria-label="Open menu">
+    <!-- Two buttons in the same slot, swapped at the auto-rail
+         breakpoint:
+         - ≥1024px → collapse/expand toggle (works as before;
+           drives Drawer.svelte's `collapsed`).
+         - 600-1023px → hamburger that opens the drawer as a
+           mobile-style overlay. Verbatim copy of the mobile-top-bar's
+           button (same icon, aria-label, handler). The toggle would
+           be a no-op here because Drawer's auto-rail forces
+           effectiveCollapsed=true regardless of the user's choice. -->
+    <button class="btn-icon drawer-toggle-btn" onclick={handleToggleDrawer} aria-label="Toggle sidebar">
+      {#if $drawerCollapsed}<ArrowLineRight size={20} weight="regular" />{:else}<ArrowLineLeft size={20} weight="regular" />{/if}
+    </button>
+    <button class="btn-icon drawer-rail-open-btn" onclick={handleOpenDrawer} aria-label="Open menu">
       <List size={24} weight="regular" />
     </button>
     <div class="top-nav-spacer"></div>
@@ -206,6 +216,22 @@ const fileTypes = [
     opacity: 0;
   }
 
+  /* Two-button swap at the rail breakpoint. ≥1024px keeps the
+     collapse/expand toggle (matches Drawer.svelte's manual-toggle
+     band); 600-1023px replaces it with an "Open menu" hamburger
+     because the toggle is a no-op there (auto-rail forces collapsed).
+     Both buttons live in the same slot so the header layout is
+     stable across the breakpoint. */
+  @media (max-width: 1023px) {
+    .drawer-toggle-btn {
+      display: none;
+    }
+  }
+  @media (min-width: 1024px) {
+    .drawer-rail-open-btn {
+      display: none;
+    }
+  }
 
   /* Desktop: offset header for sidebar */
   @media (min-width: 600px) {
