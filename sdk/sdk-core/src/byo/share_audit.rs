@@ -71,8 +71,7 @@ mod tests {
 
     #[test]
     fn outbound_omits_counterparty_hint_field() {
-        let bytes =
-            build_share_audit_payload(ShareDirection::Outbound, "x", None, 0).unwrap();
+        let bytes = build_share_audit_payload(ShareDirection::Outbound, "x", None, 0).unwrap();
         let s = std::str::from_utf8(&bytes).unwrap();
         assert!(
             !s.contains("counterparty_hint"),

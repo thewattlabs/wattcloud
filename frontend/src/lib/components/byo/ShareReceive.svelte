@@ -143,7 +143,7 @@
     <section class="files">
       <h2>{meta.files.length} {meta.files.length === 1 ? 'file' : 'files'}</h2>
       <ul>
-        {#each meta.files as f}
+        {#each meta.files as f (f.stagedAs)}
           <li>
             <span class="file-name" title={f.name}>{f.name}</span>
             <span class="file-meta">{f.type || 'application/octet-stream'} · {formatBytes(f.size)}</span>

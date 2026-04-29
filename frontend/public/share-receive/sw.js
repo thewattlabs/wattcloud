@@ -94,6 +94,14 @@ async function handleShareReceive(request) {
 }
 
 self.addEventListener('message', (event) => {
+  // Defence-in-depth: SWs are origin-scoped and cannot receive
+  // cross-origin postMessage by browser design, but reject anything
+  // that doesn't originate from our own page anyway. event.origin is
+  // the empty string for messages from a same-origin Window/Worker
+  // client; treat that as same-origin to keep the legitimate path
+  // working.
+  if (event.origin && event.origin !== self.location.origin) return;
+
   const data = event.data;
   if (!data || typeof data !== 'object') return;
 

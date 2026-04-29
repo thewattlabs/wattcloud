@@ -234,17 +234,17 @@ mod tests {
             "got: {json}"
         );
         let back: StatsEvent = serde_json::from_str(&json).unwrap();
-        assert!(matches!(back, StatsEvent::ShareOsOutbound { ts: 1_713_283_200 }));
+        assert!(matches!(
+            back,
+            StatsEvent::ShareOsOutbound { ts: 1_713_283_200 }
+        ));
     }
 
     #[test]
     fn share_os_inbound_roundtrip() {
         let ev = StatsEvent::ShareOsInbound { ts: 42 };
         let json = serde_json::to_string(&ev).unwrap();
-        assert!(
-            json.contains(r#""kind":"share_os_inbound""#),
-            "got: {json}"
-        );
+        assert!(json.contains(r#""kind":"share_os_inbound""#), "got: {json}");
         let back: StatsEvent = serde_json::from_str(&json).unwrap();
         assert!(matches!(back, StatsEvent::ShareOsInbound { ts: 42 }));
     }

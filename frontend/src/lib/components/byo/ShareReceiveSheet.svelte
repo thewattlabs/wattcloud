@@ -28,7 +28,7 @@
    */
 
   import { onMount } from 'svelte';
-  import { vaultStore, type ProviderMeta } from '../../byo/stores/vaultStore';
+  import { vaultStore } from '../../byo/stores/vaultStore';
   import { byoUploadQueue } from '../../byo/stores/byoUploadQueue';
   import { byoToast } from '../../byo/stores/byoToasts';
   import { shareReceiveCleanupSession } from '../../byo/shareReceiveSW';
@@ -257,7 +257,7 @@
       <section class="files" aria-label="Shared files">
         <h3>{stagedFiles.length} {stagedFiles.length === 1 ? 'file' : 'files'} from another app</h3>
         <ul>
-          {#each meta.files as f}
+          {#each meta.files as f (f.stagedAs)}
             <li>
               <span class="file-name" title={f.name}>{f.name}</span>
               <span class="file-meta">{f.type || 'application/octet-stream'} · {formatBytes(f.size)}</span>
