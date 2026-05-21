@@ -68,7 +68,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 hickory-resolver = { version = "0.24", features = ["tokio-runtime"] }
 
 # SSH/SFTP client for SFTP relay gateway
-russh = "0.60"
+russh = "0.61"
 russh-sftp = "2.1"
 
 # Base64 decoding for channel ID
