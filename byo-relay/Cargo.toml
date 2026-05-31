@@ -47,7 +47,7 @@ axum-server = { version = "0.8", features = ["tls-rustls"] }
 rustls = { version = "0.23", features = ["ring"] }
 
 # JWT (relay auth cookie)
-jsonwebtoken = { version = "10.3", default-features = false, features = ["rust_crypto"] }
+jsonwebtoken = { version = "10.4", default-features = false, features = ["rust_crypto"] }
 
 # Cookies
 tower-cookies = "0.11"
@@ -58,7 +58,7 @@ rand = "0.10"
 uuid = { version = "1.23", features = ["v4"] }
 
 # HTTP types
-http = "1.0"
+http = "1.4"
 
 # Logging (minimal — zero-logging means no request middleware)
 tracing = "0.1"
