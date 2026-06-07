@@ -49,7 +49,7 @@ jobs:
     name: Build frontend + wasm
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
 
       - name: Validate tag matches semver
         run: |
@@ -111,7 +111,7 @@ jobs:
           - target: aarch64-unknown-linux-gnu
             arch: aarch64-linux
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
 
       - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6
         with:
@@ -207,7 +207,7 @@ jobs:
       # With the default shallow checkout, only the tagged commit is
       # fetched and PREV_TAG resolves to empty, collapsing the changelog
       # to a single line.
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           fetch-depth: 0
           fetch-tags: true
