@@ -15,7 +15,7 @@
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
     "@types/sql.js": "^1.4.11",
-    "@zxcvbn-ts/core": "^3.0.4",
+    "@zxcvbn-ts/core": "^4.1.2",
     "@zxcvbn-ts/language-en": "^3.0.2",
     "client-zip": "^2.5.0",
     "exifr": "^7.1.3",
