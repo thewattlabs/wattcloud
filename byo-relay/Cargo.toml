@@ -40,7 +40,7 @@ serde_json = "1.0"
 
 # Tower middleware
 tower = { version = "0.5", features = ["util", "timeout"] }
-tower-http = { version = "0.6", features = ["fs", "timeout"] }
+tower-http = { version = "0.7", features = ["fs", "timeout"] }
 
 # TLS — same stack as backend
 axum-server = { version = "0.8", features = ["tls-rustls"] }
