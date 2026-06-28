@@ -59,7 +59,7 @@ jobs:
       # actions-rust-lang/setup-rust-toolchain@v1.16.0 — versioned replacement
       # for dtolnay/rust-toolchain (whose `stable` branch force-pushes,
       # orphaning pinned SHAs on every Rust release).
-      - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6
+      - uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659
         with:
           toolchain: stable
           components: rustfmt, clippy
@@ -102,7 +102,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
-      - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6
+      - uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659
         with:
           toolchain: stable
           components: rustfmt, clippy
